@@ -1,0 +1,12 @@
+# Compiled Power BI files are release artefacts, not source
+*.pbix
+
+# Power BI Desktop local state and caches (not part of the PBIP definition)
+.pbi/localSettings.json
+.pbi/cache.abf
+*.abf
+
+# OS noise
+Thumbs.db
+Desktop.ini
+.DS_Store
