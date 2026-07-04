@@ -32,6 +32,12 @@ table Site
 		displayFolder: Coverage
 		lineageTag: 50369e91-ded7-467f-b67a-95d889f0bebf
 
+	/// Context line for the Sites Covered KPI card.
+	measure 'KPI Coverage Context' = FORMAT ( COALESCE ( [Sites Not Visited 60d], 0 ), "#,0" ) & " sites not visited in 60 days"
+		isHidden
+		displayFolder: Presentation
+		lineageTag: 651e34f2-5f11-46b6-b5c3-ff1386274342
+
 	column SiteKey
 		dataType: int64
 		isHidden

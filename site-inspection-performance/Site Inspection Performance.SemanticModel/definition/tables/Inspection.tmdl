@@ -71,6 +71,22 @@ table Inspection
 		displayFolder: Coverage
 		lineageTag: 2a261279-84b4-49f4-94fd-c6d67de74643
 
+	/// Planned inspections for the as-at month. Feeds the Inspections MTD KPI context line.
+	measure 'Planned Inspections MTD' =
+			VAR asat = [As-at Date]
+			RETURN
+			    CALCULATE ( [Planned Inspections], DATESBETWEEN ( 'Date'[Date], DATE ( YEAR ( asat ), MONTH ( asat ), 1 ), asat ) )
+		formatString: #,0
+		isHidden
+		displayFolder: Presentation
+		lineageTag: 8cefb54d-aa0d-4f59-becd-236e5cb4597f
+
+	/// Context line for the Inspections MTD KPI card.
+	measure 'KPI Inspections Context' = "vs plan " & FORMAT ( [Planned Inspections MTD], "#,0" ) & "  ·  " & FORMAT ( [Inspections MoM Change], "+#,0;-#,0;0" ) & " MoM"
+		isHidden
+		displayFolder: Presentation
+		lineageTag: aa55d045-1a3e-49bc-badd-3de41a8a2c28
+
 	column InspectionKey
 		dataType: int64
 		isHidden

@@ -91,6 +91,43 @@ table Action
 		displayFolder: Data quality
 		lineageTag: 0b9bab05-f14a-4553-8366-c63707a8076b
 
+	/// Actions Raised only when the cell context is the Overdue status. Drives conditional colour that must appear in the Overdue column or row only, never elsewhere.
+	measure 'Overdue Cell Highlight' = IF ( SELECTEDVALUE ( 'Action'[Action Status] ) = "Overdue", [Actions Raised] )
+		formatString: #,0
+		isHidden
+		displayFolder: Presentation
+		lineageTag: 76804c05-c035-4be4-b013-f1b9ff08a0f1
+
+	/// Context line for the Closure Rate KPI card on the Executive Overview.
+	measure 'KPI Closure Context' = "target 90%  ·  " & FORMAT ( [Actions Raised YTD], "#,0" ) & " raised YTD"
+		isHidden
+		displayFolder: Presentation
+		lineageTag: 5b0c5ef7-f8ec-4140-bc55-3eea673048ce
+
+	/// Context line for the Overdue Actions KPI card.
+	measure 'KPI Overdue Context' = IF ( [Actions Overdue] > 0, "oldest " & FORMAT ( [Max Days Overdue], "#,0" ) & " days overdue", "nothing overdue" )
+		isHidden
+		displayFolder: Presentation
+		lineageTag: 841f7f62-51a3-46c8-8d42-4cdcba68dac9
+
+	/// Context line for the Actions Raised KPI card on the Action Tracker.
+	measure 'KPI Actions Raised Context' = FORMAT ( [Actions per Inspection], "0.00" ) & " per inspection"
+		isHidden
+		displayFolder: Presentation
+		lineageTag: d30130aa-153d-4955-8637-908750b2e505
+
+	/// Context line for the Actions Open KPI card.
+	measure 'KPI Open Context' = FORMAT ( COALESCE ( [Actions Due Next 7 Days], 0 ), "#,0" ) & " due in next 7 days"
+		isHidden
+		displayFolder: Presentation
+		lineageTag: d301e54e-250d-46de-89f8-4dcf147be73c
+
+	/// Context line for the Closure Rate KPI card on the Action Tracker.
+	measure 'KPI Closure Median Context' = "target 90%  ·  median " & FORMAT ( [Median Days to Close], "#,0" ) & " days to close"
+		isHidden
+		displayFolder: Presentation
+		lineageTag: 0a520d3e-7601-4cb5-9b86-b4ed54673517
+
 	/// Business identifier, e.g. AC-091.
 	column ActionRef
 		dataType: string

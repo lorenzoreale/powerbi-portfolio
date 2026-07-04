@@ -69,6 +69,12 @@ table Response
 		displayFolder: Findings
 		lineageTag: c041d096-8aed-4d11-9989-885309cc3c3f
 
+	/// Context line for the Compliance % KPI card.
+	measure 'KPI Compliance Context' = FORMAT ( [Compliance MoM (pts)], "+0.0;-0.0;0.0" ) & " pts vs previous month"
+		isHidden
+		displayFolder: Presentation
+		lineageTag: 3f94701d-1a41-4002-b9cb-a08a073a8c06
+
 	column InspectionKey
 		dataType: int64
 		isHidden
