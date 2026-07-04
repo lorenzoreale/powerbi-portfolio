@@ -44,7 +44,7 @@ The date slicer is a **month dropdown with a default selection of Jan 2026 to Ju
 | Inspections | ~870 | ~50 per month typical, seasonal dip in December (~35). IDs `SI-YYYY-NNNN` |
 | Checklist responses | ~20,900 | 24 rows per inspection |
 | Findings | subset of responses | A finding is a response with Result = Fail. Expect roughly 2 to 4 per inspection early in the range, improving over time |
-| Actions | ~430 | Raised from every High and Medium finding and ~40% of Low findings. IDs `AC-NNN` |
+| Actions | ~450 | Raised from every High finding, ~30% of Medium and ~5% of Low. IDs `AC-NNN` |
 
 ### Seeded narratives (the story the data must tell)
 
@@ -278,3 +278,4 @@ Drillthrough target on `InspectionID`, reachable from any visual carrying it (re
 | Date | Change |
 |---|---|
 | 2026-07-04 | First draft for approval |
+| 2026-07-04 | Action-raising rule corrected before Phase 2 build: "every High and Medium plus 40% of Low" would yield ~800 actions against ~2,100 findings, double the intended volume. Now every High, ~30% of Medium, ~5% of Low, keeping ~450 actions (~0.5 per inspection) |

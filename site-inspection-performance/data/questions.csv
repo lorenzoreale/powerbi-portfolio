@@ -1,0 +1,25 @@
+question_id,question_code,section,question_text
+1,FS-01,Fire safety,Fire door closes fully unaided
+2,FS-02,Fire safety,Fire extinguishers in date and accessible
+3,FS-03,Fire safety,Fire alarm call points unobstructed
+4,FS-04,Fire safety,Emergency lighting operational
+5,EL-01,Electrical,Portable appliances tested in date
+6,EL-02,Electrical,Distribution boards closed and labelled
+7,EL-03,Electrical,No damaged cables or plugs in use
+8,EL-04,Electrical,Isolation switches accessible
+9,HK-01,Housekeeping,Walkways free of obstruction
+10,HK-02,Housekeeping,Waste segregated and bins not overflowing
+11,HK-03,Housekeeping,Work areas clean and tidy
+12,HK-04,Housekeeping,Spill kit stocked and accessible
+13,PW-01,PPE & welfare,Eye-wash station in date
+14,PW-02,PPE & welfare,First-aid kit stocked and in date
+15,PW-03,PPE & welfare,PPE worn as signed
+16,PW-04,PPE & welfare,Welfare facilities clean and stocked
+17,ST-01,Storage,Racking inspection tag current
+18,ST-02,Storage,Loads stored within rated limits
+19,ST-03,Storage,Ladders and steps tagged and serviceable
+20,ST-04,Storage,COSHH cabinet locked and register current
+21,SG-01,Signage,Escape route signage visible
+22,SG-02,Signage,Pedestrian walkways marked and visible
+23,SG-03,Signage,Statutory notices displayed and current
+24,SG-04,Signage,Hazard signage matches site risks

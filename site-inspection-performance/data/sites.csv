@@ -1,0 +1,43 @@
+site_id,site_name,region,site_type,latitude,longitude
+1,Kingsway Depot,North,Facilities,53.80,-1.55
+2,Tyne Dock Depot,North,Facilities,54.97,-1.43
+3,Skelton Grange Hub,North,Logistics,53.77,-1.46
+4,Salford Quays Depot,North,Facilities,53.47,-2.29
+5,Teesport Yard,North,Logistics,54.61,-1.16
+6,Carlisle Gateway,North,Logistics,54.89,-2.94
+7,Bradford Interchange Depot,North,Logistics,53.79,-1.75
+8,Hull Fleet Depot,North,Logistics,53.74,-0.34
+9,Preston Brook Depot,North,Logistics,53.76,-2.70
+10,Crewe Annex,Midlands,Facilities,53.09,-2.44
+11,Fenton Works,Midlands,Facilities,53.00,-2.16
+12,Leicester Brook Depot,Midlands,Facilities,52.63,-1.13
+13,Derby Litchurch Yard,Midlands,Facilities,52.91,-1.46
+14,Coventry Gateway Hub,Midlands,Facilities,52.39,-1.48
+15,Wolverhampton Basin Depot,Midlands,Logistics,52.59,-2.13
+16,Northampton Crossfield Hub,Midlands,Logistics,52.24,-0.90
+17,Rugby Junction Depot,Midlands,Facilities,52.37,-1.26
+18,Ely Sidings,South East,Logistics,52.40,0.26
+19,Dartford Clearway Depot,South East,Logistics,51.44,0.22
+20,Basildon Marsh Hub,South East,Logistics,51.57,0.46
+21,Reading Green Park Depot,South East,Facilities,51.42,-0.98
+22,Ashford Orbital Yard,South East,Logistics,51.15,0.87
+23,Slough Trading Depot,South East,Facilities,51.52,-0.62
+24,Luton Percival Hub,South East,Facilities,51.88,-0.42
+25,Medway City Depot,South East,Logistics,51.40,0.55
+26,Falkirk Hub,Scotland,Logistics,56.00,-3.78
+27,Perth North,Scotland,Facilities,56.41,-3.44
+28,Clydebank Riverside Depot,Scotland,Logistics,55.90,-4.40
+29,Aberdeen Harbour Yard,Scotland,Logistics,57.14,-2.08
+30,Livingston Deans Hub,Scotland,Facilities,55.90,-3.55
+31,Dundee Camperdown Depot,Scotland,Facilities,56.48,-3.03
+32,Inverness Longman Depot,Scotland,Logistics,57.49,-4.22
+33,Neath Yard,Wales,Facilities,51.66,-3.80
+34,Newport Docks Depot,Wales,Facilities,51.57,-2.99
+35,Wrexham Industrial Hub,Wales,Logistics,53.03,-2.94
+36,Swansea Fabian Way Depot,Wales,Logistics,51.63,-3.90
+37,Deeside Park Depot,Wales,Logistics,53.21,-3.03
+38,Avonmouth 3,South West,Logistics,51.50,-2.70
+39,Exeter Matford Depot,South West,Logistics,50.70,-3.53
+40,Plymouth Cattedown Yard,South West,Logistics,50.36,-4.11
+41,Gloucester Quays Hub,South West,Facilities,51.86,-2.25
+42,Taunton Priory Depot,South West,Facilities,51.02,-3.10
