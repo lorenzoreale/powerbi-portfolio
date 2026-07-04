@@ -1,0 +1,25 @@
+/// Folder containing the generated CSVs. The only value to change after cloning the repo.
+expression 'Data Folder' = "C:\powerbi-portfolio\site-inspection-performance\data" meta [IsParameterQuery=true, Type="Text", IsParameterQueryRequired=true]
+	lineageTag: 21d70ce5-a726-48fe-93c7-8b396bf92bcd
+
+/// Shared load of inspections.csv: removes the duplicate re-exported rows (wrinkle W2) and assigns the InspectionKey surrogate. Referenced by both the Inspection and Response tables so they can never disagree.
+expression 'Inspections Clean' =
+		let
+		    Source = Csv.Document(File.Contents(#"Data Folder" & "\inspections.csv"), [Delimiter = ",", Columns = 4, Encoding = 65001, QuoteStyle = QuoteStyle.Csv]),
+		    #"Promoted Headers" = Table.PromoteHeaders(Source, [PromoteAllScalars = true]),
+		    #"Removed Duplicate Exports" = Table.Distinct(#"Promoted Headers", {"inspection_id"}),
+		    #"Sorted By Id" = Table.Sort(#"Removed Duplicate Exports", {{"inspection_id", Order.Ascending}}),
+		    #"Added InspectionKey" = Table.AddIndexColumn(#"Sorted By Id", "InspectionKey", 1, 1, Int64.Type)
+		in
+		    #"Added InspectionKey"
+	lineageTag: 1ff7c60a-1ce2-4841-91cc-f4ba98e47949
+
+/// Shared load of sites.csv. Referenced by the Site table and by the Action table's dirty-site-name resolution (wrinkle W6).
+expression 'Sites Raw' =
+		let
+		    Source = Csv.Document(File.Contents(#"Data Folder" & "\sites.csv"), [Delimiter = ",", Columns = 6, Encoding = 65001, QuoteStyle = QuoteStyle.Csv]),
+		    #"Promoted Headers" = Table.PromoteHeaders(Source, [PromoteAllScalars = true])
+		in
+		    #"Promoted Headers"
+	lineageTag: eb65da27-e17c-4626-96bd-cc345cc8e354
+

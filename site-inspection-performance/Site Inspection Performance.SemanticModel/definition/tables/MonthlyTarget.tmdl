@@ -1,0 +1,30 @@
+/// One row per month: the planned number of inspections. Exposed only through the Planned Inspections measure.
+table MonthlyTarget
+	isHidden
+	lineageTag: c2e8eadb-ea2c-4d82-9e6c-97d8eb864da9
+
+	column 'Month Start'
+		dataType: dateTime
+		isHidden
+		lineageTag: 1906e892-2afe-4c08-be7b-d6c2d4de893e
+		summarizeBy: none
+		sourceColumn: Month Start
+
+	column 'Planned Inspections'
+		dataType: int64
+		isHidden
+		lineageTag: 2cc8bdd6-c8cb-4b8d-a0e1-7a6b4dce48c3
+		summarizeBy: none
+		sourceColumn: Planned Inspections
+
+	partition MonthlyTarget = m
+		mode: import
+		source =
+				let
+				    Source = Csv.Document(File.Contents(#"Data Folder" & "\monthly_targets.csv"), [Delimiter = ",", Columns = 2, Encoding = 65001, QuoteStyle = QuoteStyle.Csv]),
+				    #"Promoted Headers" = Table.PromoteHeaders(Source, [PromoteAllScalars = true]),
+				    #"Renamed Columns" = Table.RenameColumns(#"Promoted Headers", {{"month_start", "Month Start"}, {"planned_inspections", "Planned Inspections"}}),
+				    #"Changed Types" = Table.TransformColumnTypes(#"Renamed Columns", {{"Month Start", type date}, {"Planned Inspections", Int64.Type}})
+				in
+				    #"Changed Types"
+

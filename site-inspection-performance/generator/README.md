@@ -21,10 +21,10 @@ The script ends by printing a verification summary (volumes, compliance by month
 | `questions.csv` | one row per checklist question | 24 |
 | `inspections.csv` | one row per inspection visit | 868 (863 real + 5 deliberate duplicates) |
 | `responses.csv` | one row per question answered per inspection | 20,712 |
-| `actions.csv` | one row per corrective action | 476 (475 real + 1 deliberate orphan) |
+| `actions.csv` | one row per corrective action | 484 (483 real + 1 deliberate orphan) |
 | `monthly_targets.csv` | one row per month | 18 |
 
-All time-relative logic is anchored to the fixed as-at date **28 June 2026**, never the real clock.
+All time-relative logic is anchored to the fixed as-at date **26 June 2026**, never the real clock. The as-at date is derived after scheduling as the latest visit date, so it always equals the model's `MAX(Inspection[Inspection Date])` by construction (28 June 2026 is a Sunday; the last weekday visit is Friday the 26th).
 
 ## How the story is seeded
 
@@ -34,10 +34,10 @@ The fail probability of each checklist answer is `BASE_FAIL x time trend x secti
 - `REGION_ADJ` makes North the strongest region and South West the weakest.
 - `SECTION_MULT` plus `SIGNAGE_EXTRA_DROP` makes Signage the weakest section and the fastest improver, and Electrical the strongest.
 - Site overrides make Kingsway Depot the repeat offender (two visits a month, findings every month) and Fenton Works the model site.
-- `CUTOFF` stops inspecting Neath Yard, Ely Sidings and Perth North on fixed dates, creating the staleness story on the Coverage page (94, 72 and 62 days at the as-at date).
+- `CUTOFF` stops inspecting Neath Yard, Ely Sidings and Perth North on fixed dates, creating the staleness story on the Coverage page (94, 72 and 63 days at the as-at date).
 - A coverage floor (`COVERAGE_FLOOR_DAYS`) forces a visit to any other site unvisited for 55 days, so random gaps never outgrow the deliberate ones.
 - `HIGH_START`/`HIGH_END` shift the severity mix away from High over the window.
-- `STALL_P` leaves a small overdue tail open at the as-at date (10 actions, oldest 34 days overdue) and `DUE_SOON_HOLD_P` keeps a little work open that is due in the coming days.
+- `STALL_P` leaves a small overdue tail open at the as-at date (12 actions, oldest 40 days overdue) and `DUE_SOON_HOLD_P` keeps a little work open that is due in the coming days.
 
 ## Deliberate data-quality wrinkles (spec section 7)
 

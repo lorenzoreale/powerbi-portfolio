@@ -1,0 +1,129 @@
+/// Fact: one row per checklist question answered on an inspection (24 per visit). Result is Pass, Fail or NA; a Fail is a finding. N/A answers are excluded from the compliance denominator (wrinkle W3).
+table Response
+	lineageTag: b31a5a1a-29d7-4205-8e7c-1c2fcef49e35
+
+	/// Answers that count towards compliance. N/A answers are excluded from the denominator (wrinkle W3).
+	measure 'Questions Applicable' = CALCULATE ( COUNTROWS ( 'Response' ), 'Response'[Result] IN { "Pass", "Fail" } )
+		formatString: #,0
+		displayFolder: Compliance
+		lineageTag: b61a9b47-6b7b-4d9d-ac2c-a7f83253337a
+
+	/// Answers recorded as Pass.
+	measure 'Questions Passed' = CALCULATE ( COUNTROWS ( 'Response' ), 'Response'[Result] = "Pass" )
+		formatString: #,0
+		displayFolder: Compliance
+		lineageTag: f2b07686-1796-4bfb-b496-fdd6f7971100
+
+	/// Passed over applicable answers. BLANK when nothing was inspected, so uninspected cells stay blank rather than reading 0%. The single compliance measure used everywhere, including the Inspection Detail score.
+	measure 'Compliance %' = DIVIDE ( [Questions Passed], [Questions Applicable] )
+		formatString: 0.0%
+		displayFolder: Compliance
+		lineageTag: 14325975-7a00-4b4e-ab4f-c24f4d2c2327
+
+	/// Compliance % of the as-at month. Feeds the MoM delta.
+	measure 'Compliance % Current Month' =
+			VAR asat = [As-at Date]
+			RETURN
+			    CALCULATE ( [Compliance %], DATESBETWEEN ( 'Date'[Date], DATE ( YEAR ( asat ), MONTH ( asat ), 1 ), asat ) )
+		formatString: 0.0%
+		isHidden
+		displayFolder: Compliance
+		lineageTag: f5ac966e-0d18-441b-9d55-6b2fba887e12
+
+	/// Compliance % of the full month before the as-at month.
+	measure 'Compliance % Previous Month' =
+			VAR pmEnd = EOMONTH ( [As-at Date], -1 )
+			RETURN
+			    CALCULATE ( [Compliance %], DATESBETWEEN ( 'Date'[Date], DATE ( YEAR ( pmEnd ), MONTH ( pmEnd ), 1 ), pmEnd ) )
+		formatString: 0.0%
+		displayFolder: Compliance
+		lineageTag: 31cf9706-f50a-4b04-925d-3ebd79ee504c
+
+	/// Change in compliance, as-at month versus the previous full month, in percentage points.
+	measure 'Compliance MoM (pts)' = ( [Compliance % Current Month] - [Compliance % Previous Month] ) * 100
+		formatString: +0.0;-0.0;0.0
+		displayFolder: Compliance
+		lineageTag: b5f4dbae-74c8-4a5c-8291-1da5c89b6c2d
+
+	/// The agreed compliance target. Amber dashed line on charts; never a data colour.
+	measure 'Compliance Target %' = 0.9
+		formatString: 0%
+		displayFolder: Compliance
+		lineageTag: 1b1e7bdf-32a9-4789-914e-1ac29a4def92
+
+	/// Failed checklist answers. Every finding has a severity and an inspector note.
+	measure Findings = CALCULATE ( COUNTROWS ( 'Response' ), 'Response'[Result] = "Fail" )
+		formatString: #,0
+		displayFolder: Findings
+		lineageTag: 1d00a74a-881b-4e11-8061-593b4bcc1c30
+
+	/// Average findings per inspection visit.
+	measure 'Findings per Inspection' = DIVIDE ( [Findings], [Inspections] )
+		formatString: 0.0
+		displayFolder: Findings
+		lineageTag: 68e98e7d-4c12-46b0-b44b-a1c28e1657d0
+
+	/// Findings graded High. KEEPFILTERS so a severity context from a visual intersects rather than being overridden.
+	measure 'High Severity Findings' = CALCULATE ( [Findings], KEEPFILTERS ( 'Response'[Severity] = "High" ) )
+		formatString: #,0
+		displayFolder: Findings
+		lineageTag: c041d096-8aed-4d11-9989-885309cc3c3f
+
+	column InspectionKey
+		dataType: int64
+		isHidden
+		lineageTag: 889a2c42-3866-4f8e-9c37-cee4ed5d9e79
+		summarizeBy: none
+		sourceColumn: InspectionKey
+
+	column QuestionKey
+		dataType: int64
+		isHidden
+		lineageTag: d3088902-9694-4290-bb05-3e3cc35fa3ec
+		summarizeBy: none
+		sourceColumn: QuestionKey
+
+	/// Pass, Fail or NA. Hidden: use the compliance and findings measures.
+	column Result
+		dataType: string
+		isHidden
+		lineageTag: 8a3d4745-fc87-4827-a2e5-e87331ae9172
+		summarizeBy: none
+		sourceColumn: Result
+
+	/// Low, Medium or High. Populated only when Result is Fail.
+	column Severity
+		dataType: string
+		lineageTag: 68702ac9-f8cf-4513-8783-93f25c5fbd45
+		summarizeBy: none
+		sourceColumn: Severity
+		sortByColumn: 'Severity Sort'
+
+	column 'Severity Sort'
+		dataType: int64
+		isHidden
+		lineageTag: d4846f73-6bf4-487e-94bf-670728e1bba9
+		summarizeBy: none
+		sourceColumn: Severity Sort
+
+	column 'Inspector Note'
+		dataType: string
+		lineageTag: 163fd6c7-0324-47a3-aee7-b35b3ac5d404
+		summarizeBy: none
+		sourceColumn: Inspector Note
+
+	partition Response = m
+		mode: import
+		source =
+				let
+				    Source = Csv.Document(File.Contents(#"Data Folder" & "\responses.csv"), [Delimiter = ",", Columns = 5, Encoding = 65001, QuoteStyle = QuoteStyle.Csv]),
+				    #"Promoted Headers" = Table.PromoteHeaders(Source, [PromoteAllScalars = true]),
+				    #"Merged Inspection Keys" = Table.NestedJoin(#"Promoted Headers", {"inspection_id"}, #"Inspections Clean", {"inspection_id"}, "Inspection", JoinKind.Inner),
+				    #"Expanded Inspection" = Table.ExpandTableColumn(#"Merged Inspection Keys", "Inspection", {"InspectionKey"}),
+				    #"Removed Business Key" = Table.RemoveColumns(#"Expanded Inspection", {"inspection_id"}),
+				    #"Added Severity Sort" = Table.AddColumn(#"Removed Business Key", "Severity Sort", each if [severity] = "High" then 3 else if [severity] = "Medium" then 2 else if [severity] = "Low" then 1 else 0, Int64.Type),
+				    #"Renamed Columns" = Table.RenameColumns(#"Added Severity Sort", {{"question_id", "QuestionKey"}, {"result", "Result"}, {"severity", "Severity"}, {"inspector_note", "Inspector Note"}}),
+				    #"Changed Types" = Table.TransformColumnTypes(#"Renamed Columns", {{"InspectionKey", Int64.Type}, {"QuestionKey", Int64.Type}, {"Result", type text}, {"Severity", type text}, {"Inspector Note", type text}})
+				in
+				    #"Changed Types"
+

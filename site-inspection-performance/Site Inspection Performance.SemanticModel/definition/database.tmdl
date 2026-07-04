@@ -1,0 +1,4 @@
+/// Site inspection compliance and action tracking for Meridian Facilities Group (fictional). Synthetic data.
+database 'Site Inspection Performance'
+	compatibilityLevel: 1702
+

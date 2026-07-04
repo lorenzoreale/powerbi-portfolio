@@ -1,0 +1,40 @@
+/// One row per checklist question (24 questions in six sections).
+table Question
+	lineageTag: 30d93397-dd32-411c-8e86-d0dba1c838cc
+
+	column QuestionKey
+		dataType: int64
+		isHidden
+		lineageTag: 5116042a-ffa3-4058-9951-3ad21552861e
+		summarizeBy: none
+		sourceColumn: QuestionKey
+
+	column 'Question Code'
+		dataType: string
+		lineageTag: 635bc2fe-61e6-4b01-9119-832108041152
+		summarizeBy: none
+		sourceColumn: Question Code
+
+	column Section
+		dataType: string
+		lineageTag: 48a30965-3932-4916-aa82-5ac554acc6db
+		summarizeBy: none
+		sourceColumn: Section
+
+	column 'Question Text'
+		dataType: string
+		lineageTag: d15ae9d3-5b5c-42f8-84e3-163e07628616
+		summarizeBy: none
+		sourceColumn: Question Text
+
+	partition Question = m
+		mode: import
+		source =
+				let
+				    Source = Csv.Document(File.Contents(#"Data Folder" & "\questions.csv"), [Delimiter = ",", Columns = 4, Encoding = 65001, QuoteStyle = QuoteStyle.Csv]),
+				    #"Promoted Headers" = Table.PromoteHeaders(Source, [PromoteAllScalars = true]),
+				    #"Renamed Columns" = Table.RenameColumns(#"Promoted Headers", {{"question_id", "QuestionKey"}, {"question_code", "Question Code"}, {"section", "Section"}, {"question_text", "Question Text"}}),
+				    #"Changed Types" = Table.TransformColumnTypes(#"Renamed Columns", {{"QuestionKey", Int64.Type}, {"Question Code", type text}, {"Section", type text}, {"Question Text", type text}})
+				in
+				    #"Changed Types"
+

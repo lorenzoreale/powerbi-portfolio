@@ -43,7 +43,9 @@ const fmt = (t) => new Date(t).toISOString().slice(0, 10);
 const isWeekday = (t) => { const w = new Date(t).getUTCDay(); return w >= 1 && w <= 5; };
 const daysInMonth = (y, m) => new Date(Date.UTC(y, m, 0)).getUTCDate();
 
-const AS_AT = d(2026, 6, 28);
+// AS_AT is derived below as the latest scheduled visit date, matching the
+// model's definition (MAX of Inspection Date) by construction. June 2026
+// visits are capped at the 28th; the last weekday is Friday the 26th.
 const MONTHS = [];
 for (let y = 2025; y <= 2026; y++)
   for (let m = 1; m <= 12; m++)
@@ -98,7 +100,7 @@ const SITES = [
 
 // Seeded narrative overrides (spec section 3): coverage cut-offs, the repeat
 // offender, a model site and two rarely visited sites.
-const CUTOFF = { 'Neath Yard': d(2026, 3, 26), 'Ely Sidings': d(2026, 4, 17), 'Perth North': d(2026, 4, 27) };
+const CUTOFF = { 'Neath Yard': d(2026, 3, 24), 'Ely Sidings': d(2026, 4, 15), 'Perth North': d(2026, 4, 24) };
 for (const s of SITES) {
   s.type = rand() < 0.55 ? 'Logistics' : 'Facilities';
   s.freq = 0.7 + rand() * 0.7;
@@ -213,6 +215,7 @@ for (const [name, t] of Object.entries(CUTOFF)) {
 }
 
 visits.sort((a, b) => a.t - b.t || a.site.name.localeCompare(b.site.name));
+const AS_AT = visits[visits.length - 1].t;
 const seq = { 2025: 0, 2026: 0 };
 for (const v of visits) {
   const y = new Date(v.t).getUTCFullYear();

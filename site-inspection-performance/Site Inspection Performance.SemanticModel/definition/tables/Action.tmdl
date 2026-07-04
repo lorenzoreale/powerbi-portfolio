@@ -1,0 +1,204 @@
+/// Fact: one row per corrective action raised from a finding. Dirty site names from the source extract are trimmed and resolved to SiteKey at load (wrinkle W6); blank owners map to the Unassigned member (W5); one orphan InspectionID is kept and surfaced by the Orphan Actions measure (W4).
+table Action
+	lineageTag: 35daed23-2c32-41bc-b5cc-92bb40a81769
+
+	/// Corrective actions raised, by raised date in the current context.
+	measure 'Actions Raised' = COUNTROWS ( 'Action' )
+		formatString: #,0
+		displayFolder: Actions
+		lineageTag: bab6933b-3bf0-40fa-95ef-8efe72e000f3
+
+	/// Actions raised from 1 January of the as-at year to the as-at date.
+	measure 'Actions Raised YTD' =
+			VAR asat = [As-at Date]
+			RETURN
+			    CALCULATE ( [Actions Raised], DATESBETWEEN ( 'Date'[Date], DATE ( YEAR ( asat ), 1, 1 ), asat ) )
+		formatString: #,0
+		displayFolder: Actions
+		lineageTag: 062baee5-45ec-4575-bec4-3d563e09b8cf
+
+	/// Actions not yet closed and not yet overdue (includes those due within 7 days).
+	measure 'Actions Open' = CALCULATE ( [Actions Raised], 'Action'[Action Status] IN { "Open", "Due < 7d" } )
+		formatString: #,0
+		displayFolder: Actions
+		lineageTag: 275acd1b-0fc2-4c7f-8848-be4a301d4aef
+
+	/// Actions with a closed date.
+	measure 'Actions Closed' = CALCULATE ( [Actions Raised], 'Action'[Action Status] = "Closed" )
+		formatString: #,0
+		displayFolder: Actions
+		lineageTag: 0271e135-fda0-48d8-a6c4-f6001eaad024
+
+	/// Closed over raised, in context. Compared with the 90% target on the Action Tracker.
+	measure 'Closure Rate %' = DIVIDE ( [Actions Closed], [Actions Raised] )
+		formatString: 0.0%
+		displayFolder: Actions
+		lineageTag: 5236cb5c-8489-45c6-adf0-fdcbb707e40b
+
+	/// Open actions whose due date is before the as-at date. The one number allowed to be red.
+	measure 'Actions Overdue' = CALCULATE ( [Actions Raised], 'Action'[Action Status] = "Overdue" )
+		formatString: #,0
+		displayFolder: Actions
+		lineageTag: 7aa54e5b-bf49-429f-aa4d-275a396f0a10
+
+	/// Age of the oldest overdue action, in days past its due date.
+	measure 'Max Days Overdue' =
+			VAR asat = [As-at Date]
+			RETURN
+			    CALCULATE ( MAXX ( 'Action', INT ( asat - 'Action'[Due Date] ) ), 'Action'[Action Status] = "Overdue" )
+		formatString: #,0
+		displayFolder: Actions
+		lineageTag: 55d7a1bd-e218-4b94-9586-b125d061403c
+
+	/// Open actions due within 7 days of the as-at date.
+	measure 'Actions Due Next 7 Days' = CALCULATE ( [Actions Raised], 'Action'[Action Status] = "Due < 7d" )
+		formatString: #,0
+		displayFolder: Actions
+		lineageTag: 6a29cc67-2dae-48bd-97ad-c88e0271a684
+
+	/// Median days from raised to closed, over closed actions in context.
+	measure 'Median Days to Close' = MEDIANX ( FILTER ( 'Action', NOT ISBLANK ( 'Action'[Closed Date] ) ), INT ( 'Action'[Closed Date] - 'Action'[Raised Date] ) )
+		formatString: #,0
+		displayFolder: Actions
+		lineageTag: 5604015a-3831-4652-997f-38e974e65eb0
+
+	/// Actions raised per inspection visit in context.
+	measure 'Actions per Inspection' = DIVIDE ( [Actions Raised], [Inspections] )
+		formatString: 0.00
+		displayFolder: Actions
+		lineageTag: 3a5a08a0-c308-4dbd-8cd4-87d698743b08
+
+	/// Actions referencing an inspection that does not exist (wrinkle W4, expected value 1). A non-zero value is a referential integrity alarm.
+	measure 'Orphan Actions' =
+			COALESCE (
+			    SUMX (
+			        'Action',
+			        IF (
+			            ISBLANK ( LOOKUPVALUE ( 'Inspection'[InspectionKey], 'Inspection'[InspectionID], 'Action'[InspectionID] ) ),
+			            1
+			        )
+			    ),
+			    0
+			)
+		formatString: #,0
+		displayFolder: Data quality
+		lineageTag: d453f5ff-b2d0-4a29-8eb3-e19befe576ec
+
+	/// Activates the inactive Inspection-to-Action relationship so the Inspection Detail drillthrough can filter the actions table to the drilled inspection.
+	measure 'Actions From Inspection' = CALCULATE ( COUNTROWS ( 'Action' ), USERELATIONSHIP ( 'Inspection'[InspectionID], 'Action'[InspectionID] ) )
+		formatString: #,0
+		isHidden
+		displayFolder: Data quality
+		lineageTag: 0b9bab05-f14a-4553-8366-c63707a8076b
+
+	/// Business identifier, e.g. AC-091.
+	column ActionRef
+		dataType: string
+		lineageTag: 1f071de7-4706-4253-8317-522afd3f852f
+		summarizeBy: none
+		sourceColumn: ActionRef
+
+	column InspectionID
+		dataType: string
+		isHidden
+		lineageTag: ef2e00b8-b594-43d2-800f-f2f08b4bfa0b
+		summarizeBy: none
+		sourceColumn: InspectionID
+
+	column SiteKey
+		dataType: int64
+		isHidden
+		lineageTag: 6081da07-9363-4b41-ac9c-5c698912a3a7
+		summarizeBy: none
+		sourceColumn: SiteKey
+
+	column OwnerKey
+		dataType: int64
+		isHidden
+		lineageTag: d5f3571b-8cab-41b2-a525-d67723a06b6d
+		summarizeBy: none
+		sourceColumn: OwnerKey
+
+	/// The checklist section the originating finding came from.
+	column Category
+		dataType: string
+		lineageTag: 16f5b4ee-f74c-4731-9a30-261cf4846008
+		summarizeBy: none
+		sourceColumn: Category
+
+	column 'Raised Date'
+		dataType: dateTime
+		formatString: dd mmm yyyy
+		lineageTag: 5ee974e2-460c-4dea-bf2a-59eb1badf2de
+		summarizeBy: none
+		sourceColumn: Raised Date
+
+	column 'Due Date'
+		dataType: dateTime
+		formatString: dd mmm yyyy
+		lineageTag: 7aa87db4-0e85-4697-877e-04e43681bfee
+		summarizeBy: none
+		sourceColumn: Due Date
+
+	column 'Closed Date'
+		dataType: dateTime
+		formatString: dd mmm yyyy
+		lineageTag: 55a8d192-082d-4d76-9277-169d2e8229a6
+		summarizeBy: none
+		sourceColumn: Closed Date
+
+	column 'Action Description'
+		dataType: string
+		lineageTag: 25ee4e61-7d01-4c99-9430-4f8f95896635
+		summarizeBy: none
+		sourceColumn: Action Description
+
+	/// Lifecycle status relative to the fixed as-at date (the latest inspection date), never the real clock.
+	column 'Action Status' =
+			VAR asat = MAX ( 'Inspection'[Inspection Date] )
+			RETURN
+			    SWITCH (
+			        TRUE (),
+			        NOT ISBLANK ( 'Action'[Closed Date] ), "Closed",
+			        'Action'[Due Date] < asat, "Overdue",
+			        'Action'[Due Date] <= asat + 7, "Due < 7d",
+			        "Open"
+			    )
+		dataType: string
+		lineageTag: 52f79257-aa7d-46dc-80af-8c68aff4745f
+		summarizeBy: none
+		sortByColumn: 'Action Status Sort'
+
+	column 'Action Status Sort' =
+			VAR asat = MAX ( 'Inspection'[Inspection Date] )
+			RETURN
+			    SWITCH (
+			        TRUE (),
+			        NOT ISBLANK ( 'Action'[Closed Date] ), 4,
+			        'Action'[Due Date] < asat, 3,
+			        'Action'[Due Date] <= asat + 7, 2,
+			        1
+			    )
+		dataType: int64
+		isHidden
+		lineageTag: e1b996a8-523e-422f-beb8-7bebf0e37852
+		summarizeBy: none
+
+	partition Action = m
+		mode: import
+		source =
+				let
+				    Source = Csv.Document(File.Contents(#"Data Folder" & "\actions.csv"), [Delimiter = ",", Columns = 9, Encoding = 65001, QuoteStyle = QuoteStyle.Csv]),
+				    #"Promoted Headers" = Table.PromoteHeaders(Source, [PromoteAllScalars = true]),
+				    #"Cleaned Site Names" = Table.TransformColumns(#"Promoted Headers", {{"site_name", each Text.Lower(Text.Trim(Text.Replace(_, "  ", " "))), type text}}),
+				    #"Prepared Site Lookup" = Table.TransformColumns(Table.SelectColumns(#"Sites Raw", {"site_id", "site_name"}), {{"site_name", each Text.Lower(_), type text}}),
+				    #"Resolved Site Keys" = Table.NestedJoin(#"Cleaned Site Names", {"site_name"}, #"Prepared Site Lookup", {"site_name"}, "Site", JoinKind.LeftOuter),
+				    #"Expanded Site" = Table.ExpandTableColumn(#"Resolved Site Keys", "Site", {"site_id"}, {"SiteKey"}),
+				    #"Removed Site Name" = Table.RemoveColumns(#"Expanded Site", {"site_name"}),
+				    #"Unassigned Owners" = Table.ReplaceValue(#"Removed Site Name", "", "0", Replacer.ReplaceValue, {"owner_id"}),
+				    #"Blank Closed Dates" = Table.ReplaceValue(#"Unassigned Owners", "", null, Replacer.ReplaceValue, {"closed_date"}),
+				    #"Renamed Columns" = Table.RenameColumns(#"Blank Closed Dates", {{"action_ref", "ActionRef"}, {"inspection_id", "InspectionID"}, {"category", "Category"}, {"raised_date", "Raised Date"}, {"due_date", "Due Date"}, {"closed_date", "Closed Date"}, {"owner_id", "OwnerKey"}, {"action_description", "Action Description"}}),
+				    #"Changed Types" = Table.TransformColumnTypes(#"Renamed Columns", {{"ActionRef", type text}, {"InspectionID", type text}, {"SiteKey", Int64.Type}, {"OwnerKey", Int64.Type}, {"Category", type text}, {"Raised Date", type date}, {"Due Date", type date}, {"Closed Date", type date}, {"Action Description", type text}})
+				in
+				    #"Changed Types"
+

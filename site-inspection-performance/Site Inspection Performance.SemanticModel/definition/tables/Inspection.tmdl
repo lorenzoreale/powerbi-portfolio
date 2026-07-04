@@ -1,0 +1,118 @@
+/// Fact: one row per completed site inspection visit. Loaded via the shared Inspections Clean query, which removes the duplicate re-exported rows (wrinkle W2).
+table Inspection
+	lineageTag: 859af230-14a8-4564-9d6e-eccf1b7acd26
+
+	/// The fixed reporting anchor: the latest inspection date in the data, ignoring all filters. Every time-relative measure keys off this, never the real clock.
+	measure 'As-at Date' = CALCULATE ( MAX ( 'Inspection'[Inspection Date] ), REMOVEFILTERS () )
+		formatString: dd mmm yyyy
+		isHidden
+		displayFolder: Activity
+		lineageTag: e949424f-c50c-42b1-894b-bac07488cd38
+
+	/// Count of inspection visits in the current filter context.
+	measure Inspections = COUNTROWS ( 'Inspection' )
+		formatString: #,0
+		displayFolder: Activity
+		lineageTag: 4eee843b-61e7-4576-8d3b-b77849fc52cb
+
+	/// Inspections in the as-at month (1 Jun 2026 to 28 Jun 2026), regardless of the date slicer.
+	measure 'Inspections MTD' =
+			VAR asat = [As-at Date]
+			RETURN
+			    CALCULATE ( [Inspections], DATESBETWEEN ( 'Date'[Date], DATE ( YEAR ( asat ), MONTH ( asat ), 1 ), asat ) )
+		formatString: #,0
+		displayFolder: Activity
+		lineageTag: 08908bf3-cf70-429f-abc8-576dea6d0507
+
+	/// Inspections in the full month before the as-at month.
+	measure 'Inspections Previous Month' =
+			VAR pmEnd = EOMONTH ( [As-at Date], -1 )
+			RETURN
+			    CALCULATE ( [Inspections], DATESBETWEEN ( 'Date'[Date], DATE ( YEAR ( pmEnd ), MONTH ( pmEnd ), 1 ), pmEnd ) )
+		formatString: #,0
+		displayFolder: Activity
+		lineageTag: 4b2ec2cf-0482-4cf9-960a-c5049f0d6917
+
+	/// As-at month inspections minus the previous full month, signed.
+	measure 'Inspections MoM Change' = [Inspections MTD] - [Inspections Previous Month]
+		formatString: +#,0;-#,0;0
+		displayFolder: Activity
+		lineageTag: ba9147ba-1ac7-4455-8744-31b6062b05f6
+
+	/// The planned inspection volume from the monthly plan.
+	measure 'Planned Inspections' = SUM ( 'MonthlyTarget'[Planned Inspections] )
+		formatString: #,0
+		displayFolder: Activity
+		lineageTag: 71ec426b-5fb0-4d92-ba0a-bebde27d4b39
+
+	/// Latest inspection date in context. Drives the data-currency subtitle on every page.
+	measure 'Last Inspection Date' = MAX ( 'Inspection'[Inspection Date] )
+		formatString: dd mmm yyyy
+		displayFolder: Activity
+		lineageTag: 14055a05-d69c-40d7-8bc6-e07942d6e6e5
+
+	/// Distinct sites with at least one inspection in the current filter context.
+	measure 'Sites Covered' = DISTINCTCOUNT ( 'Inspection'[SiteKey] )
+		formatString: #,0
+		displayFolder: Coverage
+		lineageTag: 3ffacd02-ba81-4e47-a6ed-69e6b0253ef5
+
+	/// Display label for the coverage KPI card, e.g. 40 / 42.
+	measure 'Sites Covered Label' = [Sites Covered] & " / " & [Active Sites]
+		displayFolder: Coverage
+		lineageTag: 6e4b102c-b4cd-447b-8f44-1573492f47cd
+
+	/// Inspections from 1 January of the as-at year to the as-at date.
+	measure 'Visits YTD' =
+			VAR asat = [As-at Date]
+			RETURN
+			    CALCULATE ( [Inspections], DATESBETWEEN ( 'Date'[Date], DATE ( YEAR ( asat ), 1, 1 ), asat ) )
+		formatString: #,0
+		displayFolder: Coverage
+		lineageTag: 2a261279-84b4-49f4-94fd-c6d67de74643
+
+	column InspectionKey
+		dataType: int64
+		isHidden
+		lineageTag: 9470d44c-bffb-4f25-b326-e74c49a27053
+		summarizeBy: none
+		sourceColumn: InspectionKey
+
+	/// Business identifier, e.g. SI-2026-0341. The drillthrough key for the Inspection Detail page.
+	column InspectionID
+		dataType: string
+		lineageTag: b3cb8c53-dc32-4131-8790-2c8dd0ceef93
+		summarizeBy: none
+		sourceColumn: InspectionID
+
+	column 'Inspection Date'
+		dataType: dateTime
+		formatString: dd mmm yyyy
+		lineageTag: 6cc4071c-93bc-4387-9e2c-824d1ec8526a
+		summarizeBy: none
+		sourceColumn: Inspection Date
+
+	column SiteKey
+		dataType: int64
+		isHidden
+		lineageTag: 35a7a142-d005-490d-8152-4f66af4ff23f
+		summarizeBy: none
+		sourceColumn: SiteKey
+
+	column InspectorKey
+		dataType: int64
+		isHidden
+		lineageTag: 55f73965-f518-4efe-b0bd-03dab48a7e24
+		summarizeBy: none
+		sourceColumn: InspectorKey
+
+	partition Inspection = m
+		mode: import
+		source =
+				let
+				    Source = #"Inspections Clean",
+				    #"Renamed Columns" = Table.RenameColumns(Source, {{"inspection_id", "InspectionID"}, {"inspection_date", "Inspection Date"}, {"site_id", "SiteKey"}, {"inspector_id", "InspectorKey"}}),
+				    #"Changed Types" = Table.TransformColumnTypes(#"Renamed Columns", {{"InspectionID", type text}, {"Inspection Date", type date}, {"SiteKey", Int64.Type}, {"InspectorKey", Int64.Type}, {"InspectionKey", Int64.Type}})
+				in
+				    #"Changed Types"
+

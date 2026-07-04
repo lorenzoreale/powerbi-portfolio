@@ -24,8 +24,8 @@ The report answers four management questions, one per page, plus a drillthrough 
 
 | Item | Value |
 |---|---|
-| Data range | 1 Jan 2025 to 28 Jun 2026 (18 months) |
-| As-at date | **28 Jun 2026**, fixed. Defined in the model as `MAX(Inspection[Inspection Date])`, never `TODAY()` |
+| Data range | 1 Jan 2025 to 26 Jun 2026 (18 months) |
+| As-at date | **26 Jun 2026**, fixed: the last weekday of the data range (28 Jun 2026 is a Sunday and inspections happen on working days). Defined in the model as `MAX(Inspection[Inspection Date])`, never `TODAY()`. The generator derives it from the scheduled visits, so the generator and the model agree by construction |
 | Date table range | 1 Jan 2025 to 30 Jun 2026, marked as date table |
 | Default report view | Jan 2026 to Jun 2026 (six whole months to the as-at date) |
 
@@ -67,10 +67,12 @@ Date 1--* Inspection *--1 Site
                       *--1 Person (role: inspector)
 Date 1--* Action      *--1 Site
                       *--1 Person (role: owner)
-                      *--1 Inspection   (via InspectionID, for drillthrough rollups)
+                      *--1 Inspection   (via InspectionID, INACTIVE, see below)
 Inspection 1--* Response *--1 Question
 Date 1--* MonthlyTarget  (month grain)
 ```
+
+The Inspection-to-Action relationship is **inactive**: Action already relates directly to Site, Person and Date, so an active path through Inspection would create an ambiguous filter diamond, which the engine rejects. A hidden measure (Actions From Inspection, measure 34) activates it with `USERELATIONSHIP` so the Inspection Detail drillthrough can list the actions raised from the inspection in context.
 
 ### 4.1 Date (dimension)
 
@@ -122,17 +124,16 @@ Grain: **one row per corrective action raised.**
 
 | Column | Type | Notes |
 |---|---|---|
-| `ActionKey` | int | surrogate |
-| `ActionRef` | text | `AC-091` style, unique |
-| `InspectionID` | text | FK to Inspection (see wrinkle W4: one orphan) |
+| `ActionRef` | text | `AC-091` style, unique business key (no integer surrogate: nothing relates to it and surrogates on facts waste memory) |
+| `InspectionID` | text | FK to Inspection via the inactive relationship (see wrinkle W4: one orphan) |
 | `SiteKey` | int | FK to Site, resolved at load |
 | `OwnerKey` | int | FK to Person (see wrinkle W5: two unassigned) |
 | `Category` | text | the checklist section the finding came from |
 | `Raised Date` | date | active relationship to Date |
-| `Due Date` | date | inactive relationship to Date |
-| `Closed Date` | date | blank while open; inactive relationship to Date |
+| `Due Date` | date | no relationship to Date: an inactive one would be activated by no measure, which is orphaned modelling |
+| `Closed Date` | date | blank while open; no relationship to Date, same reason |
 | `Action Description` | text | short free text |
-| `Action Status` | text | **calculated column**: Closed if `Closed Date` present; else Overdue if `Due Date` < as-at date; else Due < 7d if `Due Date` <= as-at date + 7; else Open |
+| `Action Status` | text | **calculated column**: Closed if `Closed Date` present; else Overdue if `Due Date` < as-at date; else Due < 7d if `Due Date` <= as-at date + 7; else Open. Sorted by a hidden helper column so status columns read Open, Due < 7d, Overdue, Closed |
 
 ## 5. Targets
 
@@ -155,7 +156,7 @@ Business definitions are binding; exact DAX is Phase 3. Formats: whole numbers u
 | # | Measure | Business definition |
 |---|---|---|
 | 1 | Inspections | Count of inspection visits in filter context |
-| 2 | Inspections MTD | Inspections in the as-at month, 1 Jun 2026 to 28 Jun 2026 |
+| 2 | Inspections MTD | Inspections in the as-at month, 1 Jun 2026 to the as-at date |
 | 3 | Inspections Previous Month | Inspections in the full month before the as-at month |
 | 4 | Inspections MoM Change | Measure 2 minus measure 3, signed |
 | 5 | Planned Inspections | Sum of `Planned Inspections` from MonthlyTarget in context |
@@ -207,11 +208,14 @@ Business definitions are binding; exact DAX is Phase 3. Formats: whole numbers u
 | 31 | Median Days to Close | Median of (Closed Date minus Raised Date) over closed actions |
 | 32 | Actions per Inspection | Actions raised divided by Inspections in context |
 
-### Data quality
+### Data quality and plumbing
 
 | # | Measure | Business definition |
 |---|---|---|
 | 33 | Orphan Actions | Actions whose InspectionID matches no inspection (expected value: 1, see W4) |
+| 34 | Actions From Inspection | Hidden. Activates the inactive Inspection-to-Action relationship so the Inspection Detail page can filter the actions table to the drilled inspection |
+| 35 | As-at Date | Hidden. `MAX(Inspection[Inspection Date])` ignoring all filters; the anchor for every time-relative measure |
+| 36 | Compliance % Current Month | Hidden. Compliance % of the as-at month; with measure 10 it feeds the MoM KPI delta, so measures 10 and 11 compare the as-at month with the previous full month regardless of the date slicer |
 
 ## 7. Deliberate data-quality wrinkles
 
@@ -279,3 +283,5 @@ Drillthrough target on `InspectionID`, reachable from any visual carrying it (re
 |---|---|
 | 2026-07-04 | First draft for approval |
 | 2026-07-04 | Action-raising rule corrected before Phase 2 build: "every High and Medium plus 40% of Low" would yield ~800 actions against ~2,100 findings, double the intended volume. Now every High, ~30% of Medium, ~5% of Low, keeping ~450 actions (~0.5 per inspection) |
+| 2026-07-04 | Phase 3 design corrections before build: Inspection-to-Action relationship made inactive (active would create an ambiguous filter diamond with Action's direct Site/Person/Date relationships) and activated by hidden measure 34; Due/Closed date relationships dropped (no measure would activate them); ActionKey surrogate dropped in favour of ActionRef; hidden helper measures 35-36 and hidden sort columns (Action Status, Severity) added; CSVs load through a `Data Folder` parameter so a cloner edits one value |
+| 2026-07-04 | As-at date corrected from 28 to 26 Jun 2026, found by DAX reconciliation against the live model: 28 Jun 2026 is a Sunday, inspections are weekday-only, so `MAX(Inspection[Inspection Date])` lands on Friday the 26th. The generator now derives the as-at date from the scheduled visits and computes all action statuses and staleness against it; the staleness cut-offs moved two days earlier to preserve the coverage story |

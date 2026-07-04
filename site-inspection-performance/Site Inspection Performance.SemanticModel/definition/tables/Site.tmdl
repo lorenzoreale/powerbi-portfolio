@@ -1,0 +1,84 @@
+/// One row per site in the Meridian estate (42 sites across six UK regions).
+table Site
+	lineageTag: 817d2607-ec6e-4d3e-8cd5-a7a6773e3c4d
+
+	/// Sites in the estate within the current filter context (42 in total).
+	measure 'Active Sites' = COUNTROWS ( 'Site' )
+		formatString: #,0
+		displayFolder: Coverage
+		lineageTag: 5868dd67-427b-43aa-8819-127a8e51c8ca
+
+	/// Days between a site's most recent inspection (any period, the date slicer is ignored) and the as-at date. Blank if never inspected.
+	measure 'Days Since Last Inspection' =
+			VAR lastVisit = CALCULATE ( MAX ( 'Inspection'[Inspection Date] ), REMOVEFILTERS ( 'Date' ) )
+			RETURN
+			    IF ( NOT ISBLANK ( lastVisit ), INT ( [As-at Date] - lastVisit ) )
+		formatString: #,0
+		displayFolder: Coverage
+		lineageTag: 828fe6b8-3402-4a69-9980-c4cac0f5ab7d
+
+	/// Sites whose last inspection is more than 60 days before the as-at date.
+	measure 'Sites Not Visited 60d' = SUMX ( VALUES ( 'Site'[SiteKey] ), IF ( [Days Since Last Inspection] > 60, 1 ) )
+		formatString: #,0
+		displayFolder: Coverage
+		lineageTag: cf65c17b-ce0e-4943-bb80-061d896bffe8
+
+	/// Compliance % of the site's most recent inspection, ignoring the date slicer.
+	measure 'Latest Compliance %' =
+			VAR lastVisit = CALCULATE ( MAX ( 'Inspection'[Inspection Date] ), REMOVEFILTERS ( 'Date' ) )
+			RETURN
+			    CALCULATE ( [Compliance %], REMOVEFILTERS ( 'Date' ), 'Inspection'[Inspection Date] = lastVisit )
+		formatString: 0.0%
+		displayFolder: Coverage
+		lineageTag: 50369e91-ded7-467f-b67a-95d889f0bebf
+
+	column SiteKey
+		dataType: int64
+		isHidden
+		lineageTag: 0157764e-e7ec-44b0-9b8b-8712eab9b89c
+		summarizeBy: none
+		sourceColumn: SiteKey
+
+	column 'Site Name'
+		dataType: string
+		lineageTag: f90e6fc8-3da6-4fb2-b175-eac78d2d877a
+		summarizeBy: none
+		sourceColumn: Site Name
+
+	column Region
+		dataType: string
+		lineageTag: 2fa8d2e6-700d-4845-aeff-584542ef5ae0
+		summarizeBy: none
+		sourceColumn: Region
+
+	/// Logistics or Facilities.
+	column 'Site Type'
+		dataType: string
+		lineageTag: 73ad5478-58b8-4ae9-bb56-41b7a4b50b18
+		summarizeBy: none
+		sourceColumn: Site Type
+
+	column Latitude
+		dataType: decimal
+		lineageTag: a503e0b8-2b34-4e4e-a011-cc25f807fe9c
+		dataCategory: Latitude
+		summarizeBy: none
+		sourceColumn: Latitude
+
+	column Longitude
+		dataType: decimal
+		lineageTag: dcb744b7-614e-42fa-a49d-d6ca4eeb3f0a
+		dataCategory: Longitude
+		summarizeBy: none
+		sourceColumn: Longitude
+
+	partition Site = m
+		mode: import
+		source =
+				let
+				    Source = #"Sites Raw",
+				    #"Renamed Columns" = Table.RenameColumns(Source, {{"site_id", "SiteKey"}, {"site_name", "Site Name"}, {"region", "Region"}, {"site_type", "Site Type"}, {"latitude", "Latitude"}, {"longitude", "Longitude"}}),
+				    #"Changed Types" = Table.TransformColumnTypes(#"Renamed Columns", {{"SiteKey", Int64.Type}, {"Site Name", type text}, {"Region", type text}, {"Site Type", type text}, {"Latitude", Currency.Type}, {"Longitude", Currency.Type}})
+				in
+				    #"Changed Types"
+

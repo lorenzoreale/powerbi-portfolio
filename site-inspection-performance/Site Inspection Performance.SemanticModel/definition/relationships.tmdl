@@ -1,0 +1,41 @@
+relationship 'Inspection_Inspection Date_Date_Date'
+	fromColumn: Inspection.'Inspection Date'
+	toColumn: Date.Date
+
+relationship Inspection_SiteKey_Site_SiteKey
+	fromColumn: Inspection.SiteKey
+	toColumn: Site.SiteKey
+
+relationship Inspection_InspectorKey_Person_PersonKey
+	fromColumn: Inspection.InspectorKey
+	toColumn: Person.PersonKey
+
+relationship Response_InspectionKey_Inspection_InspectionKey
+	fromColumn: Response.InspectionKey
+	toColumn: Inspection.InspectionKey
+
+relationship Response_QuestionKey_Question_QuestionKey
+	fromColumn: Response.QuestionKey
+	toColumn: Question.QuestionKey
+
+relationship 'Action_Raised Date_Date_Date'
+	fromColumn: Action.'Raised Date'
+	toColumn: Date.Date
+
+relationship Action_SiteKey_Site_SiteKey
+	fromColumn: Action.SiteKey
+	toColumn: Site.SiteKey
+
+relationship Action_OwnerKey_Person_PersonKey
+	fromColumn: Action.OwnerKey
+	toColumn: Person.PersonKey
+
+relationship Action_InspectionID_Inspection_InspectionID
+	isActive: false
+	fromColumn: Action.InspectionID
+	toColumn: Inspection.InspectionID
+
+relationship 'MonthlyTarget_Month Start_Date_Date'
+	fromColumn: MonthlyTarget.'Month Start'
+	toColumn: Date.Date
+
