@@ -1,0 +1,145 @@
+month_key,scenario,service_line,billable_hours,available_hours
+202501,Actual,Advisory,2430,3110
+202501,Actual,Managed Services,4374,5832
+202501,Actual,Projects,2449,2916
+202501,Actual,Support,1419,1750
+202501,Budget,Advisory,2493,3040
+202501,Budget,Managed Services,4674,5700
+202501,Budget,Projects,2337,2850
+202501,Budget,Support,1402,1710
+202502,Actual,Advisory,2379,3045
+202502,Actual,Managed Services,4282,5709
+202502,Actual,Projects,2398,2855
+202502,Actual,Support,1389,1713
+202502,Budget,Advisory,2516,3068
+202502,Budget,Managed Services,4717,5752
+202502,Budget,Projects,2358,2876
+202502,Budget,Support,1415,1726
+202503,Actual,Advisory,2394,3064
+202503,Actual,Managed Services,4309,5745
+202503,Actual,Projects,2413,2872
+202503,Actual,Support,1398,1723
+202503,Budget,Advisory,2535,3091
+202503,Budget,Managed Services,4753,5796
+202503,Budget,Projects,2376,2898
+202503,Budget,Support,1426,1739
+202504,Actual,Advisory,2469,3160
+202504,Actual,Managed Services,4444,5925
+202504,Actual,Projects,2488,2962
+202504,Actual,Support,1442,1777
+202504,Budget,Advisory,2547,3107
+202504,Budget,Managed Services,4776,5825
+202504,Budget,Projects,2388,2912
+202504,Budget,Support,1433,1747
+202505,Actual,Advisory,2480,3174
+202505,Actual,Managed Services,4464,5952
+202505,Actual,Projects,2500,2976
+202505,Actual,Support,1448,1785
+202505,Budget,Advisory,2552,3113
+202505,Budget,Managed Services,4786,5836
+202505,Budget,Projects,2393,2918
+202505,Budget,Support,1436,1751
+202506,Actual,Advisory,2387,3055
+202506,Actual,Managed Services,4296,5728
+202506,Actual,Projects,2406,2864
+202506,Actual,Support,1394,1718
+202506,Budget,Advisory,2550,3110
+202506,Budget,Managed Services,4782,5831
+202506,Budget,Projects,2391,2916
+202506,Budget,Support,1435,1749
+202507,Actual,Advisory,2483,3178
+202507,Actual,Managed Services,4470,5959
+202507,Actual,Projects,2503,2980
+202507,Actual,Support,1450,1788
+202507,Budget,Advisory,2544,3102
+202507,Budget,Managed Services,4769,5816
+202507,Budget,Projects,2385,2908
+202507,Budget,Support,1431,1745
+202508,Actual,Advisory,2416,3092
+202508,Actual,Managed Services,4348,5798
+202508,Actual,Projects,2435,2899
+202508,Actual,Support,1411,1739
+202508,Budget,Advisory,2536,3092
+202508,Budget,Managed Services,4755,5798
+202508,Budget,Projects,2377,2899
+202508,Budget,Support,1426,1739
+202509,Actual,Advisory,2430,3111
+202509,Actual,Managed Services,4375,5833
+202509,Actual,Projects,2450,2916
+202509,Actual,Support,1419,1750
+202509,Budget,Advisory,2531,3086
+202509,Budget,Managed Services,4745,5787
+202509,Budget,Projects,2373,2893
+202509,Budget,Support,1424,1736
+202510,Actual,Advisory,2371,3035
+202510,Actual,Managed Services,4268,5691
+202510,Actual,Projects,2390,2845
+202510,Actual,Support,1385,1707
+202510,Budget,Advisory,2531,3087
+202510,Budget,Managed Services,4747,5788
+202510,Budget,Projects,2373,2894
+202510,Budget,Support,1424,1737
+202511,Actual,Advisory,2384,3052
+202511,Actual,Managed Services,4292,5723
+202511,Actual,Projects,2404,2861
+202511,Actual,Support,1393,1717
+202511,Budget,Advisory,2540,3097
+202511,Budget,Managed Services,4762,5807
+202511,Budget,Projects,2381,2904
+202511,Budget,Support,1429,1742
+202512,Actual,Advisory,2444,3129
+202512,Actual,Managed Services,4400,5867
+202512,Actual,Projects,2464,2933
+202512,Actual,Support,1428,1760
+202512,Budget,Advisory,2555,3116
+202512,Budget,Managed Services,4792,5843
+202512,Budget,Projects,2396,2922
+202512,Budget,Support,1437,1753
+202601,Actual,Advisory,2435,3116
+202601,Actual,Managed Services,4382,5843
+202601,Actual,Projects,2454,2921
+202601,Actual,Support,1422,1753
+202601,Budget,Advisory,2577,3142
+202601,Budget,Managed Services,4831,5892
+202601,Budget,Projects,2416,2946
+202601,Budget,Support,1449,1767
+202602,Actual,Advisory,2472,3164
+202602,Actual,Managed Services,4449,5933
+202602,Actual,Projects,2492,2966
+202602,Actual,Support,1444,1780
+202602,Budget,Advisory,2600,3171
+202602,Budget,Managed Services,4875,5945
+202602,Budget,Projects,2437,2972
+202602,Budget,Support,1462,1783
+202603,Actual,Advisory,2446,3131
+202603,Actual,Managed Services,4403,5871
+202603,Actual,Projects,2466,2936
+202603,Actual,Support,1429,1761
+202603,Budget,Advisory,2622,3197
+202603,Budget,Managed Services,4915,5994
+202603,Budget,Projects,2458,2997
+202603,Budget,Support,1475,1798
+202604,Actual,Advisory,2453,3140
+202604,Actual,Managed Services,4416,5888
+202604,Actual,Projects,2473,2944
+202604,Actual,Support,1433,1767
+202604,Budget,Advisory,2638,3217
+202604,Budget,Managed Services,4946,6032
+202604,Budget,Projects,2473,3016
+202604,Budget,Support,1484,1810
+202605,Actual,Advisory,2523,3229
+202605,Actual,Managed Services,4541,6055
+202605,Actual,Projects,2543,3027
+202605,Actual,Support,1473,1816
+202605,Budget,Advisory,2647,3229
+202605,Budget,Managed Services,4964,6054
+202605,Budget,Projects,2482,3027
+202605,Budget,Support,1489,1816
+202606,Actual,Advisory,2500,3200
+202606,Actual,Managed Services,4500,6000
+202606,Actual,Projects,2520,3000
+202606,Actual,Support,1460,1800
+202606,Budget,Advisory,2624,3200
+202606,Budget,Managed Services,4920,6000
+202606,Budget,Projects,2460,3000
+202606,Budget,Support,1476,1800

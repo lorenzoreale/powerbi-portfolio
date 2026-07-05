@@ -1,0 +1,6 @@
+service_line,is_client_facing
+Advisory,true
+Managed Services,true
+Projects,true
+Support,true
+Central,false

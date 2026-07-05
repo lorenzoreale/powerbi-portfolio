@@ -1,0 +1,15 @@
+account_code,account,category,sort_order,is_cost
+REV-ADV,Advisory fees,Revenue,11,false
+REV-MAN,Managed services fees,Revenue,12,false
+REV-PRJ,Project fees,Revenue,13,false
+REV-SUP,Support fees,Revenue,14,false
+DC-STAFF,Delivery staff,Direct costs,21,true
+DC-SUBS,Subcontractors,Direct costs,22,true
+DC-EXP,Recharged expenses,Direct costs,23,true
+OH-ADMIN,Admin staff,Overheads,41,true
+OH-PREM,Premises,Overheads,42,true
+OH-TECH,Technology,Overheads,43,true
+OH-MKT,Marketing,Overheads,44,true
+OH-PROF,Professional fees,Overheads,45,true
+OH-DEP,Depreciation,Overheads,46,true
+OH-OTHER,Other admin,Overheads,47,true

@@ -1,0 +1,17 @@
+line_key,pl_line,sort_order,line_type,category_filter
+1,Revenue,10,group,Revenue
+2,Advisory fees,11,detail,REV-ADV
+3,Managed services fees,12,detail,REV-MAN
+4,Project fees,13,detail,REV-PRJ
+5,Support fees,14,detail,REV-SUP
+6,Direct costs,20,group,Direct costs
+7,Gross profit,30,subtotal,GrossProfit
+8,Overheads,40,group,Overheads
+9,Admin staff,41,detail,OH-ADMIN
+10,Premises,42,detail,OH-PREM
+11,Technology,43,detail,OH-TECH
+12,Marketing,44,detail,OH-MKT
+13,Professional fees,45,detail,OH-PROF
+14,Depreciation,46,detail,OH-DEP
+15,Other admin,47,detail,OH-OTHER
+16,Operating profit,50,subtotal,OperatingProfit

@@ -51,10 +51,10 @@ This is the finance-literate move the design is built around, and it is why the 
 | Scenario | 2 | Actual, Budget |
 | Entity (legal) | 3 | Ashcombe Partners LLP, Ashcombe Managed Services Ltd, Ashcombe Projects Ltd; "Group" = all, via the slicer |
 | Service Line | 5 | Advisory, Managed Services, Projects, Support, Central (overheads) |
-| Account | ~16 | Chart of P&L accounts across three categories (below) |
-| Client | ~34 | Client portfolio, plus an "Unallocated" member for non-client (overhead) rows |
-| Ledger (fact) | ~9,000 to 14,000 | One row per Month x Scenario x Entity x Service Line x Account x Client that has a value |
-| Capacity (fact) | ~180 | One row per Month x Scenario x Service Line: billable and available hours |
+| Account | 14 | Chart of P&L accounts across three categories (below) |
+| Client | 13 | Client portfolio (clients can span service lines), plus an "Unallocated" member for non-client (overhead) rows |
+| Ledger (fact) | ~3,000 | One row per Month x Scenario x Entity x Service Line x Account x Client that has a value |
+| Capacity (fact) | 144 | One row per Month x Scenario x Service Line: billable and available hours |
 
 ### Chart of accounts (Account dimension)
 
@@ -215,7 +215,7 @@ Each is planted by the generator, documented in the generator README, and visibl
 
 | # | Wrinkle | Where | How the model handles it |
 |---|---|---|---|
-| W1 | One service line has no budget loaded for a single account in Jun 2026 | budget rows | Variance % guards against divide-by-zero (BLANK, shown as "no budget"), and the Missing Budget Lines measure surfaces the count |
+| W1 | Depreciation is not in the budget at all (an unbudgeted cost) yet is actualised | budget rows | Variance % guards against divide-by-zero (BLANK, shown as "no budget"), and the Missing Budget Lines measure surfaces the count. Its 25 sits in Other admin's budget so the overheads total still reconciles |
 | W2 | A late-journal batch is duplicated in the raw actuals export (~6 rows) | actuals CSV | Deduped on the natural key in a named Power Query step; row counts noted in the README |
 | W3 | ~12 revenue rows carry a client name with trailing space or wrong casing | actuals CSV | Trimmed and resolved to `ClientKey` against the client master; any unmatched surfaced by Unmapped Client Amount |
 | W4 | Overhead rows have no client | actuals CSV | Mapped to the explicit Unallocated member (key 0), never a blank axis label |
