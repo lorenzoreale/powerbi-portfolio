@@ -1,0 +1,62 @@
+/// Fact: billable and available hours per Month x Scenario x Service Line. Supports Utilisation %.
+table Capacity
+	isHidden
+	lineageTag: 0558b941-28a7-4be7-91d6-492ebac6a0d7
+
+	/// Billable over available hours, actual scenario.
+	measure 'Utilisation %' = DIVIDE ( CALCULATE ( SUM ( Capacity[Billable Hours] ), Scenario[Scenario] = "Actual" ), CALCULATE ( SUM ( Capacity[Available Hours] ), Scenario[Scenario] = "Actual" ) )
+		formatString: 0.0%
+		displayFolder: Operations
+		lineageTag: a1816bed-f296-4a7e-a378-1aa7bb5b8a2b
+
+	measure 'Utilisation Target %' = DIVIDE ( CALCULATE ( SUM ( Capacity[Billable Hours] ), Scenario[Scenario] = "Budget" ), CALCULATE ( SUM ( Capacity[Available Hours] ), Scenario[Scenario] = "Budget" ) )
+		formatString: 0.0%
+		displayFolder: Operations
+		lineageTag: 96b4f4e6-c46c-4038-9cc5-32a8311584de
+
+	column MonthKey
+		dataType: int64
+		isHidden
+		lineageTag: 3eb017b7-f1f8-4dc7-bd50-4bb49b96fa2f
+		summarizeBy: none
+		sourceColumn: MonthKey
+
+	column Scenario
+		dataType: string
+		isHidden
+		lineageTag: 084a5b74-a04c-487b-a785-f7e4685674dc
+		summarizeBy: none
+		sourceColumn: Scenario
+
+	column 'Service Line'
+		dataType: string
+		isHidden
+		lineageTag: 91c6b73f-f407-4cd6-ade7-9220760b03f4
+		summarizeBy: none
+		sourceColumn: Service Line
+
+	column 'Billable Hours'
+		dataType: int64
+		isHidden
+		lineageTag: b36b81a5-5074-4d64-8056-ae1133cfcd3c
+		summarizeBy: sum
+		sourceColumn: Billable Hours
+
+	column 'Available Hours'
+		dataType: int64
+		isHidden
+		lineageTag: f03acc17-ceb2-4c8c-ab40-59dab32919fe
+		summarizeBy: sum
+		sourceColumn: Available Hours
+
+	partition Capacity = m
+		mode: import
+		source =
+				let
+				    Source = Csv.Document(File.Contents(#"Data Folder" & "\capacity.csv"), [Delimiter = ",", Columns = 5, Encoding = 65001, QuoteStyle = QuoteStyle.Csv]),
+				    Headers = Table.PromoteHeaders(Source, [PromoteAllScalars = true]),
+				    Renamed = Table.RenameColumns(Headers, {{"month_key", "MonthKey"}, {"scenario", "Scenario"}, {"service_line", "Service Line"}, {"billable_hours", "Billable Hours"}, {"available_hours", "Available Hours"}}),
+				    Typed = Table.TransformColumnTypes(Renamed, {{"MonthKey", Int64.Type}, {"Scenario", type text}, {"Service Line", type text}, {"Billable Hours", Int64.Type}, {"Available Hours", Int64.Type}})
+				in
+				    Typed
+

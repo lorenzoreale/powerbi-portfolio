@@ -1,0 +1,28 @@
+/// Legal entities. Group is the slicer's All state.
+table Entity
+	lineageTag: 20d207b0-5a9b-498f-a3de-e936b971533e
+
+	column EntityShort
+		dataType: string
+		isHidden
+		lineageTag: df859a77-12d9-43a0-b38f-22053fb95a26
+		summarizeBy: none
+		sourceColumn: EntityShort
+
+	column Entity
+		dataType: string
+		lineageTag: 5edfbbed-5f99-42e6-aedf-a15f865a01db
+		summarizeBy: none
+		sourceColumn: Entity
+
+	partition Entity = m
+		mode: import
+		source =
+				let
+				    Source = Csv.Document(File.Contents(#"Data Folder" & "\entity.csv"), [Delimiter = ",", Columns = 2, Encoding = 65001, QuoteStyle = QuoteStyle.Csv]),
+				    Headers = Table.PromoteHeaders(Source, [PromoteAllScalars = true]),
+				    Renamed = Table.RenameColumns(Headers, {{"entity_short", "EntityShort"}, {"entity_name", "Entity"}}),
+				    Typed = Table.TransformColumnTypes(Renamed, {{"EntityShort", type text}, {"Entity", type text}})
+				in
+				    Typed
+

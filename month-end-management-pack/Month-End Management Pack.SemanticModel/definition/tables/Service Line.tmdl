@@ -1,0 +1,28 @@
+/// Client-facing service lines plus Central for overheads.
+table 'Service Line'
+	lineageTag: 47b34a85-dbb9-4dbc-a2e4-868d3e8ed9f0
+
+	column 'Service Line'
+		dataType: string
+		lineageTag: a886aec6-0397-4bf1-8cc1-6084540d0092
+		summarizeBy: none
+		sourceColumn: Service Line
+
+	column 'Is Client Facing'
+		dataType: boolean
+		isHidden
+		lineageTag: b4d6735b-b36c-4f6b-bfbd-8086287a8221
+		summarizeBy: none
+		sourceColumn: Is Client Facing
+
+	partition 'Service Line' = m
+		mode: import
+		source =
+				let
+				    Source = Csv.Document(File.Contents(#"Data Folder" & "\service_line.csv"), [Delimiter = ",", Columns = 2, Encoding = 65001, QuoteStyle = QuoteStyle.Csv]),
+				    Headers = Table.PromoteHeaders(Source, [PromoteAllScalars = true]),
+				    Renamed = Table.RenameColumns(Headers, {{"service_line", "Service Line"}, {"is_client_facing", "Is Client Facing"}}),
+				    Typed = Table.TransformColumnTypes(Renamed, {{"Service Line", type text}, {"Is Client Facing", type logical}})
+				in
+				    Typed
+

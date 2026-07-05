@@ -1,0 +1,50 @@
+/// Disconnected presentation table driving the P&L matrix layout. Read by the P&L Value measure; has no relationship to the facts.
+table 'P&L Line'
+	lineageTag: a1ea5eb7-3584-419a-b92f-72b80556aabb
+
+	column LineKey
+		dataType: int64
+		isHidden
+		lineageTag: fa3f7961-40e8-4af7-a23a-42eae8f51785
+		summarizeBy: none
+		sourceColumn: LineKey
+
+	column 'P&L Line'
+		dataType: string
+		lineageTag: d7679437-0e2c-431d-80b4-6754618fd377
+		summarizeBy: none
+		sourceColumn: P&L Line
+		sortByColumn: 'Sort Order'
+
+	column 'Sort Order'
+		dataType: int64
+		isHidden
+		lineageTag: e5cb2924-aa07-4c00-ba30-0022fd62c67f
+		summarizeBy: none
+		sourceColumn: Sort Order
+
+	column 'Line Type'
+		dataType: string
+		isHidden
+		lineageTag: 1d431f4d-e860-4862-b67a-a47d8bc8e5af
+		summarizeBy: none
+		sourceColumn: Line Type
+
+	column 'Category Filter'
+		dataType: string
+		isHidden
+		lineageTag: 90745a80-9700-4390-9f7a-748fdef5808d
+		summarizeBy: none
+		sourceColumn: Category Filter
+
+	partition 'P&L Line' = m
+		mode: import
+		source =
+				let
+				    Source = Csv.Document(File.Contents(#"Data Folder" & "\pl_line.csv"), [Delimiter = ",", Columns = 5, Encoding = 65001, QuoteStyle = QuoteStyle.Csv]),
+				    Headers = Table.PromoteHeaders(Source, [PromoteAllScalars = true]),
+				    Renamed = Table.RenameColumns(Headers, {{"line_key", "LineKey"}, {"pl_line", "P&L Line"}, {"sort_order", "Sort Order"}, {"line_type", "Line Type"}, {"category_filter", "Category Filter"}}),
+				    Typed = Table.TransformColumnTypes(Renamed, {{"LineKey", Int64.Type}, {"P&L Line", type text}, {"Sort Order", Int64.Type}, {"Line Type", type text}, {"Category Filter", type text}})
+				in
+				    Typed
+

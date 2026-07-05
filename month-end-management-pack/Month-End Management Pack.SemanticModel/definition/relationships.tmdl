@@ -1,0 +1,36 @@
+relationship Ledger_MonthKey_Calendar_MonthKey
+	fromColumn: Ledger.MonthKey
+	toColumn: Calendar.MonthKey
+
+relationship Ledger_Scenario_Scenario_Scenario
+	fromColumn: Ledger.Scenario
+	toColumn: Scenario.Scenario
+
+relationship Ledger_EntityShort_Entity_EntityShort
+	fromColumn: Ledger.EntityShort
+	toColumn: Entity.EntityShort
+
+relationship 'Ledger_Service Line_Service Line_Service Line'
+	fromColumn: Ledger.'Service Line'
+	toColumn: 'Service Line'.'Service Line'
+
+relationship Ledger_AccountCode_Account_AccountCode
+	fromColumn: Ledger.AccountCode
+	toColumn: Account.AccountCode
+
+relationship Ledger_Client_Client_Client
+	fromColumn: Ledger.Client
+	toColumn: Client.Client
+
+relationship Capacity_MonthKey_Calendar_MonthKey
+	fromColumn: Capacity.MonthKey
+	toColumn: Calendar.MonthKey
+
+relationship Capacity_Scenario_Scenario_Scenario
+	fromColumn: Capacity.Scenario
+	toColumn: Scenario.Scenario
+
+relationship 'Capacity_Service Line_Service Line_Service Line'
+	fromColumn: Capacity.'Service Line'
+	toColumn: 'Service Line'.'Service Line'
+

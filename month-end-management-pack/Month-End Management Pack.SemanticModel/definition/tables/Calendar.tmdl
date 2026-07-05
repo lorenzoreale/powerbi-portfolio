@@ -1,0 +1,55 @@
+/// Month-grain calendar, Jan 2025 to Jun 2026. No daily date table: YTD is computed at month grain.
+table Calendar
+	lineageTag: 1e8b7450-7bf3-49e2-b2e1-843c33efd7d6
+
+	column MonthKey
+		dataType: int64
+		isHidden
+		lineageTag: 4dd58e46-f7b3-40e2-807a-97e355943c0a
+		summarizeBy: none
+		sourceColumn: MonthKey
+
+	/// Month label, e.g. Jun 2026. Sorted chronologically.
+	column Month
+		dataType: string
+		lineageTag: 5e99a2fb-5775-47b4-8da4-530f0afc24f2
+		summarizeBy: none
+		sourceColumn: Month
+		sortByColumn: MonthKey
+
+	column 'Month Start'
+		dataType: dateTime
+		formatString: mmm yyyy
+		lineageTag: d7ebf9c3-ceee-438d-bc69-4f8ca52e0440
+		summarizeBy: none
+		sourceColumn: Month Start
+
+	column Quarter
+		dataType: string
+		lineageTag: 104fed4b-c72c-4549-b325-df672756dfda
+		summarizeBy: none
+		sourceColumn: Quarter
+
+	column Year
+		dataType: int64
+		lineageTag: 371e6e6a-2a9b-420e-83d9-e7514f65f390
+		summarizeBy: none
+		sourceColumn: Year
+
+	column 'Financial Period'
+		dataType: string
+		lineageTag: eae44de8-96a2-43d7-8f47-f0ac28e992ef
+		summarizeBy: none
+		sourceColumn: Financial Period
+
+	partition Calendar = m
+		mode: import
+		source =
+				let
+				    Source = Csv.Document(File.Contents(#"Data Folder" & "\calendar.csv"), [Delimiter = ",", Columns = 6, Encoding = 65001, QuoteStyle = QuoteStyle.Csv]),
+				    Headers = Table.PromoteHeaders(Source, [PromoteAllScalars = true]),
+				    Renamed = Table.RenameColumns(Headers, {{"month_key", "MonthKey"}, {"month", "Month"}, {"month_start", "Month Start"}, {"quarter", "Quarter"}, {"year", "Year"}, {"financial_period", "Financial Period"}}),
+				    Typed = Table.TransformColumnTypes(Renamed, {{"MonthKey", Int64.Type}, {"Month", type text}, {"Month Start", type date}, {"Quarter", type text}, {"Year", Int64.Type}, {"Financial Period", type text}})
+				in
+				    Typed
+

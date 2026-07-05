@@ -1,0 +1,49 @@
+/// Chart of P&L accounts across Revenue, Direct costs and Overheads.
+table Account
+	lineageTag: 83aecdd5-df66-4c74-a503-87e732e5ecef
+
+	column AccountCode
+		dataType: string
+		isHidden
+		lineageTag: 4e7245cc-be37-48c7-a835-83dd977b6e80
+		summarizeBy: none
+		sourceColumn: AccountCode
+
+	column Account
+		dataType: string
+		lineageTag: 3eb6cbb7-98b1-4917-af63-3f1004441419
+		summarizeBy: none
+		sourceColumn: Account
+		sortByColumn: 'Sort Order'
+
+	column Category
+		dataType: string
+		lineageTag: 8e4c685b-2aeb-42ea-a77b-6b0d38306f52
+		summarizeBy: none
+		sourceColumn: Category
+
+	column 'Sort Order'
+		dataType: int64
+		isHidden
+		lineageTag: 59631071-7c75-4138-96b1-0c24b770b825
+		summarizeBy: none
+		sourceColumn: Sort Order
+
+	column 'Is Cost'
+		dataType: boolean
+		isHidden
+		lineageTag: ca3122d0-8e53-45d3-9946-d7ae22bbed1a
+		summarizeBy: none
+		sourceColumn: Is Cost
+
+	partition Account = m
+		mode: import
+		source =
+				let
+				    Source = Csv.Document(File.Contents(#"Data Folder" & "\account.csv"), [Delimiter = ",", Columns = 5, Encoding = 65001, QuoteStyle = QuoteStyle.Csv]),
+				    Headers = Table.PromoteHeaders(Source, [PromoteAllScalars = true]),
+				    Renamed = Table.RenameColumns(Headers, {{"account_code", "AccountCode"}, {"account", "Account"}, {"category", "Category"}, {"sort_order", "Sort Order"}, {"is_cost", "Is Cost"}}),
+				    Typed = Table.TransformColumnTypes(Renamed, {{"AccountCode", type text}, {"Account", type text}, {"Category", type text}, {"Sort Order", Int64.Type}, {"Is Cost", type logical}})
+				in
+				    Typed
+

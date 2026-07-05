@@ -1,0 +1,301 @@
+/// Fact: signed profit contribution (revenue positive, costs negative) per Month x Scenario x Entity x Service Line x Account x Client. Cleans the raw wrinkles at load: dedupes a duplicated journal batch (W2), resolves dirty client names against the master and maps blanks to Unallocated (W3, W4), and coerces cost accounts to negative (W5).
+table Ledger
+	lineageTag: 67f2329b-bbf4-45d6-b7e7-563016c622cf
+
+	/// Signed profit contribution for the Actual scenario in context. In GBP; formatted to thousands.
+	measure Actual = CALCULATE ( SUM ( Ledger[Amount] ), Scenario[Scenario] = "Actual" )
+		formatString: #,0,
+		displayFolder: Scenario
+		lineageTag: 19db4646-4dd8-4ee7-afba-2c45692ebc49
+
+	/// Signed profit contribution for the Budget scenario in context.
+	measure Budget = CALCULATE ( SUM ( Ledger[Amount] ), Scenario[Scenario] = "Budget" )
+		formatString: #,0,
+		displayFolder: Scenario
+		lineageTag: aec8f82b-18ee-4368-aca5-9ebb55f04899
+
+	/// Actual minus Budget. Positive is favourable, negative unfavourable, for every line (signed-amount convention).
+	measure Variance = [Actual] - [Budget]
+		formatString: #,0,;(#,0,);0
+		displayFolder: Scenario
+		lineageTag: 2bdb3e4f-98fc-4953-a5ac-25cd6d814be6
+
+	/// Variance over the absolute budget, keeping the favourable/unfavourable sign. BLANK when there is no budget (wrinkle W1).
+	measure 'Variance %' = DIVIDE ( [Variance], ABS ( [Budget] ) )
+		formatString: 0.0%
+		displayFolder: Scenario
+		lineageTag: 8905ae00-616b-475a-9d58-6022355b13c1
+
+	/// 1 when the variance is favourable, 0 when unfavourable. Drives the single green/red conditional-format rule.
+	measure 'Is Favourable' = IF ( NOT ISBLANK ( [Variance] ), IF ( [Variance] >= 0, 1, 0 ) )
+		formatString: 0
+		isHidden
+		displayFolder: Scenario
+		lineageTag: 7788d9b7-7c6f-43d0-b5dc-de8b6cb83d40
+
+	/// Actual from January of the selected year to the selected month. Computed at month grain, no daily date table.
+	measure 'YTD Actual' =
+			VAR mk = MAX ( 'Calendar'[MonthKey] )
+			VAR yr = INT ( mk / 100 )
+			RETURN
+			    CALCULATE ( [Actual], REMOVEFILTERS ( 'Calendar' ), 'Calendar'[Year] = yr, 'Calendar'[MonthKey] <= mk )
+		formatString: #,0,
+		displayFolder: Scenario
+		lineageTag: b200d28b-fba7-4ac6-8a5e-4f283526d58d
+
+	/// Budget over the same year-to-date window.
+	measure 'YTD Budget' =
+			VAR mk = MAX ( 'Calendar'[MonthKey] )
+			VAR yr = INT ( mk / 100 )
+			RETURN
+			    CALCULATE ( [Budget], REMOVEFILTERS ( 'Calendar' ), 'Calendar'[Year] = yr, 'Calendar'[MonthKey] <= mk )
+		formatString: #,0,
+		displayFolder: Scenario
+		lineageTag: 9cd12db8-74b5-4873-b44d-4ec855cf16dd
+
+	/// Year-to-date Actual minus Budget.
+	measure 'YTD Variance' = [YTD Actual] - [YTD Budget]
+		formatString: #,0,;(#,0,);0
+		displayFolder: Scenario
+		lineageTag: 54fba69e-4669-471e-ae80-2c0e5473231a
+
+	/// Actual revenue, independent of any account filter.
+	measure Revenue = CALCULATE ( [Actual], REMOVEFILTERS ( Account ), Account[Category] = "Revenue" )
+		formatString: #,0,
+		displayFolder: P&L
+		lineageTag: 10a372fe-ee4a-4b3d-a607-d79a928d6ca5
+
+	measure 'Revenue Budget' = CALCULATE ( [Budget], REMOVEFILTERS ( Account ), Account[Category] = "Revenue" )
+		formatString: #,0,
+		displayFolder: P&L
+		lineageTag: e362dea0-cd30-4ce2-88f7-871aac90bfc9
+
+	measure 'Revenue Variance' = [Revenue] - [Revenue Budget]
+		formatString: #,0,;(#,0,);0
+		displayFolder: P&L
+		lineageTag: 0442a4c8-a6da-4ff3-95fd-ce910aa2daad
+
+	/// Actual direct costs (negative).
+	measure 'Direct Costs' = CALCULATE ( [Actual], REMOVEFILTERS ( Account ), Account[Category] = "Direct costs" )
+		formatString: #,0,;(#,0,);0
+		displayFolder: P&L
+		lineageTag: 738e3a6c-1974-4dbe-8db5-420aa450dfcc
+
+	measure 'Direct Costs Budget' = CALCULATE ( [Budget], REMOVEFILTERS ( Account ), Account[Category] = "Direct costs" )
+		formatString: #,0,;(#,0,);0
+		displayFolder: P&L
+		lineageTag: 29426c26-c66e-4230-ae12-e3e7072315c9
+
+	/// Actual overheads (negative).
+	measure Overheads = CALCULATE ( [Actual], REMOVEFILTERS ( Account ), Account[Category] = "Overheads" )
+		formatString: #,0,;(#,0,);0
+		displayFolder: P&L
+		lineageTag: 076103fb-f96b-4fbd-b188-c670eac24784
+
+	measure 'Overheads Budget' = CALCULATE ( [Budget], REMOVEFILTERS ( Account ), Account[Category] = "Overheads" )
+		formatString: #,0,;(#,0,);0
+		displayFolder: P&L
+		lineageTag: ef2d52d5-14e1-405a-b273-2c8eb9327d2c
+
+	/// Revenue plus direct costs.
+	measure 'Gross Profit' = [Revenue] + [Direct Costs]
+		formatString: #,0,
+		displayFolder: P&L
+		lineageTag: 3e55fe41-ba1c-4512-948f-a128b2b95b21
+
+	measure 'Gross Profit Budget' = [Revenue Budget] + [Direct Costs Budget]
+		formatString: #,0,
+		displayFolder: P&L
+		lineageTag: c26f5fc5-e62f-449e-94d2-d8224a94067d
+
+	/// Gross profit plus overheads. The bottom line.
+	measure 'Operating Profit' = [Gross Profit] + [Overheads]
+		formatString: #,0,
+		displayFolder: P&L
+		lineageTag: b37c9e1e-471d-42aa-97ad-b6890e545c7e
+
+	measure 'Operating Profit Budget' = [Gross Profit Budget] + [Overheads Budget]
+		formatString: #,0,
+		displayFolder: P&L
+		lineageTag: 56e5f5bf-e283-499a-9338-09957161cfd7
+
+	measure 'Operating Profit Variance' = [Operating Profit] - [Operating Profit Budget]
+		formatString: #,0,;(#,0,);0
+		displayFolder: P&L
+		lineageTag: e83d30d8-c02a-4fe4-abb6-7dab29e112ca
+
+	measure 'Gross Margin %' = DIVIDE ( [Gross Profit], [Revenue] )
+		formatString: 0.0%
+		displayFolder: P&L
+		lineageTag: 2d5dbd02-e8f4-4890-bc2a-2883febd39d8
+
+	measure 'Operating Margin %' = DIVIDE ( [Operating Profit], [Revenue] )
+		formatString: 0.0%
+		displayFolder: P&L
+		lineageTag: c21e6559-6fe3-4e83-b5d1-62baa03b6f27
+
+	measure 'Operating Margin % Budget' = DIVIDE ( [Operating Profit Budget], [Revenue Budget] )
+		formatString: 0.0%
+		displayFolder: P&L
+		lineageTag: 8b7a9a26-2e21-46b5-8544-4575070c52ec
+
+	/// The service line with the most negative revenue variance, for the alarm card.
+	measure 'Largest Adverse Variance' =
+			VAR t = ADDCOLUMNS ( FILTER ( VALUES ( 'Service Line'[Service Line] ), 'Service Line'[Service Line] <> "Central" ), "@v", [Revenue Variance] )
+			RETURN
+			    CONCATENATEX ( TOPN ( 1, t, [@v], ASC ), 'Service Line'[Service Line] )
+		displayFolder: KPI
+		lineageTag: 79470c1e-0dc6-47e7-a982-debac8fd8bae
+
+	/// Gross margin at client grain (direct costs carry a client).
+	measure 'Client Margin %' = DIVIDE ( [Gross Profit], [Revenue] )
+		formatString: 0.0%
+		displayFolder: Client
+		lineageTag: d5139d9e-cbed-4868-85ec-93e38a613038
+
+	/// Reads the current P&L Line row and returns its signed amount for the scenario in context. The engine behind the P&L matrix.
+	measure 'PL Amount' =
+			VAR lt = SELECTEDVALUE ( 'P&L Line'[Line Type] )
+			VAR cf = SELECTEDVALUE ( 'P&L Line'[Category Filter] )
+			RETURN
+			    SWITCH ( lt,
+			        "detail", CALCULATE ( SUM ( Ledger[Amount] ), REMOVEFILTERS ( Account ), Account[AccountCode] = cf ),
+			        "group", CALCULATE ( SUM ( Ledger[Amount] ), REMOVEFILTERS ( Account ), Account[Category] = cf ),
+			        "subtotal", SWITCH ( cf,
+			            "GrossProfit", CALCULATE ( SUM ( Ledger[Amount] ), REMOVEFILTERS ( Account ), Account[Category] IN { "Revenue", "Direct costs" } ),
+			            "OperatingProfit", CALCULATE ( SUM ( Ledger[Amount] ), REMOVEFILTERS ( Account ) ) )
+			    )
+		formatString: #,0,
+		isHidden
+		displayFolder: P&L matrix
+		lineageTag: c5075a92-449c-4eb6-b034-241f7f65ce1b
+
+	measure 'PL Actual' = CALCULATE ( [PL Amount], REMOVEFILTERS ( Scenario ), Scenario[Scenario] = "Actual" )
+		formatString: #,0,;(#,0,);0
+		displayFolder: P&L matrix
+		lineageTag: 679c10a3-9bbf-4dd1-b8c5-7815944de615
+
+	measure 'PL Budget' = CALCULATE ( [PL Amount], REMOVEFILTERS ( Scenario ), Scenario[Scenario] = "Budget" )
+		formatString: #,0,;(#,0,);0
+		displayFolder: P&L matrix
+		lineageTag: cd1a38a4-a69e-4beb-81fa-c6509318db1d
+
+	measure 'PL Variance' = [PL Actual] - [PL Budget]
+		formatString: #,0,;(#,0,);0
+		displayFolder: P&L matrix
+		lineageTag: 76e3be61-db8f-4a86-a71c-4c797b09c5aa
+
+	measure 'PL Variance %' = DIVIDE ( [PL Variance], ABS ( [PL Budget] ) )
+		formatString: 0.0%
+		displayFolder: P&L matrix
+		lineageTag: c7c0f9b2-a96d-4979-adc3-b274ff291eba
+
+	measure 'PL YTD Actual' =
+			VAR mk = MAX ( 'Calendar'[MonthKey] )
+			VAR yr = INT ( mk / 100 )
+			RETURN
+			    CALCULATE ( [PL Actual], REMOVEFILTERS ( 'Calendar' ), 'Calendar'[Year] = yr, 'Calendar'[MonthKey] <= mk )
+		formatString: #,0,;(#,0,);0
+		displayFolder: P&L matrix
+		lineageTag: 680cdfd3-bb43-4abf-929b-9833aef9e1e4
+
+	measure 'PL YTD Budget' =
+			VAR mk = MAX ( 'Calendar'[MonthKey] )
+			VAR yr = INT ( mk / 100 )
+			RETURN
+			    CALCULATE ( [PL Budget], REMOVEFILTERS ( 'Calendar' ), 'Calendar'[Year] = yr, 'Calendar'[MonthKey] <= mk )
+		formatString: #,0,;(#,0,);0
+		displayFolder: P&L matrix
+		lineageTag: 285c7412-f31d-42bb-99f3-f9f353f5029f
+
+	measure 'PL YTD Variance' = [PL YTD Actual] - [PL YTD Budget]
+		formatString: #,0,;(#,0,);0
+		displayFolder: P&L matrix
+		lineageTag: 68e35a97-49ca-40a9-b0ff-353df665816c
+
+	/// Account and service-line combinations with actuals but no budget (wrinkle W1, expected 1: Depreciation).
+	measure 'Missing Budget Lines' =
+			VAR combos = SUMMARIZE ( Ledger, Account[Account], 'Service Line'[Service Line] )
+			RETURN
+			    COUNTROWS ( FILTER ( combos, NOT ISBLANK ( [Actual] ) && ISBLANK ( [Budget] ) ) )
+		formatString: #,0
+		displayFolder: Data quality
+		lineageTag: a1a6b2ef-59a2-41e0-8f4c-625a6ccebb85
+
+	/// Revenue whose source client did not match the master before cleaning (wrinkle W3). Expected 0 once names are resolved.
+	measure 'Unmapped Client Amount' = CALCULATE ( [Revenue], Client[Client] = "Unmapped" ) + 0
+		formatString: #,0,
+		displayFolder: Data quality
+		lineageTag: fafe1612-7557-4284-9211-e28129f2db64
+
+	column MonthKey
+		dataType: int64
+		isHidden
+		lineageTag: 75206e2a-cc3d-4b9c-8c9f-f91def4f5aa8
+		summarizeBy: none
+		sourceColumn: MonthKey
+
+	column Scenario
+		dataType: string
+		isHidden
+		lineageTag: f250b8d7-e1b9-4799-a84e-928a270f2d43
+		summarizeBy: none
+		sourceColumn: Scenario
+
+	column EntityShort
+		dataType: string
+		isHidden
+		lineageTag: 499f8050-05d6-439f-803d-6475b16e0884
+		summarizeBy: none
+		sourceColumn: EntityShort
+
+	column 'Service Line'
+		dataType: string
+		isHidden
+		lineageTag: 8058ae88-827f-49c0-9c11-c209f81ef191
+		summarizeBy: none
+		sourceColumn: Service Line
+
+	column AccountCode
+		dataType: string
+		isHidden
+		lineageTag: 916aaa6c-9181-46cb-8230-ccc455991e92
+		summarizeBy: none
+		sourceColumn: AccountCode
+
+	column Client
+		dataType: string
+		isHidden
+		lineageTag: 8067fc0b-c1ec-45c6-a3e3-d1831657d8e1
+		summarizeBy: none
+		sourceColumn: Client
+
+	/// Signed profit contribution in GBP. Use the P&L measures, not this column.
+	column Amount
+		dataType: decimal
+		isHidden
+		lineageTag: 39f47b68-15c2-4ce3-a311-a911970197b5
+		summarizeBy: sum
+		sourceColumn: Amount
+
+	partition Ledger = m
+		mode: import
+		source =
+				let
+				    Source = Csv.Document(File.Contents(#"Data Folder" & "\ledger.csv"), [Delimiter = ",", Columns = 7, Encoding = 65001, QuoteStyle = QuoteStyle.Csv]),
+				    Headers = Table.PromoteHeaders(Source, [PromoteAllScalars = true]),
+				    Typed = Table.TransformColumnTypes(Headers, {{"month_key", Int64.Type}, {"amount", type number}}),
+				    TrimClient = Table.TransformColumns(Typed, {{"client", each Text.Trim(Text.Replace(_, "  ", " ")), type text}}),
+				    BlankToUnallocated = Table.ReplaceValue(TrimClient, "", "Unallocated", Replacer.ReplaceValue, {"client"}),
+				    AddKey = Table.AddColumn(BlankToUnallocated, "ckey", each Text.Lower([client]), type text),
+				    MasterLookup = Table.AddColumn(Table.SelectColumns(#"Clients Raw", {"client_name"}), "ckey", each Text.Lower([client_name]), type text),
+				    Resolve = Table.NestedJoin(AddKey, {"ckey"}, MasterLookup, {"ckey"}, "m", JoinKind.LeftOuter),
+				    Expand = Table.ExpandTableColumn(Resolve, "m", {"client_name"}, {"ClientResolved"}),
+				    Canonical = Table.AddColumn(Expand, "Client", each if [client] = "Unallocated" then "Unallocated" else (if [ClientResolved] = null then "Unmapped" else [ClientResolved]), type text),
+				    Dedupe = Table.Distinct(Canonical, {"month_key", "scenario", "entity", "service_line", "account_code", "Client"}),
+				    SignedAmount = Table.AddColumn(Dedupe, "Amount", each if Text.StartsWith([account_code], "REV") then Number.Abs([amount]) else -Number.Abs([amount]), type number),
+				    Selected = Table.SelectColumns(SignedAmount, {"month_key", "scenario", "entity", "service_line", "account_code", "Client", "Amount"}),
+				    Renamed = Table.RenameColumns(Selected, {{"month_key", "MonthKey"}, {"scenario", "Scenario"}, {"entity", "EntityShort"}, {"service_line", "Service Line"}, {"account_code", "AccountCode"}})
+				in
+				    Renamed
+

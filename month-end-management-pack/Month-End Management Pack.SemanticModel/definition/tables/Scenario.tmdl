@@ -1,0 +1,21 @@
+/// Actual and Budget. Drives the scenario-filtered measures.
+table Scenario
+	lineageTag: 61de2be5-8b66-4b1e-bf77-d3e387161944
+
+	column Scenario
+		dataType: string
+		lineageTag: 19510093-0cfe-47c5-902d-6a2ad192ebcb
+		summarizeBy: none
+		sourceColumn: Scenario
+
+	partition Scenario = m
+		mode: import
+		source =
+				let
+				    Source = Csv.Document(File.Contents(#"Data Folder" & "\scenario.csv"), [Delimiter = ",", Columns = 1, Encoding = 65001, QuoteStyle = QuoteStyle.Csv]),
+				    Headers = Table.PromoteHeaders(Source, [PromoteAllScalars = true]),
+				    Renamed = Table.RenameColumns(Headers, {{"scenario", "Scenario"}}),
+				    Typed = Table.TransformColumnTypes(Renamed, {{"Scenario", type text}})
+				in
+				    Typed
+

@@ -1,0 +1,4 @@
+/// Month-end management pack for Ashcombe Partners (fictional). Synthetic data. Single-month close with year-to-date.
+database 'Month-End Management Pack'
+	compatibilityLevel: 1702
+

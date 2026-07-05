@@ -1,0 +1,13 @@
+/// Folder containing the generated CSVs. The only value to change after cloning the repo.
+expression 'Data Folder' = "C:\powerbi-portfolio\month-end-management-pack\data" meta [IsParameterQuery=true, Type="Text", IsParameterQueryRequired=true]
+	lineageTag: ea7cd105-fa9c-4a29-bb9d-31b4765af2d0
+
+/// Shared load of client.csv, referenced by the Client table and by the Ledger query's dirty-name resolution (wrinkle W3).
+expression 'Clients Raw' =
+		let
+		    Source = Csv.Document(File.Contents(#"Data Folder" & "\client.csv"), [Delimiter = ",", Columns = 3, Encoding = 65001, QuoteStyle = QuoteStyle.Csv]),
+		    Headers = Table.PromoteHeaders(Source, [PromoteAllScalars = true])
+		in
+		    Headers
+	lineageTag: 8799df27-b341-4663-8e80-061eb505b07c
+

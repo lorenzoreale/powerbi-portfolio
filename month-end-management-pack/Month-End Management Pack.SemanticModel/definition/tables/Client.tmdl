@@ -1,0 +1,33 @@
+/// Client portfolio plus an explicit Unallocated member for non-client (overhead) rows.
+table Client
+	lineageTag: cfc74f6e-cb28-4aa4-a726-2512a9782ad6
+
+	column Client
+		dataType: string
+		lineageTag: 558b5b0c-424e-4e75-be59-2791ba146187
+		summarizeBy: none
+		sourceColumn: Client
+
+	column 'Lead Service Line'
+		dataType: string
+		lineageTag: 2726dd53-042c-44f4-a906-db5a25a3b426
+		summarizeBy: none
+		sourceColumn: Lead Service Line
+
+	column 'Client Since'
+		dataType: int64
+		lineageTag: 8b59c4e2-9b95-4fe8-8c44-169f05917dd2
+		summarizeBy: none
+		sourceColumn: Client Since
+
+	partition Client = m
+		mode: import
+		source =
+				let
+				    Source = #"Clients Raw",
+				    Renamed = Table.RenameColumns(Source, {{"client_name", "Client"}, {"lead_service_line", "Lead Service Line"}, {"client_since", "Client Since"}}),
+				    Typed = Table.TransformColumnTypes(Renamed, {{"Client", type text}, {"Lead Service Line", type text}, {"Client Since", Int64.Type}}),
+				    AddUnallocated = Table.InsertRows(Typed, 0, {[Client = "Unallocated", #"Lead Service Line" = "Central", #"Client Since" = null]})
+				in
+				    AddUnallocated
+
