@@ -144,7 +144,7 @@
   <div class="intro">
     <div class="setrow"><span class="badge">2a</span><span class="lbl">Month-End Management Pack - "Measured Close"</span></div>
     <h1>Design reference - Ashcombe Partners</h1>
-    <p>Five page archetypes for a finance month-end management pack. Fictional client: <strong style="color:var(--head)">Ashcombe Partners</strong>, a professional-services firm reporting a single-month close. Canvas is 1280x720 (Power BI default). Numbers on these mockups are illustrative placeholders; in the built report every figure traces to the committed data generator. Numbered dots map to the notes beside each page.</p>
+    <p>Five page archetypes for a finance month-end management pack. Fictional client: <strong style="color:var(--head)">Ashcombe Partners</strong>, a professional-services firm reporting its month-end close: the selected month against budget with a year-to-date column alongside. Canvas is 1280x720 (Power BI default). Numbers on these mockups are illustrative placeholders; in the built report every figure traces to the committed data generator. Numbered dots map to the notes beside each page.</p>
   </div>
 
   <!-- ===================== SPEC SHEET ===================== -->
@@ -355,21 +355,24 @@
         <div class="vhead"><div class="vtitle">Management P&amp;L &middot; June 2026 &middot; &pound;000</div>
           <div class="legend"><span>Variance % shaded <span style="display:inline-block;width:52px;height:8px;background:linear-gradient(90deg,var(--fav),#EEF3F2,var(--unfav));border-radius:2px;vertical-align:middle"></span> fav to unfav</span></div></div>
         <table class="mx">
-          <thead><tr><th class="l">Line</th><th>Actual</th><th>Budget</th><th>Variance</th><th>Var %</th><th>% of rev</th></tr></thead>
+          <thead>
+            <tr><th class="l" rowspan="2">Line</th><th colspan="4" style="text-align:center;border-bottom:none">This month &middot; &pound;000</th><th colspan="3" style="text-align:center;border-bottom:none;border-left:1px solid var(--hair)">Year to date &middot; &pound;000</th></tr>
+            <tr><th>Actual</th><th>Budget</th><th>Var</th><th>Var %</th><th style="border-left:1px solid var(--hair)">Actual</th><th>Budget</th><th>Var</th></tr>
+          </thead>
           <tbody>
-            <tr><td class="l" style="font-weight:600;color:var(--head)">Revenue</td><td>4,281</td><td>4,500</td><td>-219</td><td><span class="vcell" style="background:#EFC9C1;color:#7A2A1F">-4.9%</span></td><td>100.0%</td></tr>
-            <tr class="sub"><td class="l">Advisory</td><td>1,180</td><td>1,275</td><td>-95</td><td><span class="vcell" style="background:#EDBFB6;color:#7A2A1F">-7.5%</span></td><td>27.6%</td></tr>
-            <tr class="sub"><td class="l">Managed Services</td><td>1,760</td><td>1,900</td><td>-140</td><td><span class="vcell" style="background:#EDBFB6;color:#7A2A1F">-7.4%</span></td><td>41.1%</td></tr>
-            <tr class="sub"><td class="l">Projects</td><td>890</td><td>860</td><td>+30</td><td><span class="vcell" style="background:#CFE6D8;color:#235E42">+3.5%</span></td><td>20.8%</td></tr>
-            <tr class="sub"><td class="l">Support</td><td>451</td><td>465</td><td>-14</td><td><span class="vcell" style="background:#F3DDD7;color:#7A2A1F">-3.0%</span></td><td>10.5%</td></tr>
-            <tr><td class="l" style="font-weight:600;color:var(--head)">Direct costs</td><td>(2,646)</td><td>(2,700)</td><td>+54</td><td><span class="vcell" style="background:#DCEBE2;color:#235E42">-2.0%</span></td><td>61.8%</td></tr>
-            <tr class="tot"><td class="l">Gross profit</td><td>1,635</td><td>1,800</td><td>-165</td><td><span class="vcell" style="background:#EDBFB6;color:#7A2A1F">-9.2%</span></td><td>38.2%</td></tr>
-            <tr><td class="l" style="font-weight:600;color:var(--head)">Overheads</td><td>(1,023)</td><td>(1,080)</td><td>+57</td><td><span class="vcell" style="background:#DCEBE2;color:#235E42">-5.3%</span></td><td>23.9%</td></tr>
-            <tr class="sub"><td class="l">Admin staff</td><td>(560)</td><td>(520)</td><td>-40</td><td><span class="vcell" style="background:#EDBFB6;color:#7A2A1F">+7.7%</span></td><td>13.1%</td></tr>
-            <tr class="sub"><td class="l">Premises</td><td>(180)</td><td>(175)</td><td>-5</td><td><span class="vcell" style="background:#F3DDD7;color:#7A2A1F">+2.9%</span></td><td>4.2%</td></tr>
-            <tr class="sub"><td class="l">Technology</td><td>(145)</td><td>(150)</td><td>+5</td><td><span class="vcell" style="background:#E4EFE9;color:#235E42">-3.3%</span></td><td>3.4%</td></tr>
-            <tr class="sub"><td class="l">Other admin</td><td>(138)</td><td>(235)</td><td>+97</td><td><span class="vcell" style="background:#CFE6D8;color:#235E42">-41.3%</span></td><td>3.2%</td></tr>
-            <tr class="tot op"><td class="l">Operating profit</td><td>612</td><td>720</td><td>-108</td><td><span class="vcell" style="background:#E6A99E;color:#5E1F16">-15.0%</span></td><td>14.3%</td></tr>
+            <tr><td class="l" style="font-weight:600;color:var(--head)">Revenue</td><td>4,281</td><td>4,500</td><td class="u">-219</td><td><span class="vcell" style="background:#EFC9C1;color:#7A2A1F">-4.9%</span></td><td style="border-left:1px solid var(--hair)">25,180</td><td>26,400</td><td class="u">-1,220</td></tr>
+            <tr class="sub"><td class="l">Advisory</td><td>1,180</td><td>1,275</td><td class="u">-95</td><td><span class="vcell" style="background:#EDBFB6;color:#7A2A1F">-7.5%</span></td><td style="border-left:1px solid var(--hair)">7,020</td><td>7,470</td><td class="u">-450</td></tr>
+            <tr class="sub"><td class="l">Managed Services</td><td>1,760</td><td>1,900</td><td class="u">-140</td><td><span class="vcell" style="background:#EDBFB6;color:#7A2A1F">-7.4%</span></td><td style="border-left:1px solid var(--hair)">10,360</td><td>11,050</td><td class="u">-690</td></tr>
+            <tr class="sub"><td class="l">Projects</td><td>890</td><td>860</td><td class="f">+30</td><td><span class="vcell" style="background:#CFE6D8;color:#235E42">+3.5%</span></td><td style="border-left:1px solid var(--hair)">5,240</td><td>5,120</td><td class="f">+120</td></tr>
+            <tr class="sub"><td class="l">Support</td><td>451</td><td>465</td><td class="u">-14</td><td><span class="vcell" style="background:#F3DDD7;color:#7A2A1F">-3.0%</span></td><td style="border-left:1px solid var(--hair)">2,560</td><td>2,760</td><td class="u">-200</td></tr>
+            <tr><td class="l" style="font-weight:600;color:var(--head)">Direct costs</td><td>(2,646)</td><td>(2,700)</td><td class="f">+54</td><td><span class="vcell" style="background:#DCEBE2;color:#235E42">-2.0%</span></td><td style="border-left:1px solid var(--hair)">(15,470)</td><td>(15,840)</td><td class="f">+370</td></tr>
+            <tr class="tot"><td class="l">Gross profit</td><td>1,635</td><td>1,800</td><td class="u">-165</td><td><span class="vcell" style="background:#EDBFB6;color:#7A2A1F">-9.2%</span></td><td style="border-left:1px solid var(--hair)">9,710</td><td>10,560</td><td class="u">-850</td></tr>
+            <tr><td class="l" style="font-weight:600;color:var(--head)">Overheads</td><td>(1,023)</td><td>(1,080)</td><td class="f">+57</td><td><span class="vcell" style="background:#DCEBE2;color:#235E42">-5.3%</span></td><td style="border-left:1px solid var(--hair)">(5,950)</td><td>(6,240)</td><td class="f">+290</td></tr>
+            <tr class="sub"><td class="l">Admin staff</td><td>(560)</td><td>(520)</td><td class="u">-40</td><td><span class="vcell" style="background:#EDBFB6;color:#7A2A1F">+7.7%</span></td><td style="border-left:1px solid var(--hair)">(3,280)</td><td>(3,120)</td><td class="u">-160</td></tr>
+            <tr class="sub"><td class="l">Premises</td><td>(180)</td><td>(175)</td><td class="u">-5</td><td><span class="vcell" style="background:#F3DDD7;color:#7A2A1F">+2.9%</span></td><td style="border-left:1px solid var(--hair)">(1,080)</td><td>(1,050)</td><td class="u">-30</td></tr>
+            <tr class="sub"><td class="l">Technology</td><td>(145)</td><td>(150)</td><td class="f">+5</td><td><span class="vcell" style="background:#E4EFE9;color:#235E42">-3.3%</span></td><td style="border-left:1px solid var(--hair)">(870)</td><td>(900)</td><td class="f">+30</td></tr>
+            <tr class="sub"><td class="l">Other admin</td><td>(138)</td><td>(235)</td><td class="f">+97</td><td><span class="vcell" style="background:#CFE6D8;color:#235E42">-41.3%</span></td><td style="border-left:1px solid var(--hair)">(720)</td><td>(1,170)</td><td class="f">+450</td></tr>
+            <tr class="tot op"><td class="l">Operating profit</td><td>612</td><td>720</td><td class="u">-108</td><td><span class="vcell" style="background:#E6A99E;color:#5E1F16">-15.0%</span></td><td style="border-left:1px solid var(--hair)">3,760</td><td>4,320</td><td class="u">-560</td></tr>
           </tbody>
         </table>
       </div>
@@ -380,7 +383,7 @@
     </div>
     <div class="notes">
       <h3>P&amp;L matrix - the register finance works from</h3>
-      <div class="note"><span class="n">1</span><span><strong>The management P&amp;L</strong> as a matrix: subtotal lines (Revenue, Gross profit, Operating profit) in deep teal, drill lines indented and muted. Expandable to service line, then cost centre.</span></div>
+      <div class="note"><span class="n">1</span><span><strong>The management P&amp;L</strong> as a matrix: subtotal lines (Revenue, Gross profit, Operating profit) in deep teal, drill lines indented and muted. A <strong>This month</strong> column group and a <strong>Year to date</strong> group sit side by side. Expandable to service line, then account.</span></div>
       <div class="note"><span class="n">2</span><span><strong>Variance % is the only shaded column</strong> - a diverging green-to-red scale keyed on favourable/unfavourable, not raw sign. A cost line over budget shades red even though its number is positive.</span></div>
       <div class="note"><span class="n">3</span><span><strong>Right-click any line to drill through</strong> to its detail page. Money right-aligned with tabular figures; brackets for costs, the accountant's convention.</span></div>
     </div>
