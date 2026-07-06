@@ -109,6 +109,16 @@ const REV_BUDGET_LINE = { Advisory: 1275, 'Managed Services': 1900, Projects: 86
 // and Advisory 727 / Managed 1,102 / Projects 550 / Support 321 (budget).
 const DIRECT_RATE_ACTUAL = { Advisory: 684 / 1180, 'Managed Services': 1038 / 1760, Projects: 608 / 890, Support: 316 / 451 };
 const DIRECT_RATE_BUDGET = { Advisory: 727 / 1275, 'Managed Services': 1102 / 1900, Projects: 550 / 860, Support: 321 / 465 };
+// Per-client margin spread: an offset (in direct-cost-rate points, + means more
+// cost so lower margin) applied on top of the service-line rate. A revenue-weighted
+// correction (below) preserves each line's total direct cost, so the P&L anchors
+// hold while client margins genuinely vary. Oakline Foods and Nyle Distribution
+// are the deliberate low-margin watch clients.
+const CLIENT_MARGIN_ADJ = {
+  'Oakline Foods': 0.16, 'Nyle Distribution': 0.11, 'Ashfield Care': 0.06, 'Kelby Foods': 0.05,
+  'Harding & Co': -0.06, 'Marrow Klein': -0.05, 'Corven Group': -0.05, 'Peverel Group': -0.04,
+  'Vantis Retail': -0.03, 'Delphi Works': -0.03, 'Bramwell Media': -0.02, 'Castleton Retail': -0.02, 'Trentham Group': -0.01,
+};
 
 const OVERHEADS = { // account -> [actual000, budget000]
   // W1: Depreciation is not in the budget (budget 0, so no budget row is emitted),
@@ -134,13 +144,20 @@ function buildAnchorRows(scenario) {
     const actualLine = REV_ACTUAL[sl];
     const lineTotalActual = actualLine.reduce((s, c) => s + c[1], 0);
     const lineRevenue = scenario === 'Actual' ? lineTotalActual : REV_BUDGET_LINE[sl];
-    for (const [client, revA] of actualLine) {
-      const weight = revA / lineTotalActual;
-      const rev = lineRevenue * weight;
-      rows.push({ scenario, entity: ent, sl, account: revAccountOf[sl], client, amt000: rev });
-      const direct = rev * directRate[sl];
+    const rate = directRate[sl];
+    // per-client revenue and raw direct cost (line rate plus the client's margin offset)
+    const clients = actualLine.map(([client, revA]) => {
+      const rev = lineRevenue * (revA / lineTotalActual);
+      return { client, rev, raw: rev * (rate + (CLIENT_MARGIN_ADJ[client] || 0)) };
+    });
+    // revenue-proportional correction preserves the line's total direct cost exactly
+    const target = lineRevenue * rate;
+    const excess = clients.reduce((s, c) => s + c.raw, 0) - target;
+    for (const c of clients) {
+      rows.push({ scenario, entity: ent, sl, account: revAccountOf[sl], client: c.client, amt000: c.rev });
+      const direct = c.raw - excess * (c.rev / lineRevenue);
       for (const [acc, share] of DIRECT_SPLIT)
-        rows.push({ scenario, entity: ent, sl, account: acc, client, amt000: -direct * share });
+        rows.push({ scenario, entity: ent, sl, account: acc, client: c.client, amt000: -direct * share });
     }
   }
   for (const [acc, [actual000, budget000]] of Object.entries(OVERHEADS)) {

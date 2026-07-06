@@ -170,45 +170,45 @@ table Ledger
 		displayFolder: P&L matrix
 		lineageTag: c5075a92-449c-4eb6-b034-241f7f65ce1b
 
-	measure 'PL Actual' = CALCULATE ( [PL Amount], REMOVEFILTERS ( Scenario ), Scenario[Scenario] = "Actual" )
+	measure 'Month Actual' = CALCULATE ( [PL Amount], REMOVEFILTERS ( Scenario ), Scenario[Scenario] = "Actual" )
 		formatString: #,0,;(#,0,);0
 		displayFolder: P&L matrix
 		lineageTag: 679c10a3-9bbf-4dd1-b8c5-7815944de615
 
-	measure 'PL Budget' = CALCULATE ( [PL Amount], REMOVEFILTERS ( Scenario ), Scenario[Scenario] = "Budget" )
+	measure 'Month Budget' = CALCULATE ( [PL Amount], REMOVEFILTERS ( Scenario ), Scenario[Scenario] = "Budget" )
 		formatString: #,0,;(#,0,);0
 		displayFolder: P&L matrix
 		lineageTag: cd1a38a4-a69e-4beb-81fa-c6509318db1d
 
-	measure 'PL Variance' = [PL Actual] - [PL Budget]
+	measure 'Month Var' = [Month Actual] - [Month Budget]
 		formatString: #,0,;(#,0,);0
 		displayFolder: P&L matrix
 		lineageTag: 76e3be61-db8f-4a86-a71c-4c797b09c5aa
 
-	measure 'PL Variance %' = DIVIDE ( [PL Variance], ABS ( [PL Budget] ) )
+	measure 'Var %' = DIVIDE ( [Month Var], ABS ( [Month Budget] ) )
 		formatString: 0.0%
 		displayFolder: P&L matrix
 		lineageTag: c7c0f9b2-a96d-4979-adc3-b274ff291eba
 
-	measure 'PL YTD Actual' =
+	measure 'YTD Act' =
 			VAR mk = MAX ( 'Calendar'[MonthKey] )
 			VAR yr = INT ( mk / 100 )
 			RETURN
-			    CALCULATE ( [PL Actual], REMOVEFILTERS ( 'Calendar' ), 'Calendar'[Year] = yr, 'Calendar'[MonthKey] <= mk )
+			    CALCULATE ( [Month Actual], REMOVEFILTERS ( 'Calendar' ), 'Calendar'[Year] = yr, 'Calendar'[MonthKey] <= mk )
 		formatString: #,0,;(#,0,);0
 		displayFolder: P&L matrix
 		lineageTag: 680cdfd3-bb43-4abf-929b-9833aef9e1e4
 
-	measure 'PL YTD Budget' =
+	measure 'YTD Bud' =
 			VAR mk = MAX ( 'Calendar'[MonthKey] )
 			VAR yr = INT ( mk / 100 )
 			RETURN
-			    CALCULATE ( [PL Budget], REMOVEFILTERS ( 'Calendar' ), 'Calendar'[Year] = yr, 'Calendar'[MonthKey] <= mk )
+			    CALCULATE ( [Month Budget], REMOVEFILTERS ( 'Calendar' ), 'Calendar'[Year] = yr, 'Calendar'[MonthKey] <= mk )
 		formatString: #,0,;(#,0,);0
 		displayFolder: P&L matrix
 		lineageTag: 285c7412-f31d-42bb-99f3-f9f353f5029f
 
-	measure 'PL YTD Variance' = [PL YTD Actual] - [PL YTD Budget]
+	measure 'YTD Var' = [YTD Act] - [YTD Bud]
 		formatString: #,0,;(#,0,);0
 		displayFolder: P&L matrix
 		lineageTag: 68e35a97-49ca-40a9-b0ff-353df665816c
@@ -227,6 +227,57 @@ table Ledger
 		formatString: #,0,
 		displayFolder: Data quality
 		lineageTag: fafe1612-7557-4284-9211-e28129f2db64
+
+	measure 'Gross Margin % Budget' = DIVIDE ( [Gross Profit Budget], [Revenue Budget] )
+		formatString: 0.0%
+		displayFolder: P&L
+		lineageTag: 1f6593d1-b2fe-4ae6-b8b3-e9c9c75c1328
+
+	/// Value of the most negative service-line revenue variance, for the alarm card.
+	measure 'Largest Adverse Variance Value' = MINX ( ADDCOLUMNS ( FILTER ( VALUES ( 'Service Line'[Service Line] ), 'Service Line'[Service Line] <> "Central" ), "@v", [Revenue Variance] ), [@v] )
+		formatString: #,0,;(#,0,);0
+		displayFolder: KPI
+		lineageTag: f84cad0f-bf53-40df-afbd-c901b49af2b5
+
+	/// Waterfall step value: the budget anchor, each service line's revenue variance, and the direct-cost and overhead variances. Sums to actual operating profit.
+	measure 'Bridge Value' =
+			VAR t = SELECTEDVALUE ( Bridge[Bridge Type] )
+			VAR a = SELECTEDVALUE ( Bridge[Arg] )
+			RETURN
+			    SWITCH ( t,
+			        "anchor", [Operating Profit Budget],
+			        "rev", CALCULATE ( [Revenue Variance], REMOVEFILTERS ( 'Service Line' ), 'Service Line'[Service Line] = a ),
+			        "direct", [Direct Costs] - [Direct Costs Budget],
+			        "overhead", [Overheads] - [Overheads Budget]
+			    )
+		formatString: #,0,;(#,0,);0
+		displayFolder: P&L
+		lineageTag: 64e7c29c-cf89-4b1a-b354-027652437a23
+
+	measure 'KPI Revenue Context' = "vs budget " & FORMAT ( [Revenue Budget], "#,0," ) & "  ·  " & FORMAT ( [Revenue Variance], "+#,0,;-#,0,;0" ) & " (" & FORMAT ( DIVIDE ( [Revenue Variance], ABS ( [Revenue Budget] ) ), "0.0%" ) & ") " & IF ( [Revenue Variance] >= 0, "F", "U" )
+		isHidden
+		displayFolder: Presentation
+		lineageTag: ca4eaa87-7320-423c-8997-d1ab1bda37f1
+
+	measure 'KPI Margin Context' = "budget " & FORMAT ( [Gross Margin % Budget], "0.0%" ) & "  ·  " & FORMAT ( ( [Gross Margin %] - [Gross Margin % Budget] ) * 100, "+0.0;-0.0;0" ) & " pts"
+		isHidden
+		displayFolder: Presentation
+		lineageTag: 36ccc4b1-0bfb-429c-8822-07b345b3af7c
+
+	measure 'KPI Operating Profit Context' = "budget " & FORMAT ( [Operating Profit Budget], "#,0," ) & "  ·  " & FORMAT ( [Operating Profit Variance], "+#,0,;-#,0,;0" ) & " " & IF ( [Operating Profit Variance] >= 0, "F", "U" )
+		isHidden
+		displayFolder: Presentation
+		lineageTag: 534148e2-8149-45d8-89bf-f93af59af92c
+
+	measure 'KPI Utilisation Context' = "target " & FORMAT ( [Utilisation Target %], "0.0%" ) & "  ·  " & FORMAT ( ( [Utilisation %] - [Utilisation Target %] ) * 100, "+0.0;-0.0;0" ) & " pts"
+		isHidden
+		displayFolder: Presentation
+		lineageTag: d562d079-6d19-49af-982e-f5100a49889f
+
+	measure 'KPI Alarm Context' = "revenue " & FORMAT ( [Largest Adverse Variance Value], "#,0," ) & " vs budget"
+		isHidden
+		displayFolder: Presentation
+		lineageTag: a6453073-d4bc-4246-9be7-87d852450751
 
 	column MonthKey
 		dataType: int64

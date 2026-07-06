@@ -9,6 +9,28 @@
         "visual": "2.9.0"
       },
       "type": "SharedResources"
+    },
+    "customTheme": {
+      "name": "MeasuredClose-7c1e94a2.json",
+      "reportVersionAtImport": {
+        "report": "3.3.0",
+        "page": "2.1.0",
+        "visual": "2.9.0"
+      },
+      "type": "RegisteredResources"
     }
-  }
+  },
+  "resourcePackages": [
+    {
+      "name": "RegisteredResources",
+      "type": "RegisteredResources",
+      "items": [
+        {
+          "name": "MeasuredClose-7c1e94a2.json",
+          "path": "MeasuredClose-7c1e94a2.json",
+          "type": "CustomTheme"
+        }
+      ]
+    }
+  ]
 }

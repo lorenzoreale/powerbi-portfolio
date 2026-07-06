@@ -1,0 +1,140 @@
+{
+  "name": "MeasuredClose-7c1e94a2.json",
+  "dataColors": [
+    "#146B60",
+    "#123F39",
+    "#B08542",
+    "#B0402F",
+    "#2E7D55",
+    "#5C6B70",
+    "#8FB0AA",
+    "#C9A66B"
+  ],
+  "good": "#2E7D55",
+  "neutral": "#B08542",
+  "bad": "#B0402F",
+  "maximum": "#146B60",
+  "minimum": "#D7E7E4",
+  "foreground": "#232A2E",
+  "background": "#FFFFFF",
+  "tableAccent": "#146B60",
+  "firstLevelElements": "#232A2E",
+  "secondLevelElements": "#5C6B70",
+  "thirdLevelElements": "#E2E8E7",
+  "fourthLevelElements": "#8A97A6",
+  "textClasses": {
+    "label": {
+      "fontFace": "Segoe UI",
+      "fontSize": 9,
+      "color": "#232A2E"
+    },
+    "title": {
+      "fontFace": "Segoe UI Semibold",
+      "fontSize": 12,
+      "color": "#123F39"
+    },
+    "callout": {
+      "fontFace": "Segoe UI",
+      "fontSize": 20,
+      "color": "#123F39"
+    },
+    "header": {
+      "fontFace": "Segoe UI Semibold",
+      "fontSize": 12,
+      "color": "#123F39"
+    }
+  },
+  "visualStyles": {
+    "*": {
+      "*": {
+        "background": [
+          {
+            "show": true,
+            "color": {
+              "solid": {
+                "color": "#FFFFFF"
+              }
+            },
+            "transparency": 0
+          }
+        ],
+        "border": [
+          {
+            "show": true,
+            "color": {
+              "solid": {
+                "color": "#E2E8E7"
+              }
+            },
+            "radius": 6,
+            "width": 1
+          }
+        ],
+        "title": [
+          {
+            "show": false
+          }
+        ],
+        "visualHeader": [
+          {
+            "show": false
+          }
+        ],
+        "padding": [
+          {
+            "top": 8,
+            "bottom": 8,
+            "left": 12,
+            "right": 12
+          }
+        ]
+      }
+    },
+    "tableEx": {
+      "*": {
+        "columnHeaders": [
+          {
+            "autoSizeColumnWidth": true,
+            "columnAdjustment": "growToFit"
+          }
+        ]
+      }
+    },
+    "pivotTable": {
+      "*": {
+        "columnHeaders": [
+          {
+            "autoSizeColumnWidth": true,
+            "columnAdjustment": "growToFit"
+          }
+        ]
+      }
+    },
+    "slicer": {
+      "*": {
+        "header": [
+          {
+            "fontFamily": "Segoe UI Semibold",
+            "textSize": 9,
+            "fontColor": {
+              "solid": {
+                "color": "#5C6B70"
+              }
+            }
+          }
+        ],
+        "items": [
+          {
+            "fontFamily": "Segoe UI",
+            "textSize": 9,
+            "fontColor": {
+              "solid": {
+                "color": "#232A2E"
+              }
+            }
+          }
+        ]
+      }
+    }
+  }
+}

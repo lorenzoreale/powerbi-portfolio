@@ -1,0 +1,51 @@
+/// Disconnected presentation table for the operating-profit bridge waterfall. Read by the Bridge Value measure; no relationship to the facts.
+table Bridge
+	lineageTag: 04441d51-75da-41bc-9bfd-ac9d483fa49d
+
+	column Step
+		dataType: string
+		lineageTag: db7680a2-2614-4141-8c90-b41ddd0d4d98
+		summarizeBy: none
+		sourceColumn: Step
+		sortByColumn: 'Sort Order'
+
+	column 'Sort Order'
+		dataType: int64
+		isHidden
+		lineageTag: 9df7e715-3abc-4490-81cf-d1ddd257e108
+		summarizeBy: none
+		sourceColumn: Sort Order
+
+	column 'Bridge Type'
+		dataType: string
+		isHidden
+		lineageTag: 333832c7-1559-467a-a250-4f4be8b5a385
+		summarizeBy: none
+		sourceColumn: Bridge Type
+
+	column Arg
+		dataType: string
+		isHidden
+		lineageTag: 58a837b7-2966-4f15-9632-217d04a6318e
+		summarizeBy: none
+		sourceColumn: Arg
+
+	partition Bridge = m
+		mode: import
+		source =
+				let
+				    Source = #table(
+				        type table [Step = text, #"Sort Order" = Int64.Type, #"Bridge Type" = text, Arg = text],
+				        {
+				            {"Budget op. profit", 1, "anchor", null},
+				            {"Advisory", 2, "rev", "Advisory"},
+				            {"Managed Services", 3, "rev", "Managed Services"},
+				            {"Projects", 4, "rev", "Projects"},
+				            {"Support", 5, "rev", "Support"},
+				            {"Direct costs", 6, "direct", null},
+				            {"Overheads", 7, "overhead", null}
+				        }
+				    )
+				in
+				    Source
+

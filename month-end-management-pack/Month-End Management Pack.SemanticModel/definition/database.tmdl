@@ -1,4 +1,6 @@
 /// Month-end management pack for Ashcombe Partners (fictional). Synthetic data. Single-month close with year-to-date.
-database 'Month-End Management Pack'
+database 80264d49-3955-45e1-ba3f-205cc3b84322
 	compatibilityLevel: 1702
+	compatibilityMode: powerBI
+	language: 1033
 

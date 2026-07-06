@@ -18,4 +18,5 @@ ref table Client
 ref table 'P&L Line'
 ref table Ledger
 ref table Capacity
+ref table Bridge
 

@@ -75,7 +75,7 @@ Targets for the Phase 2 generator, so the report has a true story. Exact values 
 - **Direct costs (2,646) vs (2,700) (+54 favourable)** and **Overheads (1,023) vs (1,080) (+57 favourable)**: costs were well managed.
 - **Gross profit 1,635 vs 1,800 (38.2% vs 40.0%)**; **Operating profit 612 vs 720 (14.3% vs 16.0%, -108 unfavourable)**. The story: strong cost discipline recovered only about half of the revenue shortfall.
 - **Utilisation 78% vs 82% target**, concentrated in Managed Services and Advisory, explaining the revenue miss.
-- **Client concentration**: a top client (Peverel Group ~640) on plan; a high-revenue low-margin client (Oakline Foods ~415 at ~12%) as the margin-watch item.
+- **Client concentration and margin spread**: Peverel Group (~640) the largest client at a healthy ~44% margin; Nyle Distribution (~27%) and Oakline Foods (~30%) the low-margin watch items, both also missing budget. Client gross margins genuinely vary (roughly 27% to 44%) because each client carries a margin offset on top of its service line's rate, with a revenue-weighted correction that keeps every line's direct-cost total (and so the P&L anchors) intact.
 - Prior months (Jan 2025 onward) trend gently towards these June figures so budget-vs-actual is realistic in every period, even though only the selected month is shown.
 
 ## 5. Star schema
