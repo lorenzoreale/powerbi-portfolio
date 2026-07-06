@@ -7,7 +7,7 @@ Demonstration Power BI projects, each a complete working report published as a P
 | Project | Focus | Status |
 |---|---|---|
 | [Site Inspection Performance](site-inspection-performance/) | Safety and compliance inspections across a site estate | Complete |
-| Month-end management pack | Budget vs actual, variance, drillable P&L | Planned |
+| [Month-End Management Pack](month-end-management-pack/) | Budget vs actual, variance bridge, drillable P&L | Complete |
 | Data reconciliation and quality monitor | Source-vs-warehouse reconciliation | Planned |
 
 Each project folder holds its data generator, the PBIP project, and a README with the model diagram, measure catalogue and data dictionary.
