@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en-GB">
 <head>
 <meta charset="utf-8">
@@ -306,10 +306,10 @@
             <tr><td>E-commerce orders</td><td>Webshop</td><td class="r">148,062</td><td class="r">148,059</td><td class="r w">&minus;3</td><td class="r">1,048,650</td><td class="r">1,048,238</td><td class="r w">&minus;412</td><td><span class="chip w">WARN</span></td></tr>
             <tr><td>ERP GL journal</td><td>Ledger ERP</td><td class="r">96,410</td><td class="r">96,410</td><td class="r">0</td><td class="r">42,806,114</td><td class="r">42,806,114</td><td class="r">0</td><td><span class="chip p">PASS</span></td></tr>
             <tr><td>Supplier EDI invoices</td><td>EDI gateway</td><td class="r">8,940</td><td class="r">7,736</td><td class="r u">&minus;1,204</td><td class="r">1,594,208</td><td class="r">1,379,600</td><td class="r u">&minus;214,608</td><td><span class="chip x">FAIL</span></td></tr>
-            <tr><td>Logistics shipments</td><td>DepotTrack</td><td class="r">31,254</td><td class="r">31,254</td><td class="r">0</td><td class="r">&mdash;</td><td class="r">&mdash;</td><td class="r">&mdash;</td><td><span class="chip p">PASS</span></td></tr>
-            <tr><td>Loyalty members</td><td>Loyalty CRM</td><td class="r">1,872,455</td><td class="r">1,872,455</td><td class="r">0</td><td class="r">&mdash;</td><td class="r">&mdash;</td><td class="r">&mdash;</td><td><span class="chip p">PASS</span></td></tr>
-            <tr><td>Product master</td><td>Ledger ERP</td><td class="r">84,312</td><td class="r">84,312</td><td class="r">0</td><td class="r">&mdash;</td><td class="r">&mdash;</td><td class="r">&mdash;</td><td><span class="chip p">PASS</span></td></tr>
-            <tr><td>Store master</td><td>Ledger ERP</td><td class="r">642</td><td class="r">642</td><td class="r">0</td><td class="r">&mdash;</td><td class="r">&mdash;</td><td class="r">&mdash;</td><td><span class="chip p">PASS</span></td></tr>
+            <tr><td>Logistics shipments</td><td>DepotTrack</td><td class="r">31,254</td><td class="r">31,254</td><td class="r">0</td><td class="r">-</td><td class="r">-</td><td class="r">-</td><td><span class="chip p">PASS</span></td></tr>
+            <tr><td>Loyalty members</td><td>Loyalty CRM</td><td class="r">1,872,455</td><td class="r">1,872,455</td><td class="r">0</td><td class="r">-</td><td class="r">-</td><td class="r">-</td><td><span class="chip p">PASS</span></td></tr>
+            <tr><td>Product master</td><td>Ledger ERP</td><td class="r">84,312</td><td class="r">84,312</td><td class="r">0</td><td class="r">-</td><td class="r">-</td><td class="r">-</td><td><span class="chip p">PASS</span></td></tr>
+            <tr><td>Store master</td><td>Ledger ERP</td><td class="r">642</td><td class="r">642</td><td class="r">0</td><td class="r">-</td><td class="r">-</td><td class="r">-</td><td><span class="chip p">PASS</span></td></tr>
           </tbody>
         </table>
       </div>
@@ -402,7 +402,7 @@
         <table class="tb">
           <thead><tr><th>Rule</th><th>Feed</th><th>Dimension</th><th class="r">Rows checked</th><th class="r">Rows failing</th><th class="r">Fail rate</th><th class="r">Tolerance</th><th>Status</th></tr></thead>
           <tbody>
-            <tr><td class="mono">R-017 &middot; file lands by 05:00</td><td>Supplier EDI invoices</td><td>Timeliness</td><td class="r">1</td><td class="r">1</td><td class="r u">&mdash;</td><td class="r">05:00</td><td><span class="chip x">FAIL</span></td></tr>
+            <tr><td class="mono">R-017 &middot; file lands by 05:00</td><td>Supplier EDI invoices</td><td>Timeliness</td><td class="r">1</td><td class="r">1</td><td class="r u">-</td><td class="r">05:00</td><td><span class="chip x">FAIL</span></td></tr>
             <tr><td class="mono">R-019 &middot; invoice count vs manifest</td><td>Supplier EDI invoices</td><td>Completeness</td><td class="r">8,940</td><td class="r">1,204</td><td class="r u">13.47%</td><td class="r">0%</td><td><span class="chip x">FAIL</span></td></tr>
             <tr><td class="mono">R-014 &middot; email format valid</td><td>Loyalty members</td><td>Validity</td><td class="r">1,872,455</td><td class="r">12,480</td><td class="r w">0.67%</td><td class="r">&le; 1%</td><td><span class="chip w">WARN</span></td></tr>
             <tr><td class="mono">R-008 &middot; customer id present</td><td>E-commerce orders</td><td>Completeness</td><td class="r">148,059</td><td class="r">214</td><td class="r w">0.14%</td><td class="r">&le; 0.5%</td><td><span class="chip w">WARN</span></td></tr>
