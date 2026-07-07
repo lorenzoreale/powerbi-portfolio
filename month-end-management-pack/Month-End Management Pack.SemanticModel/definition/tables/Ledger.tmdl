@@ -323,11 +323,13 @@ table Ledger
 
 	/// Signed profit contribution in GBP. Use the P&L measures, not this column.
 	column Amount
-		dataType: decimal
+		dataType: double
 		isHidden
 		lineageTag: 39f47b68-15c2-4ce3-a311-a911970197b5
 		summarizeBy: sum
 		sourceColumn: Amount
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
 
 	partition Ledger = m
 		mode: import

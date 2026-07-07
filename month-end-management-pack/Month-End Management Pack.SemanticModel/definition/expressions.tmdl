@@ -2,6 +2,8 @@
 expression 'Data Folder' = "C:\powerbi-portfolio\month-end-management-pack\data" meta [IsParameterQuery=true, Type="Text", IsParameterQueryRequired=true]
 	lineageTag: ea7cd105-fa9c-4a29-bb9d-31b4765af2d0
 
+	annotation PBI_ResultType = Text
+
 /// Shared load of client.csv, referenced by the Client table and by the Ledger query's dirty-name resolution (wrinkle W3).
 expression 'Clients Raw' =
 		let

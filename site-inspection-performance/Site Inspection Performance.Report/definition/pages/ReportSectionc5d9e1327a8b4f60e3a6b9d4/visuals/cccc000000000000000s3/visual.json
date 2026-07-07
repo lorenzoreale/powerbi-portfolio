@@ -1,5 +1,5 @@
 {
-  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.9.0/schema.json",
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.10.0/schema.json",
   "name": "cccc000000000000000s3",
   "position": {
     "x": 1056,
@@ -27,7 +27,8 @@
                 }
               },
               "queryRef": "Action.Action Status",
-              "nativeQueryRef": "Action Status"
+              "nativeQueryRef": "Action Status",
+              "active": true
             }
           ]
         }

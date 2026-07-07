@@ -170,6 +170,8 @@ table Action
 		summarizeBy: none
 		sourceColumn: Raised Date
 
+		annotation UnderlyingDateTimeDataType = Date
+
 	column 'Due Date'
 		dataType: dateTime
 		formatString: dd mmm yyyy
@@ -177,12 +179,16 @@ table Action
 		summarizeBy: none
 		sourceColumn: Due Date
 
+		annotation UnderlyingDateTimeDataType = Date
+
 	column 'Closed Date'
 		dataType: dateTime
 		formatString: dd mmm yyyy
 		lineageTag: 55a8d192-082d-4d76-9277-169d2e8229a6
 		summarizeBy: none
 		sourceColumn: Closed Date
+
+		annotation UnderlyingDateTimeDataType = Date
 
 	column 'Action Description'
 		dataType: string
@@ -220,6 +226,8 @@ table Action
 		isHidden
 		lineageTag: e1b996a8-523e-422f-beb8-7bebf0e37852
 		summarizeBy: none
+
+		annotation SummarizationSetBy = User
 
 	partition Action = m
 		mode: import

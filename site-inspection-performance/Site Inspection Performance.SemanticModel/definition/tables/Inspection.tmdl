@@ -108,6 +108,8 @@ table Inspection
 		summarizeBy: none
 		sourceColumn: Inspection Date
 
+		annotation UnderlyingDateTimeDataType = Date
+
 	column SiteKey
 		dataType: int64
 		isHidden

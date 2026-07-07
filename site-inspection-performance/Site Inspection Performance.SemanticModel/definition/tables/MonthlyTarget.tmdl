@@ -6,9 +6,12 @@ table MonthlyTarget
 	column 'Month Start'
 		dataType: dateTime
 		isHidden
+		formatString: Long Date
 		lineageTag: 1906e892-2afe-4c08-be7b-d6c2d4de893e
 		summarizeBy: none
 		sourceColumn: Month Start
+
+		annotation UnderlyingDateTimeDataType = Date
 
 	column 'Planned Inspections'
 		dataType: int64

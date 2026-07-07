@@ -1,5 +1,5 @@
 {
-  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.9.0/schema.json",
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.10.0/schema.json",
   "name": "dd_sc",
   "position": {
     "x": 648,
@@ -32,7 +32,7 @@
             }
           ]
         },
-        "X": {
+        "Size": {
           "projections": [
             {
               "field": {
@@ -47,6 +47,25 @@
               },
               "queryRef": "Ledger.Revenue",
               "nativeQueryRef": "Revenue"
+            }
+          ]
+        },
+        "X": {
+          "projections": [
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Ledger"
+                    }
+                  },
+                  "Property": "Revenue"
+                }
+              },
+              "queryRef": "Ledger.Revenue",
+              "nativeQueryRef": "Revenue",
+              "active": true
             }
           ]
         },
@@ -65,24 +84,6 @@
               },
               "queryRef": "Ledger.Client Margin %",
               "nativeQueryRef": "Client Margin %"
-            }
-          ]
-        },
-        "Size": {
-          "projections": [
-            {
-              "field": {
-                "Measure": {
-                  "Expression": {
-                    "SourceRef": {
-                      "Entity": "Ledger"
-                    }
-                  },
-                  "Property": "Revenue"
-                }
-              },
-              "queryRef": "Ledger.Revenue",
-              "nativeQueryRef": "Revenue"
             }
           ]
         }

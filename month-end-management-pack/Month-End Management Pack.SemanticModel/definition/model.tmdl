@@ -7,7 +7,11 @@ model 'Month-End Management Pack'
 		legacyRedirects
 		returnErrorValuesAsNull
 
-annotation PBI_ProTooling = ["MCP-PBIModeling"]
+annotation PBI_ProTooling = ["MCP-PBIModeling","DevMode"]
+
+annotation PBI_QueryOrder = ["Calendar","Scenario","Entity","Service Line","Account","Client","P&L Line","Ledger","Capacity","Bridge","Data Folder","Clients Raw"]
+
+annotation __PBI_TimeIntelligenceEnabled = 0
 
 ref table Calendar
 ref table Scenario

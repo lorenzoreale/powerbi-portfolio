@@ -2,6 +2,8 @@
 expression 'Data Folder' = "C:\powerbi-portfolio\site-inspection-performance\data" meta [IsParameterQuery=true, Type="Text", IsParameterQueryRequired=true]
 	lineageTag: 21d70ce5-a726-48fe-93c7-8b396bf92bcd
 
+	annotation PBI_ResultType = Text
+
 /// Shared load of inspections.csv: removes the duplicate re-exported rows (wrinkle W2) and assigns the InspectionKey surrogate. Referenced by both the Inspection and Response tables so they can never disagree.
 expression 'Inspections Clean' =
 		let

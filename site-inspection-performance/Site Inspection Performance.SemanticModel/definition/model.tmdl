@@ -7,7 +7,11 @@ model 'Site Inspection Performance'
 		legacyRedirects
 		returnErrorValuesAsNull
 
-annotation PBI_ProTooling = ["MCP-PBIModeling"]
+annotation PBI_ProTooling = ["MCP-PBIModeling","DevMode"]
+
+annotation PBI_QueryOrder = ["Date","Site","Person","Question","Inspection","Response","Action","MonthlyTarget","Data Folder","Inspections Clean","Sites Raw"]
+
+annotation __PBI_TimeIntelligenceEnabled = 0
 
 ref table Date
 ref table Site

@@ -1,5 +1,5 @@
 {
-  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.9.0/schema.json",
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.10.0/schema.json",
   "name": "bbbb000000000000000s2",
   "position": {
     "x": 878,
@@ -11,11 +11,6 @@
   },
   "visual": {
     "visualType": "slicer",
-    "syncGroup": {
-      "groupName": "SyncRegion",
-      "fieldChanges": true,
-      "filterChanges": true
-    },
     "query": {
       "queryState": {
         "Values": {
@@ -32,7 +27,8 @@
                 }
               },
               "queryRef": "Site.Region",
-              "nativeQueryRef": "Region"
+              "nativeQueryRef": "Region",
+              "active": true
             }
           ]
         }
@@ -201,6 +197,11 @@
           }
         }
       ]
+    },
+    "syncGroup": {
+      "groupName": "SyncRegion",
+      "fieldChanges": true,
+      "filterChanges": true
     }
   }
 }

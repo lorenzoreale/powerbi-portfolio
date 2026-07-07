@@ -1,5 +1,5 @@
 {
-  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.9.0/schema.json",
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.10.0/schema.json",
   "name": "cccc000000000000000v2",
   "position": {
     "x": 648,
@@ -13,24 +13,6 @@
     "visualType": "pivotTable",
     "query": {
       "queryState": {
-        "Rows": {
-          "projections": [
-            {
-              "field": {
-                "Column": {
-                  "Expression": {
-                    "SourceRef": {
-                      "Entity": "Action"
-                    }
-                  },
-                  "Property": "Category"
-                }
-              },
-              "queryRef": "Action.Category",
-              "nativeQueryRef": "Category"
-            }
-          ]
-        },
         "Columns": {
           "projections": [
             {
@@ -45,7 +27,27 @@
                 }
               },
               "queryRef": "Action.Action Status",
-              "nativeQueryRef": "Action Status"
+              "nativeQueryRef": "Action Status",
+              "active": true
+            }
+          ]
+        },
+        "Rows": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Action"
+                    }
+                  },
+                  "Property": "Category"
+                }
+              },
+              "queryRef": "Action.Category",
+              "nativeQueryRef": "Category",
+              "active": true
             }
           ]
         },
@@ -287,7 +289,12 @@
                           "min": {
                             "color": {
                               "Literal": {
-                                "Value": "'#6B1F18'"
+                                "Value": "'#1C2B3A'"
+                              }
+                            },
+                            "value": {
+                              "Literal": {
+                                "Value": "3.4D"
                               }
                             }
                           },
@@ -295,6 +302,11 @@
                             "color": {
                               "Literal": {
                                 "Value": "'#FFFFFF'"
+                              }
+                            },
+                            "value": {
+                              "Literal": {
+                                "Value": "3.6D"
                               }
                             }
                           },

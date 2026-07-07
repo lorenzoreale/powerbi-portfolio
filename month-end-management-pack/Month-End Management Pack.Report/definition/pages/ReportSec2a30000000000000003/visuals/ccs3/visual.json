@@ -1,5 +1,5 @@
 {
-  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.9.0/schema.json",
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.10.0/schema.json",
   "name": "ccs3",
   "position": {
     "x": 1056,
@@ -11,11 +11,6 @@
   },
   "visual": {
     "visualType": "slicer",
-    "syncGroup": {
-      "groupName": "SyncEntity",
-      "fieldChanges": true,
-      "filterChanges": true
-    },
     "query": {
       "queryState": {
         "Values": {
@@ -32,7 +27,8 @@
                 }
               },
               "queryRef": "Entity.Entity",
-              "nativeQueryRef": "Entity"
+              "nativeQueryRef": "Entity",
+              "active": true
             }
           ]
         }
@@ -201,6 +197,11 @@
           }
         }
       ]
+    },
+    "syncGroup": {
+      "groupName": "SyncEntity",
+      "fieldChanges": true,
+      "filterChanges": true
     }
   }
 }

@@ -24,6 +24,8 @@ table Calendar
 		summarizeBy: none
 		sourceColumn: Month Start
 
+		annotation UnderlyingDateTimeDataType = Date
+
 	column Quarter
 		dataType: string
 		lineageTag: 104fed4b-c72c-4549-b325-df672756dfda
@@ -35,6 +37,8 @@ table Calendar
 		lineageTag: 371e6e6a-2a9b-420e-83d9-e7514f65f390
 		summarizeBy: none
 		sourceColumn: Year
+
+		annotation SummarizationSetBy = User
 
 	column 'Financial Period'
 		dataType: string

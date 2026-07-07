@@ -1,0 +1,152 @@
+{
+  "version": "1.1.0",
+  "diagrams": [
+    {
+      "ordinal": 0,
+      "scrollPosition": {
+        "x": 0,
+        "y": 0
+      },
+      "nodes": [
+        {
+          "location": {
+            "x": 50,
+            "y": 97.098310469474427
+          },
+          "nodeIndex": "Capacity",
+          "nodeLineageTag": "0558b941-28a7-4be7-91d6-492ebac6a0d7",
+          "size": {
+            "height": 248,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 682.92930083973283,
+            "y": 236.91616676473478
+          },
+          "nodeIndex": "Ledger",
+          "nodeLineageTag": "67f2329b-bbf4-45d6-b7e7-563016c622cf",
+          "size": {
+            "height": 300,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 978.70337619147085,
+            "y": 102.51510953014099
+          },
+          "nodeIndex": "Account",
+          "nodeLineageTag": "83aecdd5-df66-4c74-a503-87e732e5ecef",
+          "size": {
+            "height": 200,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 1212.7033761914709,
+            "y": 400.58702585488209
+          },
+          "nodeIndex": "Bridge",
+          "nodeLineageTag": "04441d51-75da-41bc-9bfd-ac9d483fa49d",
+          "size": {
+            "height": 176,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 518.945137254432,
+            "y": -50
+          },
+          "nodeIndex": "Calendar",
+          "nodeLineageTag": "1e8b7450-7bf3-49e2-b2e1-843c33efd7d6",
+          "size": {
+            "height": 224,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 677.11349414129336,
+            "y": 775.17405170976417
+          },
+          "nodeIndex": "Client",
+          "nodeLineageTag": "cfc74f6e-cb28-4aa4-a726-2512a9782ad6",
+          "size": {
+            "height": 152,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 952.7905209504122,
+            "y": 589.29940994859294
+          },
+          "nodeIndex": "Entity",
+          "nodeLineageTag": "20d207b0-5a9b-498f-a3de-e936b971533e",
+          "size": {
+            "height": 128,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 1496.7033761914709,
+            "y": 388.58702585488209
+          },
+          "nodeIndex": "P&L Line",
+          "nodeLineageTag": "a1ea5eb7-3584-419a-b92f-72b80556aabb",
+          "size": {
+            "height": 200,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 354.94783012408095,
+            "y": 232.25211995098334
+          },
+          "nodeIndex": "Scenario",
+          "nodeLineageTag": "61de2be5-8b66-4b1e-bf77-d3e387161944",
+          "size": {
+            "height": 104,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 393.70305814624953,
+            "y": 563.55667488710878
+          },
+          "nodeIndex": "Service Line",
+          "nodeLineageTag": "47b34a85-dbb9-4dbc-a2e4-868d3e8ed9f0",
+          "size": {
+            "height": 128,
+            "width": 234
+          },
+          "zIndex": 0
+        }
+      ],
+      "name": "All tables",
+      "zoomValue": 100,
+      "pinKeyFieldsToTop": false,
+      "showExtraHeaderInfo": false,
+      "hideKeyFieldsWhenCollapsed": false,
+      "tablesLocked": false
+    }
+  ],
+  "selectedDiagram": "All tables",
+  "defaultDiagram": "All tables"
+}
