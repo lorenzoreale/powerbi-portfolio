@@ -46,9 +46,9 @@ Two decisions carry the project, and they are what it demonstrates:
 | Date (dimension, daily) | 91 | 01 Apr to 30 Jun 2026, marked as date table |
 | Feed | 8 | The monitored loads (below), with source system, schedule and steward attributes |
 | Rule | 48 | The quality rulebook: per-feed checks across five dimensions, with thresholds |
-| Feed Run (fact) | ~660 | One row per feed per scheduled night: pairwise counts, amounts, arrival |
-| Check Result (fact) | ~4,000 | One row per rule per scheduled night: rows checked, rows failing, minutes late |
-| Break (fact/register) | ~70 | Every discrepancy raised in the window; **14 still open** at 29 Jun |
+| Feed Run (fact) | 681 | One row per feed per scheduled night: pairwise counts, amounts, arrival |
+| Check Result (fact) | 4,049 | One row per rule per scheduled night: units checked, units failing, minutes late |
+| Break (fact/register) | 68 | Every discrepancy raised in the window (BRK-0126 to BRK-0193); **14 still open** at 29 Jun |
 
 ### The eight feeds
 
@@ -72,10 +72,11 @@ Targets for the Phase 2 generator. Exact values come from the generator; the spe
 - **29 Jun run: 4,654,459 source rows compared ("4.65m"), row match rate 99.97%** against the 99.90% threshold. Six feeds pass, one warns, one fails.
 - **Supplier EDI invoices FAIL**: file 2 of 3 never arrived at the gateway. Warehouse 7,736 rows vs source 8,940 (**-1,204 rows**), amount 1,379,600 vs 1,594,208 (**-214,608**). The files that did arrive landed at 05:41 against the 05:00 window.
 - **E-commerce orders WARN, third consecutive night**: -3 rows, -412 amount (0.039%, inside the 0.05% tolerance). Root cause in the register: refund-timing between the webshop and the warehouse.
-- **The 14 Jun incident**: a truncated POS extract dropped the match rate to ~98.9% (roughly 51k rows short) and spiked failing records to ~61k. Raised, resolved next day, and still visible in every 30-night trend - the monitor's job is to remember.
-- **Supplier EDI is the repeat offender**: also failed 22 Jun (row count mismatch, break still open waiting on a supplier resend), warned 18 Jun, and owns 5 of the 14 open breaks.
-- **Timeliness is the weak quality dimension** (~97.5% pass over 30 nights vs 99%+ elsewhere): Supplier EDI and Logistics shipments keep missing the 05:00 arrival window.
-- **Breaks at 29 Jun: 14 open (3 critical, 4 high, 7 lower)**, oldest is BRK-0171, product master schema drift, 9 days old. Median open age ~3 days. **MTTR ~2.1 days against a 3.0-day target**; last 7 nights resolved 11 vs opened 9. Steady-state elsewhere: loyalty email validity ~0.67% failing (inside its 1% tolerance), product master carries 14 duplicate barcodes (warn against a zero-tolerance rule).
+- **The 14 Jun incident**: a truncated POS extract dropped the match rate to 98.91% (50,040 rows short) and spiked failing records to ~54k. Raised, resolved next day, and still visible in every 30-night trend - the monitor's job is to remember.
+- **The rulebook on 29 Jun**: 48 rules evaluated, 39 pass, 6 warn, 3 fail - and all three failing rules (R-017 arrival, R-019 count, R-022 amount) are Supplier EDI's.
+- **Supplier EDI is the repeat offender**: also failed 22 Jun (row count mismatch, break still open waiting on a supplier resend), and is chronically late (six warn nights in the trailing 30), so it owns 5 of the 14 open breaks.
+- **Timeliness is the weak quality dimension** (95.6% pass over the trailing 30 nights vs 97.2-99.0% elsewhere): Supplier EDI and Logistics shipments keep missing the 05:00 arrival window.
+- **Breaks at 29 Jun: 14 open (3 critical, 4 high, 7 lower)**, oldest is BRK-0171, product master schema drift, 9 days old. Median open age 3 days. **MTTR 2.7 days against a 3.0-day target**; the last 7 nights resolved 9 while opening 10 - the queue grew this week, which is why the alarm card is red. Steady-state elsewhere: loyalty email validity drifting up to 0.67% failing on the 29th (inside its 1% tolerance, above its 0.25% warn line for the last three nights), product master carrying 14 duplicate barcodes since 28 Jun (warn against a zero-tolerance rule).
 - All other feed-nights pass quietly: the board should be mostly green, because a monitor that is always red teaches people to ignore it.
 
 ## 5. Star schema
@@ -109,10 +110,13 @@ Grain: one row per quality rule. 48 rows: each feed carries between 4 and 9 rule
 | `Rule Name` | plain words: "invoice count vs manifest", "email format valid" |
 | `FeedKey` | the feed the rule runs against (also carried on the fact) |
 | `Quality Dimension` | Completeness / Validity / Uniqueness / Timeliness / Consistency |
+| `Unit` | what the rule counts: rows (count and in-warehouse rules), pounds (amount reconciliations), files (arrival checks) |
+| `Is Load Check` | true for the rules that judge the load itself (row count vs source, amount vs source, arrival); these drive the feed status board, the rest belong to the Quality Rules page |
 | `Tolerance Label` | the human-readable tolerance shown in visuals: "0", "&le; 1%", "05:00" |
 | `Warn Above %` | fail rate above which the verdict is at least WARN (usually 0) |
 | `Fail Above %` | fail rate above which the verdict is FAIL |
 | `Warn Late Mins` / `Fail Late Mins` | timeliness rules only: minutes past the deadline for WARN / FAIL |
+| `Active From` | first night the rule was evaluated; blank = whole window (see W3) |
 
 Anchor rules named in the design (the generator fills the rest of the 48 with sensible coverage): R-003 POS basket total equals line sum (Consistency, zero tolerance, always passing); R-008 e-commerce customer id present (Completeness, warn >0, fail >0.5%); R-011 GL debits equal credits (Consistency, zero, passing); R-014 loyalty email format (Validity, warn >0.25%, fail >1%); R-017 supplier EDI file lands by 05:00 (Timeliness, warn >0 min, fail >60 min or absent); R-019 supplier EDI invoice count vs manifest (Completeness, warn >0, fail >0.5%); R-021 product master barcode unique (Uniqueness, warn >0, fail >0.05%).
 
@@ -144,9 +148,10 @@ Grain: **one row per rule per scheduled night** (from the rule's first active da
 | `DateKey` | int | FK to Date |
 | `RuleKey` | int | FK to Rule |
 | `FeedKey` | int | FK to Feed (denormalised for direct feed slicing) |
-| `Rows Checked` | int | denominator |
-| `Rows Failed` | int | numerator; 0 is stored, not blank - zero means zero |
-| `Minutes Late` | int | timeliness rules only; blank otherwise. Blank plus files missing = FAIL by rule logic |
+| `Run Seq` | int | result-set sequence within a night; normally 1. The 14 Jun rerun wrote a second set (W2) and the load keeps the latest |
+| `Units Checked` | int | denominator, in the rule's unit: rows, pounds or files |
+| `Units Failed` | int | numerator; 0 is stored, not blank - zero means zero. For arrival rules this is missing files |
+| `Minutes Late` | int | timeliness rules only; blank otherwise |
 
 ### 5.6 Break (fact / register)
 
@@ -158,7 +163,7 @@ Grain: **one row per discrepancy raised.** Register-style, like project 1's acti
 | `Opened DateKey` | int | FK to Date (active relationship) |
 | `Resolved DateKey` | int | FK to Date (inactive relationship); blank while open |
 | `FeedKey` | int | FK to Feed |
-| `Category` | text | Missing file / Row count mismatch / Amount mismatch / Late arrival / Schema drift / Duplicate keys |
+| `Category` | text | Missing file / Row count mismatch / Amount mismatch / Late arrival / Schema drift / Duplicate keys / Rule threshold breach (for breaks raised off an in-warehouse rule, like the email-validity drift) |
 | `Severity` | text | Critical / High / Medium / Low (sorted by a hidden key) |
 | `Owner` | text | the steward names |
 | `Status` | text | plain words: Investigating, Root cause identified, Waiting on supplier resend, Fix scheduled, Change raised with ERP team, Resolved |
@@ -184,7 +189,7 @@ Business definitions are binding; exact DAX is Phase 3. Counts format with thous
 | # | Measure | Business definition |
 |---|---|---|
 | 8 | Check Verdict | For a rule-night in context: FAIL if fail rate exceeds `Fail Above %` (or minutes late exceed `Fail Late Mins`, or an expected file is absent); WARN if above the warn threshold; PASS otherwise; "No run" when no result row exists |
-| 9 | Feed Verdict | Worst Check Verdict across the feed's rules that night (fail > warn > pass) |
+| 9 | Feed Verdict | Worst Check Verdict across the feed's **load checks** that night (fail > warn > pass). In-warehouse rule warns do not turn the status board amber; they belong to the Quality Rules page |
 | 10 | Feeds Passing / Warning / Failing | Count of scheduled feeds by Feed Verdict on the selected night (the "6 / 8" KPI) |
 | 11 | Verdict Colour | Returns the hex for the verdict (#57A773 / #D9A03F / #D65F5F / neutral). The single conditional-format measure behind every status chip, tile and grid cell |
 
@@ -272,3 +277,4 @@ Drillthrough target on Feed, hidden from navigation; back button; filter pill. H
 | Date | Change |
 |---|---|
 | 2026-07-07 | First draft for approval. Design set 3a approved beforehand. |
+| 2026-07-07 | Phase 2 deviations written back after the generator build. Check Result columns are `units_checked` / `units_failed` in a rule-defined unit (rows / pounds / files) plus `run_seq` for the W2 dedupe; Rule gains `Unit`, `Is Load Check` and `Active From`; Feed Verdict is judged on load checks only. Break categories gain "Rule threshold breach". CSVs carry business keys (feed_code, rule_id, ISO date), as in projects 1 and 2. Landed figures replace estimates: 29 Jun rulebook 39/6/3 (all three fails EDI's), 14 Jun spike ~54k failing records, timeliness 95.6% vs 97.2-99.0%, MTTR 2.7 days, week flow resolved 9 vs opened 10, register 68 breaks BRK-0126 to BRK-0193. |

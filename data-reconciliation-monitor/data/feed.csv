@@ -1,0 +1,9 @@
+feed_key,feed_code,feed,source_system,schedule,steward,has_amount,arrival_deadline,files_expected
+1,POS,POS transactions,Storeline POS,Daily,L. Prentice,true,05:00,4
+2,ECOM,E-commerce orders,Webshop,Daily,L. Prentice,true,05:00,1
+3,GL,ERP GL journal,Ledger ERP,Weekdays,J. Meads,true,05:00,1
+4,EDI,Supplier EDI invoices,EDI gateway,Mon-Sat,D. Okafor,true,05:00,3
+5,LOG,Logistics shipments,DepotTrack,Daily,S. Varga,false,05:00,2
+6,LOY,Loyalty members,Loyalty CRM,Daily,S. Varga,false,05:00,1
+7,PRD,Product master,Ledger ERP,Daily,J. Meads,false,05:00,1
+8,STO,Store master,Ledger ERP,Daily,J. Meads,false,05:00,1

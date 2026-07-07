@@ -1,0 +1,69 @@
+break_id,opened,resolved,feed_code,category,severity,owner,status
+BRK-0126,2026-04-02,2026-04-04,PRD,Duplicate keys,Low,J. Meads,Resolved
+BRK-0127,2026-04-04,2026-04-10,POS,Amount mismatch,High,L. Prentice,Resolved
+BRK-0128,2026-04-06,2026-04-07,GL,Duplicate keys,Low,J. Meads,Resolved
+BRK-0129,2026-04-08,2026-04-12,GL,Late arrival,Medium,J. Meads,Resolved
+BRK-0130,2026-04-10,2026-04-12,EDI,Row count mismatch,Low,D. Okafor,Resolved
+BRK-0131,2026-04-11,2026-04-12,ECOM,Missing file,Critical,L. Prentice,Resolved
+BRK-0132,2026-04-13,2026-04-16,ECOM,Late arrival,Critical,L. Prentice,Resolved
+BRK-0133,2026-04-15,2026-04-21,POS,Schema drift,Medium,L. Prentice,Resolved
+BRK-0134,2026-04-17,2026-04-18,POS,Amount mismatch,High,L. Prentice,Resolved
+BRK-0135,2026-04-19,2026-04-21,POS,Amount mismatch,High,L. Prentice,Resolved
+BRK-0136,2026-04-20,2026-04-20,GL,Late arrival,Low,J. Meads,Resolved
+BRK-0137,2026-04-22,2026-04-23,ECOM,Late arrival,Low,L. Prentice,Resolved
+BRK-0138,2026-04-24,2026-04-28,LOG,Duplicate keys,Medium,S. Varga,Resolved
+BRK-0139,2026-04-26,2026-04-28,ECOM,Row count mismatch,Medium,L. Prentice,Resolved
+BRK-0140,2026-04-28,2026-05-01,ECOM,Row count mismatch,Medium,L. Prentice,Resolved
+BRK-0141,2026-04-30,2026-05-02,ECOM,Row count mismatch,High,L. Prentice,Resolved
+BRK-0142,2026-05-01,2026-05-01,GL,Late arrival,Medium,J. Meads,Resolved
+BRK-0143,2026-05-03,2026-05-03,LOG,Late arrival,Low,S. Varga,Resolved
+BRK-0144,2026-05-05,2026-05-11,LOY,Late arrival,Low,S. Varga,Resolved
+BRK-0145,2026-05-09,2026-05-11,POS,Late arrival,Medium,L. Prentice,Resolved
+BRK-0146,2026-05-10,2026-05-12,LOY,Missing file,High,S. Varga,Resolved
+BRK-0147,2026-05-12,2026-05-10,ECOM,Late arrival,Medium,L. Prentice,Resolved
+BRK-0148,2026-05-12,2026-05-14,ECOM,Late arrival,Low,L. Prentice,Resolved
+BRK-0149,2026-05-14,2026-05-20,LOY,Missing file,Medium,S. Varga,Resolved
+BRK-0150,2026-05-16,2026-05-18,EDI,Late arrival,Medium,D. Okafor,Resolved
+BRK-0151,2026-05-18,2026-05-19,POS,Late arrival,High,L. Prentice,Resolved
+BRK-0152,2026-05-20,2026-05-23,GL,Late arrival,Medium,J. Meads,Resolved
+BRK-0153,2026-05-21,2026-05-22,LOG,Duplicate keys,Medium,S. Varga,Resolved
+BRK-0154,2026-05-23,2026-05-25,EDI,Late arrival,Medium,D. Okafor,Resolved
+BRK-0155,2026-05-25,2026-05-28,EDI,Row count mismatch,High,D. Okafor,Resolved
+BRK-0156,2026-05-27,2026-05-30,PRD,Missing file,Low,J. Meads,Resolved
+BRK-0157,2026-05-29,2026-06-01,EDI,Missing file,Low,D. Okafor,Resolved
+BRK-0158,2026-05-30,2026-06-02,EDI,Missing file,Low,D. Okafor,Resolved
+BRK-0159,2026-06-01,2026-06-03,ECOM,Missing file,High,L. Prentice,Resolved
+BRK-0160,2026-06-03,2026-06-04,PRD,Row count mismatch,High,J. Meads,Resolved
+BRK-0161,2026-06-05,2026-06-11,GL,Duplicate keys,Low,J. Meads,Resolved
+BRK-0162,2026-06-07,2026-06-07,LOG,Duplicate keys,Medium,S. Varga,Resolved
+BRK-0163,2026-06-09,2026-06-12,LOY,Late arrival,Medium,S. Varga,Resolved
+BRK-0164,2026-06-10,2026-06-13,EDI,Late arrival,Medium,D. Okafor,Resolved
+BRK-0165,2026-06-12,2026-06-18,PRD,Late arrival,Medium,J. Meads,Resolved
+BRK-0166,2026-06-14,2026-06-16,PRD,Late arrival,Low,J. Meads,Resolved
+BRK-0167,2026-06-14,2026-06-15,POS,Row count mismatch,Critical,L. Prentice,Resolved
+BRK-0168,2026-06-16,2026-06-17,ECOM,Missing file,Medium,L. Prentice,Resolved
+BRK-0169,2026-06-18,2026-06-20,POS,Late arrival,Low,L. Prentice,Resolved
+BRK-0170,2026-06-19,2026-06-22,EDI,Row count mismatch,Low,D. Okafor,Resolved
+BRK-0171,2026-06-20,,PRD,Schema drift,Critical,J. Meads,Change raised with ERP team
+BRK-0172,2026-06-20,2026-06-23,EDI,Late arrival,Low,D. Okafor,Resolved
+BRK-0173,2026-06-20,2026-06-24,POS,Amount mismatch,Medium,L. Prentice,Resolved
+BRK-0174,2026-06-21,2026-06-23,LOG,Late arrival,Low,S. Varga,Resolved
+BRK-0175,2026-06-21,2026-06-24,ECOM,Row count mismatch,Medium,L. Prentice,Resolved
+BRK-0176,2026-06-21,2026-06-25,LOY,Duplicate keys,Low,S. Varga,Resolved
+BRK-0177,2026-06-21,,EDI,Late arrival,High,D. Okafor,Monitoring after gateway change
+BRK-0178,2026-06-22,2026-06-23,GL,Late arrival,Low,J. Meads,Resolved
+BRK-0179,2026-06-22,2026-06-24,EDI,Row count mismatch,High,D. Okafor,Resolved
+BRK-0180,2026-06-22,2026-06-25,PRD,Duplicate keys,Low,J. Meads,Resolved
+BRK-0181,2026-06-22,2026-06-26,EDI,Amount mismatch,Medium,D. Okafor,Resolved
+BRK-0182,2026-06-22,,EDI,Row count mismatch,Critical,D. Okafor,Waiting on supplier resend
+BRK-0183,2026-06-22,,GL,Schema drift,High,J. Meads,Extract column added; loader change in test
+BRK-0184,2026-06-23,,ECOM,Duplicate keys,High,L. Prentice,Fix in code review
+BRK-0185,2026-06-24,,EDI,Amount mismatch,Medium,D. Okafor,Investigating persistent small variance
+BRK-0186,2026-06-26,,EDI,Late arrival,Medium,D. Okafor,Supplier SFTP window under review
+BRK-0187,2026-06-26,,LOY,Duplicate keys,Low,S. Varga,Fix scheduled 01 Jul
+BRK-0188,2026-06-27,,ECOM,Amount mismatch,Medium,L. Prentice,Root cause identified: refund timing
+BRK-0189,2026-06-27,,LOY,Rule threshold breach,Medium,S. Varga,Email validity drift under investigation
+BRK-0190,2026-06-28,,ECOM,Row count mismatch,Low,L. Prentice,Linked to refund timing
+BRK-0191,2026-06-28,,POS,Schema drift,High,L. Prentice,New till software field under review
+BRK-0192,2026-06-29,,EDI,Missing file,Critical,D. Okafor,Investigating
+BRK-0193,2026-06-29,,ECOM,Late arrival,Low,L. Prentice,Arrived 05:07 - monitoring
