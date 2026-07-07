@@ -1,0 +1,32 @@
+relationship FeedRun_Date_Date_Date
+	fromColumn: 'Feed Run'.Date
+	toColumn: Date.Date
+
+relationship FeedRun_FeedCode_Feed_FeedCode
+	fromColumn: 'Feed Run'.FeedCode
+	toColumn: Feed.FeedCode
+
+relationship CheckResult_Date_Date_Date
+	fromColumn: 'Check Result'.Date
+	toColumn: Date.Date
+
+relationship 'CheckResult_RuleId_Rule_Rule Id'
+	fromColumn: 'Check Result'.RuleId
+	toColumn: Rule.'Rule Id'
+
+relationship Rule_FeedCode_Feed_FeedCode
+	fromColumn: Rule.FeedCode
+	toColumn: Feed.FeedCode
+
+relationship Break_Opened_Date_Date
+	fromColumn: Break.Opened
+	toColumn: Date.Date
+
+relationship Break_Resolved_Date_Date
+	isActive: false
+	fromColumn: Break.Resolved
+	toColumn: Date.Date
+
+relationship Break_FeedCode_Feed_FeedCode
+	fromColumn: Break.FeedCode
+	toColumn: Feed.FeedCode

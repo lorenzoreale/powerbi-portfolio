@@ -1,0 +1,65 @@
+/// The eight monitored feeds, with source system, schedule and steward. A night a feed is not scheduled is a no-run, not a failure (W1).
+table Feed
+
+	column FeedKey
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		sourceColumn: FeedKey
+
+	column FeedCode
+		dataType: string
+		isHidden
+		summarizeBy: none
+		sourceColumn: FeedCode
+
+	/// Feed name, in load order.
+	column Feed
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Feed
+		sortByColumn: FeedKey
+
+	column 'Source System'
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Source System
+
+	/// Daily / Weekdays / Mon-Sat. Drives which nights are no-runs.
+	column Schedule
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Schedule
+
+	column Steward
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Steward
+
+	column 'Has Amount'
+		dataType: boolean
+		isHidden
+		summarizeBy: none
+		sourceColumn: Has Amount
+
+	column 'Arrival Deadline'
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Arrival Deadline
+
+	column FilesExpected
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		sourceColumn: FilesExpected
+
+	partition Feed = m
+		mode: import
+		source =
+				let
+				    Source = Csv.Document(File.Contents(#"Data Folder" & "\feed.csv"), [Delimiter = ",", Columns = 9, Encoding = 65001, QuoteStyle = QuoteStyle.Csv]),
+				    Headers = Table.PromoteHeaders(Source, [PromoteAllScalars = true]),
+				    Typed = Table.TransformColumnTypes(Headers, {{"feed_key", Int64.Type}, {"feed_code", type text}, {"feed", type text}, {"source_system", type text}, {"schedule", type text}, {"steward", type text}, {"has_amount", type logical}, {"arrival_deadline", type text}, {"files_expected", Int64.Type}}),
+				    Renamed = Table.RenameColumns(Typed, {{"feed_key", "FeedKey"}, {"feed_code", "FeedCode"}, {"feed", "Feed"}, {"source_system", "Source System"}, {"schedule", "Schedule"}, {"steward", "Steward"}, {"has_amount", "Has Amount"}, {"arrival_deadline", "Arrival Deadline"}, {"files_expected", "FilesExpected"}})
+				in
+				    Renamed

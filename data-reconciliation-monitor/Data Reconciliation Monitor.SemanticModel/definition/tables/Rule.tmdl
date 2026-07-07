@@ -1,0 +1,85 @@
+/// The 48-rule quality rulebook with its thresholds. Verdicts are never stored: the model derives pass/warn/fail from raw observations against these thresholds, so changing a tolerance here re-derives every verdict. Load checks (row count, amount, arrival) drive the feed status board; the rest belong to the Quality Rules page.
+table Rule
+
+	/// Stable, quotable id: R-001 to R-048.
+	column 'Rule Id'
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Rule Id
+
+	column 'Rule Name'
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Rule Name
+
+	column FeedCode
+		dataType: string
+		isHidden
+		summarizeBy: none
+		sourceColumn: FeedCode
+
+	/// Completeness / Validity / Uniqueness / Timeliness / Consistency.
+	column 'Quality Dimension'
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Quality Dimension
+
+	/// What the rule counts: rows, pounds (amount reconciliations) or files (arrival checks).
+	column Unit
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Unit
+
+	column 'Is Load Check'
+		dataType: boolean
+		isHidden
+		summarizeBy: none
+		sourceColumn: Is Load Check
+
+	/// Human-readable tolerance, stated on visuals.
+	column Tolerance
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Tolerance
+
+	column 'Warn Above %'
+		dataType: double
+		isHidden
+		summarizeBy: none
+		sourceColumn: Warn Above %
+
+	column 'Fail Above %'
+		dataType: double
+		isHidden
+		summarizeBy: none
+		sourceColumn: Fail Above %
+
+	column 'Warn Late Mins'
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		sourceColumn: Warn Late Mins
+
+	column 'Fail Late Mins'
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		sourceColumn: Fail Late Mins
+
+	/// First night the rule was evaluated; blank = whole window (W3).
+	column 'Active From'
+		dataType: dateTime
+		formatString: dd mmm yyyy
+		summarizeBy: none
+		sourceColumn: Active From
+
+	partition Rule = m
+		mode: import
+		source =
+				let
+				    Source = Csv.Document(File.Contents(#"Data Folder" & "\rule.csv"), [Delimiter = ",", Columns = 12, Encoding = 65001, QuoteStyle = QuoteStyle.Csv]),
+				    Headers = Table.PromoteHeaders(Source, [PromoteAllScalars = true]),
+				    Typed = Table.TransformColumnTypes(Headers, {{"rule_id", type text}, {"rule_name", type text}, {"feed_code", type text}, {"quality_dimension", type text}, {"unit", type text}, {"is_load_check", type logical}, {"tolerance_label", type text}, {"warn_above_pct", type number}, {"fail_above_pct", type number}, {"warn_late_mins", Int64.Type}, {"fail_late_mins", Int64.Type}, {"active_from", type date}}),
+				    Renamed = Table.RenameColumns(Typed, {{"rule_id", "Rule Id"}, {"rule_name", "Rule Name"}, {"feed_code", "FeedCode"}, {"quality_dimension", "Quality Dimension"}, {"unit", "Unit"}, {"is_load_check", "Is Load Check"}, {"tolerance_label", "Tolerance"}, {"warn_above_pct", "Warn Above %"}, {"fail_above_pct", "Fail Above %"}, {"warn_late_mins", "Warn Late Mins"}, {"fail_late_mins", "Fail Late Mins"}, {"active_from", "Active From"}})
+				in
+				    Renamed

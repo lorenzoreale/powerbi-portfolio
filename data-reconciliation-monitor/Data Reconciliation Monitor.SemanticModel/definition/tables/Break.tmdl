@@ -1,0 +1,226 @@
+/// Register: one row per discrepancy raised. Open/closed state is always judged as at the selected run date - the register is time-travelling, not a snapshot. One record is resolved before it opened (W5): flagged, excluded from MTTR, left visible.
+table Break
+
+	/// Breaks open as at the selected night: opened on or before it, not yet resolved by it.
+	measure 'Open Breaks' =
+			VAR d = [Run Anchor]
+			RETURN
+			    CALCULATE (
+			        COUNTROWS ( FILTER ( Break, Break[Opened] <= d && ( ISBLANK ( Break[Resolved] ) || Break[Resolved] > d ) ) ),
+			        REMOVEFILTERS ( 'Date' ) )
+		formatString: #,0
+		displayFolder: Breaks
+
+	measure 'Critical Open Breaks' = CALCULATE ( [Open Breaks], Break[Severity] = "Critical" )
+		formatString: #,0
+		displayFolder: Breaks
+
+	/// 1 when the break in context is open as at the selected night. Filters the register.
+	measure 'Is Open' = IF ( [Open Breaks] > 0, 1 )
+		formatString: 0
+		isHidden
+		displayFolder: Breaks
+
+	/// Days since the break in context opened, as at the selected night.
+	measure 'Break Age Days' =
+			VAR d = [Run Anchor]
+			RETURN
+			    CALCULATE (
+			        MAXX (
+			            FILTER ( Break, Break[Opened] <= d && ( ISBLANK ( Break[Resolved] ) || Break[Resolved] > d ) ),
+			            INT ( d - Break[Opened] ) ),
+			        REMOVEFILTERS ( 'Date' ) )
+		formatString: 0\d
+		displayFolder: Breaks
+
+	/// Median age of the open breaks, in days.
+	measure 'Median Open Age' =
+			VAR d = [Run Anchor]
+			RETURN
+			    CALCULATE (
+			        MEDIANX (
+			            FILTER ( Break, Break[Opened] <= d && ( ISBLANK ( Break[Resolved] ) || Break[Resolved] > d ) ),
+			            INT ( d - Break[Opened] ) ),
+			        REMOVEFILTERS ( 'Date' ) )
+		formatString: #,0
+		displayFolder: Breaks
+
+	measure 'Oldest Open Break Age' =
+			VAR d = [Run Anchor]
+			RETURN
+			    CALCULATE (
+			        MAXX (
+			            FILTER ( Break, Break[Opened] <= d && ( ISBLANK ( Break[Resolved] ) || Break[Resolved] > d ) ),
+			            INT ( d - Break[Opened] ) ),
+			        REMOVEFILTERS ( 'Date' ) )
+		formatString: 0\d
+		displayFolder: Breaks
+
+	/// Id, feed and category of the oldest open break, for the KPI context line.
+	measure 'Oldest Open Break Detail' =
+			VAR d = [Run Anchor]
+			RETURN
+			    CALCULATE (
+			        VAR openSet = FILTER ( Break, Break[Opened] <= d && ( ISBLANK ( Break[Resolved] ) || Break[Resolved] > d ) )
+			        VAR oldest = TOPN ( 1, openSet, Break[Opened], ASC )
+			        RETURN
+			            CONCATENATEX ( oldest, Break[Break Id] & "  ·  " & RELATED ( Feed[Feed] ) & "  ·  " & LOWER ( Break[Category] ), ", " ),
+			        REMOVEFILTERS ( 'Date' ) )
+		displayFolder: Breaks
+
+	/// Mean days to resolve, over breaks resolved in the trailing 28 nights. Excludes the impossible record (W5) via Resolved >= Opened.
+	measure 'Mean Time To Resolve' =
+			VAR d = [Run Anchor]
+			RETURN
+			    CALCULATE (
+			        AVERAGEX (
+			            FILTER ( Break, NOT ISBLANK ( Break[Resolved] ) && Break[Resolved] > d - 28 && Break[Resolved] <= d && Break[Resolved] >= Break[Opened] ),
+			            1.0 * ( Break[Resolved] - Break[Opened] ) ),
+			        REMOVEFILTERS ( 'Date' ) )
+		formatString: 0.0
+		displayFolder: Breaks
+
+	/// The stated resolution target, in days.
+	measure 'MTTR Target' = 3.0
+		formatString: 0.0
+		displayFolder: Breaks
+
+	measure 'Resolved This Week' =
+			VAR d = [Run Anchor]
+			RETURN
+			    CALCULATE (
+			        COUNTROWS ( FILTER ( Break, NOT ISBLANK ( Break[Resolved] ) && Break[Resolved] > d - 7 && Break[Resolved] <= d ) ),
+			        REMOVEFILTERS ( 'Date' ) )
+		formatString: #,0
+		displayFolder: Breaks
+
+	measure 'Opened This Week' =
+			VAR d = [Run Anchor]
+			RETURN
+			    CALCULATE (
+			        COUNTROWS ( FILTER ( Break, Break[Opened] > d - 7 && Break[Opened] <= d ) ),
+			        REMOVEFILTERS ( 'Date' ) )
+		formatString: #,0
+		displayFolder: Breaks
+
+	/// Breaks resolved per calendar night, through the inactive resolved-date relationship.
+	measure 'Resolved per Night' =
+			CALCULATE ( COUNTROWS ( Break ), USERELATIONSHIP ( Break[Resolved], 'Date'[Date] ) )
+		formatString: #,0
+		displayFolder: Breaks
+
+	/// The feed carrying the most open breaks.
+	measure 'Repeat Offender Feed' =
+			VAR t = TOPN ( 1, ADDCOLUMNS ( VALUES ( Feed[Feed] ), "@n", [Open Breaks] ), [@n], DESC )
+			RETURN
+			    CONCATENATEX ( t, Feed[Feed], ", " )
+		displayFolder: Breaks
+
+	measure 'Open Breaks (0-1 days)' =
+			VAR d = [Run Anchor]
+			RETURN
+			    CALCULATE (
+			        COUNTROWS ( FILTER ( Break, Break[Opened] <= d && ( ISBLANK ( Break[Resolved] ) || Break[Resolved] > d ) && INT ( d - Break[Opened] ) <= 1 ) ),
+			        REMOVEFILTERS ( 'Date' ) )
+		formatString: #,0
+		displayFolder: Breaks
+
+	measure 'Open Breaks (2-3 days)' =
+			VAR d = [Run Anchor]
+			RETURN
+			    CALCULATE (
+			        COUNTROWS ( FILTER ( Break, Break[Opened] <= d && ( ISBLANK ( Break[Resolved] ) || Break[Resolved] > d ) && INT ( d - Break[Opened] ) >= 2 && INT ( d - Break[Opened] ) <= 3 ) ),
+			        REMOVEFILTERS ( 'Date' ) )
+		formatString: #,0
+		displayFolder: Breaks
+
+	measure 'Open Breaks (4-7 days)' =
+			VAR d = [Run Anchor]
+			RETURN
+			    CALCULATE (
+			        COUNTROWS ( FILTER ( Break, Break[Opened] <= d && ( ISBLANK ( Break[Resolved] ) || Break[Resolved] > d ) && INT ( d - Break[Opened] ) >= 4 && INT ( d - Break[Opened] ) <= 7 ) ),
+			        REMOVEFILTERS ( 'Date' ) )
+		formatString: #,0
+		displayFolder: Breaks
+
+	measure 'Open Breaks (over 7 days)' =
+			VAR d = [Run Anchor]
+			RETURN
+			    CALCULATE (
+			        COUNTROWS ( FILTER ( Break, Break[Opened] <= d && ( ISBLANK ( Break[Resolved] ) || Break[Resolved] > d ) && INT ( d - Break[Opened] ) > 7 ) ),
+			        REMOVEFILTERS ( 'Date' ) )
+		formatString: #,0
+		displayFolder: Breaks
+
+	/// Breaks with a resolved date before their opened date (W5). The monitor monitors itself; expected 1.
+	measure 'Invalid Break Records' =
+			COUNTROWS ( FILTER ( Break, NOT ISBLANK ( Break[Resolved] ) && Break[Resolved] < Break[Opened] ) ) + 0
+		formatString: #,0
+		displayFolder: Data quality
+
+	/// Critical count and total, for the alarm card context line.
+	measure 'KPI Breaks Context' = [Critical Open Breaks] & " critical  ·  " & [Open Breaks] & " open"
+		isHidden
+		displayFolder: Presentation
+
+	column 'Break Id'
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Break Id
+
+	column Opened
+		dataType: dateTime
+		formatString: dd mmm
+		summarizeBy: none
+		sourceColumn: Opened
+
+	column Resolved
+		dataType: dateTime
+		formatString: dd mmm
+		summarizeBy: none
+		sourceColumn: Resolved
+
+	column FeedCode
+		dataType: string
+		isHidden
+		summarizeBy: none
+		sourceColumn: FeedCode
+
+	column Category
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Category
+
+	column Severity
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Severity
+		sortByColumn: SeveritySort
+
+	column SeveritySort
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		sourceColumn: SeveritySort
+
+	column Owner
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Owner
+
+	column Status
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Status
+
+	partition Break = m
+		mode: import
+		source =
+				let
+				    Source = Csv.Document(File.Contents(#"Data Folder" & "\break_register.csv"), [Delimiter = ",", Columns = 8, Encoding = 65001, QuoteStyle = QuoteStyle.Csv]),
+				    Headers = Table.PromoteHeaders(Source, [PromoteAllScalars = true]),
+				    Typed = Table.TransformColumnTypes(Headers, {{"break_id", type text}, {"opened", type date}, {"resolved", type date}, {"feed_code", type text}, {"category", type text}, {"severity", type text}, {"owner", type text}, {"status", type text}}),
+				    AddSeveritySort = Table.AddColumn(Typed, "SeveritySort", each if [severity] = "Critical" then 1 else if [severity] = "High" then 2 else if [severity] = "Medium" then 3 else 4, Int64.Type),
+				    Renamed = Table.RenameColumns(AddSeveritySort, {{"break_id", "Break Id"}, {"opened", "Opened"}, {"resolved", "Resolved"}, {"feed_code", "FeedCode"}, {"category", "Category"}, {"severity", "Severity"}, {"owner", "Owner"}, {"status", "Status"}})
+				in
+				    Renamed

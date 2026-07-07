@@ -1,0 +1,230 @@
+/// Fact: one row per rule per scheduled night after keep-latest dedupe on run_seq (W2). Raw observations only - units checked, units failed, minutes late; the verdict measures derive pass/warn/fail from the Rule table's thresholds.
+table 'Check Result'
+
+	/// Verdict rank for a single rule-night: 1 pass, 2 warn, 3 fail; blank when not evaluated. Needs a single rule in context.
+	measure '_Check Rank' =
+			IF ( NOT ISEMPTY ( 'Check Result' ),
+			    VAR dim = SELECTEDVALUE ( 'Rule'[Quality Dimension] )
+			    VAR failed = SUM ( 'Check Result'[UnitsFailed] )
+			    VAR checked = SUM ( 'Check Result'[UnitsChecked] )
+			    RETURN
+			        IF ( dim = "Timeliness",
+			            VAR late = MAX ( 'Check Result'[MinutesLate] )
+			            RETURN
+			                IF ( failed > 0 || late > SELECTEDVALUE ( 'Rule'[Fail Late Mins] ), 3,
+			                    IF ( late > SELECTEDVALUE ( 'Rule'[Warn Late Mins] ), 2, 1 ) ),
+			            VAR rate = DIVIDE ( failed, checked ) * 100
+			            RETURN
+			                IF ( rate > SELECTEDVALUE ( 'Rule'[Fail Above %] ), 3,
+			                    IF ( rate > SELECTEDVALUE ( 'Rule'[Warn Above %] ), 2, 1 ) ) ) )
+		formatString: 0
+		isHidden
+		displayFolder: Verdicts
+
+	/// Worst rank across the feed's load checks (row count, amount, arrival) for the night in context. In-warehouse rule warns do not turn the board amber.
+	measure '_Feed Rank' =
+			MAXX (
+			    CALCULATETABLE ( VALUES ( 'Rule'[Rule Id] ), 'Rule'[Is Load Check] = TRUE () ),
+			    [_Check Rank] )
+		formatString: 0
+		isHidden
+		displayFolder: Verdicts
+
+	/// PASS / WARN / FAIL for the rule in context on the selected night.
+	measure 'Check Verdict' =
+			VAR d = [Run Anchor]
+			VAR r = CALCULATE ( [_Check Rank], REMOVEFILTERS ( 'Date' ), 'Date'[Date] = d )
+			RETURN
+			    SWITCH ( r, 3, "FAIL", 2, "WARN", 1, "PASS" )
+		displayFolder: Verdicts
+
+	/// The feed's verdict on the selected night, judged on load checks; "No run" when the feed was not scheduled.
+	measure 'Feed Verdict' =
+			VAR d = [Run Anchor]
+			VAR r = CALCULATE ( [_Feed Rank], REMOVEFILTERS ( 'Date' ), 'Date'[Date] = d )
+			RETURN
+			    SWITCH ( r, 3, "FAIL", 2, "WARN", 1, "PASS", "No run" )
+		displayFolder: Verdicts
+
+	/// Feed verdict per night for the check grid, trailing 14 nights; blank outside the window.
+	measure 'Feed Verdict (nightly)' =
+			VAR d = [Run Anchor]
+			VAR cur = MAX ( 'Date'[Date] )
+			RETURN
+			    IF ( NOT ISBLANK ( cur ) && cur > d - 14 && cur <= d,
+			        SWITCH ( [_Feed Rank], 3, "FAIL", 2, "WARN", 1, "PASS", "No run" ) )
+		displayFolder: Verdicts
+
+	/// Chip font colour for the rule verdict in context. The single place the traffic discipline lives.
+	measure 'Check Verdict Colour' =
+			SWITCH ( [Check Verdict], "FAIL", "#E58A8A", "WARN", "#E0B25E", "PASS", "#7FC79A" )
+		isHidden
+		displayFolder: Verdicts
+
+	/// Chip background for the rule verdict in context.
+	measure 'Check Verdict Fill' =
+			SWITCH ( [Check Verdict], "FAIL", "#342226", "WARN", "#322E1E", "PASS", "#243530" )
+		isHidden
+		displayFolder: Verdicts
+
+	/// Status colour for the feed verdict on the selected night.
+	measure 'Feed Verdict Colour' =
+			SWITCH ( [Feed Verdict], "FAIL", "#D65F5F", "WARN", "#D9A03F", "PASS", "#57A773", "No run", "#232B36" )
+		isHidden
+		displayFolder: Verdicts
+
+	/// Cell colour for the check grid, trailing 14 nights.
+	measure 'Feed Verdict Colour (nightly)' =
+			SWITCH ( [Feed Verdict (nightly)], "FAIL", "#D65F5F", "WARN", "#D9A03F", "PASS", "#57A773", "No run", "#232B36" )
+		isHidden
+		displayFolder: Verdicts
+
+	/// Feeds scheduled on the selected night.
+	measure 'Feeds Scheduled' =
+			COUNTROWS ( FILTER ( VALUES ( Feed[Feed] ), NOT ISBLANK ( [Feed Verdict] ) && [Feed Verdict] <> "No run" ) )
+		formatString: #,0
+		displayFolder: Verdicts
+
+	measure 'Feeds Passing' = COUNTROWS ( FILTER ( VALUES ( Feed[Feed] ), [Feed Verdict] = "PASS" ) ) + 0
+		formatString: #,0
+		displayFolder: Verdicts
+
+	measure 'Feeds Warning' = COUNTROWS ( FILTER ( VALUES ( Feed[Feed] ), [Feed Verdict] = "WARN" ) ) + 0
+		formatString: #,0
+		displayFolder: Verdicts
+
+	measure 'Feeds Failing' = COUNTROWS ( FILTER ( VALUES ( Feed[Feed] ), [Feed Verdict] = "FAIL" ) ) + 0
+		formatString: #,0
+		displayFolder: Verdicts
+
+	/// Rules with a result on the selected night. Denominators count evaluations, not nights x rules (W3).
+	measure 'Rules Evaluated' =
+			VAR d = [Run Anchor]
+			RETURN
+			    CALCULATE ( COUNTROWS ( 'Check Result' ), REMOVEFILTERS ( 'Date' ), 'Date'[Date] = d )
+		formatString: #,0
+		displayFolder: Quality rules
+
+	measure 'Rules Passing' = COUNTROWS ( FILTER ( VALUES ( 'Rule'[Rule Id] ), [Check Verdict] = "PASS" ) ) + 0
+		formatString: #,0
+		displayFolder: Quality rules
+
+	measure 'Rules Warning' = COUNTROWS ( FILTER ( VALUES ( 'Rule'[Rule Id] ), [Check Verdict] = "WARN" ) ) + 0
+		formatString: #,0
+		displayFolder: Quality rules
+
+	measure 'Rules Failing' = COUNTROWS ( FILTER ( VALUES ( 'Rule'[Rule Id] ), [Check Verdict] = "FAIL" ) ) + 0
+		formatString: #,0
+		displayFolder: Quality rules
+
+	/// Units checked on the selected night, in the rule's unit.
+	measure 'Units Checked' =
+			VAR d = [Run Anchor]
+			RETURN
+			    CALCULATE ( SUM ( 'Check Result'[UnitsChecked] ), REMOVEFILTERS ( 'Date' ), 'Date'[Date] = d )
+		formatString: #,0
+		displayFolder: Quality rules
+
+	/// Units failing on the selected night; 0 means zero.
+	measure 'Units Failed' =
+			VAR d = [Run Anchor]
+			RETURN
+			    CALCULATE ( SUM ( 'Check Result'[UnitsFailed] ), REMOVEFILTERS ( 'Date' ), 'Date'[Date] = d )
+		formatString: #,0
+		displayFolder: Quality rules
+
+	measure 'Fail Rate %' = DIVIDE ( [Units Failed], [Units Checked] )
+		formatString: 0.00%
+		displayFolder: Quality rules
+
+	/// Minutes past the 05:00 deadline on the selected night (timeliness rules).
+	measure 'Minutes Late' =
+			VAR d = [Run Anchor]
+			RETURN
+			    CALCULATE ( MAX ( 'Check Result'[MinutesLate] ), REMOVEFILTERS ( 'Date' ), 'Date'[Date] = d )
+		formatString: #,0
+		displayFolder: Quality rules
+
+	/// Share of rule-night evaluations passing over the trailing 30 nights. Sliced by Quality Dimension for the dimension bars.
+	measure 'Dimension Pass Rate %' =
+			VAR d = [Run Anchor]
+			RETURN
+			    CALCULATE (
+			        AVERAGEX (
+			            SUMMARIZE ( 'Check Result', 'Rule'[Rule Id], 'Date'[Date] ),
+			            IF ( [_Check Rank] = 1, 1, 0 ) ),
+			        REMOVEFILTERS ( 'Date' ), 'Date'[Date] > d - 30, 'Date'[Date] <= d )
+		formatString: 0.0%
+		displayFolder: Quality rules
+
+	/// Records failing rows-unit rules per night, trailing 30 nights - the incident-memory trend.
+	measure 'Rows Failing (nightly)' =
+			VAR d = [Run Anchor]
+			VAR cur = MAX ( 'Date'[Date] )
+			RETURN
+			    IF ( NOT ISBLANK ( cur ) && cur > d - 30 && cur <= d,
+			        CALCULATE ( SUM ( 'Check Result'[UnitsFailed] ), 'Rule'[Unit] = "rows" ) )
+		formatString: #,0
+		displayFolder: Trends
+
+	/// "x / y" feeds-passing headline.
+	measure 'KPI Feeds Label' = [Feeds Passing] & " / " & [Feeds Scheduled]
+		isHidden
+		displayFolder: Presentation
+
+	column Date
+		dataType: dateTime
+		isHidden
+		formatString: dd mmm yyyy
+		summarizeBy: none
+		sourceColumn: Date
+
+	column RuleId
+		dataType: string
+		isHidden
+		summarizeBy: none
+		sourceColumn: RuleId
+
+	column FeedCode
+		dataType: string
+		isHidden
+		summarizeBy: none
+		sourceColumn: FeedCode
+
+	column RunSeq
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		sourceColumn: RunSeq
+
+	column UnitsChecked
+		dataType: int64
+		isHidden
+		summarizeBy: sum
+		sourceColumn: UnitsChecked
+
+	column UnitsFailed
+		dataType: int64
+		isHidden
+		summarizeBy: sum
+		sourceColumn: UnitsFailed
+
+	column MinutesLate
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		sourceColumn: MinutesLate
+
+	partition 'Check Result' = m
+		mode: import
+		source =
+				let
+				    Source = Csv.Document(File.Contents(#"Data Folder" & "\check_result.csv"), [Delimiter = ",", Columns = 7, Encoding = 65001, QuoteStyle = QuoteStyle.Csv]),
+				    Headers = Table.PromoteHeaders(Source, [PromoteAllScalars = true]),
+				    Typed = Table.TransformColumnTypes(Headers, {{"date", type date}, {"rule_id", type text}, {"feed_code", type text}, {"run_seq", Int64.Type}, {"units_checked", Int64.Type}, {"units_failed", Int64.Type}, {"minutes_late", Int64.Type}}),
+				    KeepLatest = Table.Group(Typed, {"date", "rule_id"}, {{"r", each Table.First(Table.Sort(_, {{"run_seq", Order.Descending}})), type record}}),
+				    Expanded = Table.ExpandRecordColumn(KeepLatest, "r", {"feed_code", "run_seq", "units_checked", "units_failed", "minutes_late"}),
+				    Retyped = Table.TransformColumnTypes(Expanded, {{"run_seq", Int64.Type}, {"units_checked", Int64.Type}, {"units_failed", Int64.Type}, {"minutes_late", Int64.Type}}),
+				    Renamed = Table.RenameColumns(Retyped, {{"date", "Date"}, {"rule_id", "RuleId"}, {"feed_code", "FeedCode"}, {"run_seq", "RunSeq"}, {"units_checked", "UnitsChecked"}, {"units_failed", "UnitsFailed"}, {"minutes_late", "MinutesLate"}})
+				in
+				    Renamed

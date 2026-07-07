@@ -1,0 +1,72 @@
+/// Daily date table, 01 Apr to 30 Jun 2026, marked as a date table. Runs are nightly; trailing 14/30-night windows need day arithmetic.
+table Date
+	dataCategory: Time
+
+	/// The calendar day. Key column.
+	column Date
+		dataType: dateTime
+		isKey
+		formatString: dd mmm yyyy
+		summarizeBy: none
+		sourceColumn: Date
+
+	column DateKey
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		sourceColumn: DateKey
+
+	/// Short label, e.g. 29 Jun. Sorted chronologically.
+	column 'Day Label'
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Day Label
+		sortByColumn: DateKey
+
+	column Weekday
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Weekday
+		sortByColumn: WeekdayNum
+
+	column WeekdayNum
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		sourceColumn: WeekdayNum
+
+	column 'Is Weekend'
+		dataType: boolean
+		summarizeBy: none
+		sourceColumn: Is Weekend
+
+	column 'Week Start'
+		dataType: dateTime
+		formatString: dd mmm yyyy
+		summarizeBy: none
+		sourceColumn: Week Start
+
+	column Month
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Month
+		sortByColumn: MonthKey
+
+	column MonthKey
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		sourceColumn: MonthKey
+
+	partition Date = m
+		mode: import
+		source =
+				let
+				    Source = Csv.Document(File.Contents(#"Data Folder" & "\date.csv"), [Delimiter = ",", Columns = 7, Encoding = 65001, QuoteStyle = QuoteStyle.Csv]),
+				    Headers = Table.PromoteHeaders(Source, [PromoteAllScalars = true]),
+				    Typed = Table.TransformColumnTypes(Headers, {{"date", type date}, {"date_key", Int64.Type}, {"day_label", type text}, {"weekday", type text}, {"is_weekend", type logical}, {"week_start", type date}, {"month", type text}}),
+				    AddWeekdayNum = Table.AddColumn(Typed, "WeekdayNum", each Date.DayOfWeek([date], Day.Monday) + 1, Int64.Type),
+				    AddMonthKey = Table.AddColumn(AddWeekdayNum, "MonthKey", each Date.Year([date]) * 100 + Date.Month([date]), Int64.Type),
+				    Renamed = Table.RenameColumns(AddMonthKey, {{"date", "Date"}, {"date_key", "DateKey"}, {"day_label", "Day Label"}, {"weekday", "Weekday"}, {"is_weekend", "Is Weekend"}, {"week_start", "Week Start"}, {"month", "Month"}})
+				in
+				    Renamed

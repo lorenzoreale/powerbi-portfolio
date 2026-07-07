@@ -1,0 +1,32 @@
+/// Disconnected run-date selector. The Run date slicer binds here, so the real Date table stays free for trend axes; every anchored measure reads the selection through [Run Anchor].
+table 'Run Date'
+
+	/// Hidden anchor read by every "as at the selected night" measure. Defaults to the latest run (29 Jun 2026) when nothing is selected.
+	measure 'Run Anchor' = SELECTEDVALUE ( 'Run Date'[Run Date], MAX ( 'Run Date'[Run Date] ) )
+		formatString: dd mmm yyyy
+		isHidden
+		displayFolder: Presentation
+
+	/// Title-band label for the selected run.
+	measure 'Run Date Label' = "run for " & FORMAT ( [Run Anchor], "ddd dd mmm yyyy" )
+		isHidden
+		displayFolder: Presentation
+
+	column 'Run Date'
+		dataType: dateTime
+		formatString: dd mmm yyyy
+		summarizeBy: none
+		sourceColumn: Run Date
+
+	partition 'Run Date' = m
+		mode: import
+		source =
+				let
+				    Source = Csv.Document(File.Contents(#"Data Folder" & "\date.csv"), [Delimiter = ",", Columns = 7, Encoding = 65001, QuoteStyle = QuoteStyle.Csv]),
+				    Headers = Table.PromoteHeaders(Source, [PromoteAllScalars = true]),
+				    Selected = Table.SelectColumns(Headers, {"date"}),
+				    Typed = Table.TransformColumnTypes(Selected, {{"date", type date}}),
+				    RunNights = Table.SelectRows(Typed, each [date] <= #date(2026, 6, 29)),
+				    Renamed = Table.RenameColumns(RunNights, {{"date", "Run Date"}})
+				in
+				    Renamed

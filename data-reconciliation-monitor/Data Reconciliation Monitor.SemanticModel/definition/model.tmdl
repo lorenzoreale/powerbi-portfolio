@@ -1,0 +1,16 @@
+model 'Data Reconciliation Monitor'
+	culture: en-US
+	defaultPowerBIDataSourceVersion: powerBI_V3
+	discourageImplicitMeasures
+	sourceQueryCulture: en-GB
+	dataAccessOptions
+		legacyRedirects
+		returnErrorValuesAsNull
+
+ref table Date
+ref table Feed
+ref table Rule
+ref table 'Feed Run'
+ref table 'Check Result'
+ref table Break
+ref table 'Run Date'

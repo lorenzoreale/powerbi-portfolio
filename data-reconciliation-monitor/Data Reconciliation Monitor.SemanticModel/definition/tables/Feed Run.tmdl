@@ -1,0 +1,193 @@
+/// Fact: one row per feed per scheduled night - pairwise source/warehouse counts and amounts, files, arrival. Measurements about data, not the data itself. Normalises DepotTrack's inconsistent arrival formats at load (W4); non-monetary feeds have genuinely blank amounts (W6).
+table 'Feed Run'
+
+	/// Source rows in the selected night's extracts.
+	measure 'Source Rows' =
+			VAR d = [Run Anchor]
+			RETURN
+			    CALCULATE ( SUM ( 'Feed Run'[SourceRows] ), REMOVEFILTERS ( 'Date' ), 'Date'[Date] = d )
+		formatString: #,0
+		displayFolder: Reconciliation
+
+	/// Rows landed in the warehouse on the selected night.
+	measure 'Warehouse Rows' =
+			VAR d = [Run Anchor]
+			RETURN
+			    CALCULATE ( SUM ( 'Feed Run'[WarehouseRows] ), REMOVEFILTERS ( 'Date' ), 'Date'[Date] = d )
+		formatString: #,0
+		displayFolder: Reconciliation
+
+	/// Warehouse minus source, signed. A matched feed shows 0, not blank.
+	measure 'Row Delta' = IF ( NOT ISBLANK ( [Source Rows] ), [Warehouse Rows] - [Source Rows] )
+		formatString: +#,0;-#,0;0
+		displayFolder: Reconciliation
+
+	/// Source rows compared on the selected night - the headline volume KPI.
+	measure 'Rows Reconciled' = [Source Rows]
+		formatString: #,0
+		displayFolder: Reconciliation
+
+	/// 1 minus (absolute row deltas over source rows), selected night. Judged against the stated 99.90% threshold.
+	measure 'Row Match Rate %' =
+			VAR d = [Run Anchor]
+			RETURN
+			    CALCULATE ( 1 - DIVIDE ( SUMX ( 'Feed Run', ABS ( 'Feed Run'[WarehouseRows] - 'Feed Run'[SourceRows] ) ), SUM ( 'Feed Run'[SourceRows] ) ), REMOVEFILTERS ( 'Date' ), 'Date'[Date] = d )
+		formatString: 0.00%
+		displayFolder: Reconciliation
+
+	/// The stated row match threshold, drawn on the trend.
+	measure 'Match Rate Threshold' = 0.999
+		formatString: 0.00%
+		displayFolder: Reconciliation
+
+	/// Source amount on the selected night. BLANK (a dash) for non-monetary feeds - absence shown honestly (W6).
+	measure 'Source Amount' =
+			VAR d = [Run Anchor]
+			RETURN
+			    CALCULATE ( SUM ( 'Feed Run'[SourceAmount] ), REMOVEFILTERS ( 'Date' ), 'Date'[Date] = d )
+		formatString: #,0
+		displayFolder: Reconciliation
+
+	measure 'Warehouse Amount' =
+			VAR d = [Run Anchor]
+			RETURN
+			    CALCULATE ( SUM ( 'Feed Run'[WarehouseAmount] ), REMOVEFILTERS ( 'Date' ), 'Date'[Date] = d )
+		formatString: #,0
+		displayFolder: Reconciliation
+
+	/// Warehouse minus source amount, signed; 0 when matched, blank when the feed carries no amount.
+	measure 'Amount Delta' = IF ( NOT ISBLANK ( [Source Amount] ), [Warehouse Amount] - [Source Amount] )
+		formatString: +#,0;-#,0;0
+		displayFolder: Reconciliation
+
+	/// Amount delta over the absolute source amount. Tolerance +/-0.05%.
+	measure 'Amount Delta %' = DIVIDE ( [Amount Delta], ABS ( [Source Amount] ) )
+		formatString: +0.00%;-0.00%;0.00%
+		displayFolder: Reconciliation
+
+	/// Normalised HH:MM arrival of the last received file on the selected night.
+	measure 'Arrival Time' =
+			VAR d = [Run Anchor]
+			RETURN
+			    CALCULATE ( MAX ( 'Feed Run'[ArrivalTime] ), REMOVEFILTERS ( 'Date' ), 'Date'[Date] = d )
+		displayFolder: Reconciliation
+
+	/// Files received against files expected on the selected night, e.g. "2 of 3".
+	measure 'Files Received of Expected' =
+			VAR d = [Run Anchor]
+			VAR r = CALCULATE ( MAX ( 'Feed Run'[FilesReceived] ), REMOVEFILTERS ( 'Date' ), 'Date'[Date] = d )
+			VAR e = CALCULATE ( MAX ( 'Feed Run'[FilesExpected] ), REMOVEFILTERS ( 'Date' ), 'Date'[Date] = d )
+			RETURN
+			    IF ( NOT ISBLANK ( e ), r & " of " & e )
+		displayFolder: Reconciliation
+
+	/// Nightly match rate for the trailing-30-night trend; blank outside the window.
+	measure 'Row Match Rate (nightly)' =
+			VAR d = [Run Anchor]
+			VAR cur = MAX ( 'Date'[Date] )
+			RETURN
+			    IF ( NOT ISBLANK ( cur ) && cur > d - 30 && cur <= d,
+			        1 - DIVIDE ( SUMX ( 'Feed Run', ABS ( 'Feed Run'[WarehouseRows] - 'Feed Run'[SourceRows] ) ), SUM ( 'Feed Run'[SourceRows] ) ) )
+		formatString: 0.00%
+		displayFolder: Trends
+
+	/// Nightly source rows for the feed-detail paired columns, trailing 14 nights.
+	measure 'Source Rows (nightly)' =
+			VAR d = [Run Anchor]
+			VAR cur = MAX ( 'Date'[Date] )
+			RETURN
+			    IF ( NOT ISBLANK ( cur ) && cur > d - 14 && cur <= d, SUM ( 'Feed Run'[SourceRows] ) )
+		formatString: #,0
+		displayFolder: Trends
+
+	measure 'Warehouse Rows (nightly)' =
+			VAR d = [Run Anchor]
+			VAR cur = MAX ( 'Date'[Date] )
+			RETURN
+			    IF ( NOT ISBLANK ( cur ) && cur > d - 14 && cur <= d, SUM ( 'Feed Run'[WarehouseRows] ) )
+		formatString: #,0
+		displayFolder: Trends
+
+	/// Compact headline volume, e.g. "4.65m".
+	measure 'KPI Rows Reconciled Label' = FORMAT ( DIVIDE ( [Rows Reconciled], 1000000 ), "0.00" ) & "m"
+		isHidden
+		displayFolder: Presentation
+
+	/// Whether the selected night's match rate clears the stated threshold.
+	measure 'KPI Match Context' = "threshold >= 99.90%  ·  " & IF ( [Row Match Rate %] >= [Match Rate Threshold], "in tolerance", "below threshold" )
+		isHidden
+		displayFolder: Presentation
+
+	column Date
+		dataType: dateTime
+		isHidden
+		formatString: dd mmm yyyy
+		summarizeBy: none
+		sourceColumn: Date
+
+	column FeedCode
+		dataType: string
+		isHidden
+		summarizeBy: none
+		sourceColumn: FeedCode
+
+	column SourceRows
+		dataType: int64
+		isHidden
+		summarizeBy: sum
+		sourceColumn: SourceRows
+
+	column WarehouseRows
+		dataType: int64
+		isHidden
+		summarizeBy: sum
+		sourceColumn: WarehouseRows
+
+	column SourceAmount
+		dataType: int64
+		isHidden
+		summarizeBy: sum
+		sourceColumn: SourceAmount
+
+	column WarehouseAmount
+		dataType: int64
+		isHidden
+		summarizeBy: sum
+		sourceColumn: WarehouseAmount
+
+	column FilesExpected
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		sourceColumn: FilesExpected
+
+	column FilesReceived
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		sourceColumn: FilesReceived
+
+	/// As written by the source system - DepotTrack mixes three formats (W4). Kept for inspection; use ArrivalTime.
+	column ArrivalTimeRaw
+		dataType: string
+		isHidden
+		summarizeBy: none
+		sourceColumn: ArrivalTimeRaw
+
+	column ArrivalTime
+		dataType: string
+		isHidden
+		summarizeBy: none
+		sourceColumn: ArrivalTime
+
+	partition 'Feed Run' = m
+		mode: import
+		source =
+				let
+				    Source = Csv.Document(File.Contents(#"Data Folder" & "\feed_run.csv"), [Delimiter = ",", Columns = 9, Encoding = 65001, QuoteStyle = QuoteStyle.Csv]),
+				    Headers = Table.PromoteHeaders(Source, [PromoteAllScalars = true]),
+				    Typed = Table.TransformColumnTypes(Headers, {{"date", type date}, {"feed_code", type text}, {"source_rows", Int64.Type}, {"warehouse_rows", Int64.Type}, {"source_amount", Int64.Type}, {"warehouse_amount", Int64.Type}, {"files_expected", Int64.Type}, {"files_received", Int64.Type}, {"arrival_time_raw", type text}}),
+				    NormaliseArrival = Table.AddColumn(Typed, "ArrivalTime", each let p = Text.Split([arrival_time_raw], ":") in Text.PadStart(p{0}, 2, "0") & ":" & p{1}, type text),
+				    Renamed = Table.RenameColumns(NormaliseArrival, {{"date", "Date"}, {"feed_code", "FeedCode"}, {"source_rows", "SourceRows"}, {"warehouse_rows", "WarehouseRows"}, {"source_amount", "SourceAmount"}, {"warehouse_amount", "WarehouseAmount"}, {"files_expected", "FilesExpected"}, {"files_received", "FilesReceived"}, {"arrival_time_raw", "ArrivalTimeRaw"}})
+				in
+				    Renamed

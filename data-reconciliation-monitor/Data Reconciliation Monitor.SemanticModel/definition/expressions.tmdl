@@ -1,0 +1,2 @@
+/// Folder containing the generated CSVs. The only value to change after cloning the repo.
+expression 'Data Folder' = "C:\powerbi-portfolio\data-reconciliation-monitor\data" meta [IsParameterQuery=true, Type="Text", IsParameterQueryRequired=true]
