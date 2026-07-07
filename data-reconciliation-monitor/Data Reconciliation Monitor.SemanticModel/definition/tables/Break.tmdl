@@ -163,6 +163,12 @@ table Break
 		isHidden
 		displayFolder: Presentation
 
+	/// Font colour for the severity chip in the register. Reuses the traffic discipline; nothing else on the register is coloured.
+	measure 'Severity Colour' =
+			SWITCH ( SELECTEDVALUE ( Break[Severity] ), "Critical", "#E58A8A", "High", "#E0B25E", "Medium", "#E0B25E", "Low", "#8A96A6" )
+		isHidden
+		displayFolder: Presentation
+
 	column 'Break Id'
 		dataType: string
 		summarizeBy: none

@@ -172,6 +172,12 @@ table 'Check Result'
 		isHidden
 		displayFolder: Presentation
 
+	/// 1 when the rule warns or fails on the selected night, blank otherwise. Advanced-filters the "what failed" tables to attention rows only.
+	measure 'Attention Flag' = IF ( [Check Verdict] = "WARN" || [Check Verdict] = "FAIL", 1 )
+		formatString: 0
+		isHidden
+		displayFolder: Verdicts
+
 	column Date
 		dataType: dateTime
 		isHidden

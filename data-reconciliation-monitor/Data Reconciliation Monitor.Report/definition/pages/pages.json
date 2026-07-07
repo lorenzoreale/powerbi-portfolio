@@ -1,7 +1,11 @@
 {
   "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/pagesMetadata/1.0.0/schema.json",
   "pageOrder": [
-    "ReportSec3a10000000000000001"
+    "ReportSec3a10000000000000001",
+    "ReportSec3a20000000000000002",
+    "ReportSec3a30000000000000003",
+    "ReportSec3a40000000000000004",
+    "ReportSec3a50000000000000005"
   ],
   "activePageName": "ReportSec3a10000000000000001"
 }
