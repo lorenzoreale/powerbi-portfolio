@@ -1,5 +1,5 @@
 {
-  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.9.0/schema.json",
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.10.0/schema.json",
   "name": "failed",
   "position": {
     "x": 392,
@@ -84,20 +84,6 @@
               },
               "queryRef": "Check Result.Fail Rate %",
               "nativeQueryRef": "Fail Rate %"
-            },
-            {
-              "field": {
-                "Column": {
-                  "Expression": {
-                    "SourceRef": {
-                      "Entity": "Check Result"
-                    }
-                  },
-                  "Property": "Check Verdict"
-                }
-              },
-              "queryRef": "Check Result.Check Verdict",
-              "nativeQueryRef": "Check Verdict"
             }
           ]
         }
@@ -117,8 +103,7 @@
             },
             "direction": "Descending"
           }
-        ],
-        "isDefaultSort": false
+        ]
       }
     },
     "objects": {
@@ -245,36 +230,6 @@
                 }
               }
             }
-          }
-        },
-        {
-          "properties": {
-            "fontColor": {
-              "solid": {
-                "color": {
-                  "expr": {
-                    "Measure": {
-                      "Expression": {
-                        "SourceRef": {
-                          "Entity": "Check Result"
-                        }
-                      },
-                      "Property": "Check Verdict Colour"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "selector": {
-            "data": [
-              {
-                "dataViewWildcard": {
-                  "matchingOption": 1
-                }
-              }
-            ],
-            "metadata": "Check Result.Check Verdict"
           }
         }
       ]
@@ -424,6 +379,76 @@
           ]
         },
         "howCreated": "User"
+      },
+      {
+        "name": "867c08f4c44568e4cf2d",
+        "field": {
+          "Column": {
+            "Expression": {
+              "SourceRef": {
+                "Entity": "Rule"
+              }
+            },
+            "Property": "Rule Name"
+          }
+        },
+        "type": "Categorical"
+      },
+      {
+        "name": "59f2081c8b36d3d7985b",
+        "field": {
+          "Column": {
+            "Expression": {
+              "SourceRef": {
+                "Entity": "Feed"
+              }
+            },
+            "Property": "Feed"
+          }
+        },
+        "type": "Categorical"
+      },
+      {
+        "name": "399534322491a45aaa8d",
+        "field": {
+          "Column": {
+            "Expression": {
+              "SourceRef": {
+                "Entity": "Rule"
+              }
+            },
+            "Property": "Quality Dimension"
+          }
+        },
+        "type": "Categorical"
+      },
+      {
+        "name": "f3a5755be514794788e5",
+        "field": {
+          "Measure": {
+            "Expression": {
+              "SourceRef": {
+                "Entity": "Check Result"
+              }
+            },
+            "Property": "Units Failed"
+          }
+        },
+        "type": "Advanced"
+      },
+      {
+        "name": "b1ca4af28070fb74ce42",
+        "field": {
+          "Measure": {
+            "Expression": {
+              "SourceRef": {
+                "Entity": "Check Result"
+              }
+            },
+            "Property": "Fail Rate %"
+          }
+        },
+        "type": "Advanced"
       }
     ]
   }

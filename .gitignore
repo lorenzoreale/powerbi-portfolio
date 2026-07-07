@@ -5,6 +5,9 @@
 **/.pbi/
 *.abf
 
+# Fabric item descriptors emitted by Desktop on save (not needed for the PBIP source)
+.platform
+
 # OS noise
 Thumbs.db
 Desktop.ini

@@ -1,77 +1,100 @@
 /// The 48-rule quality rulebook with its thresholds. Verdicts are never stored: the model derives pass/warn/fail from raw observations against these thresholds, so changing a tolerance here re-derives every verdict. Load checks (row count, amount, arrival) drive the feed status board; the rest belong to the Quality Rules page.
 table Rule
+	lineageTag: d12d2e3c-2a82-4dc0-b9f5-2fe7f73515ea
 
 	/// Stable, quotable id: R-001 to R-048.
 	column 'Rule Id'
 		dataType: string
+		lineageTag: c8f9a002-0c1e-49bf-a876-1440be484c4b
 		summarizeBy: none
 		sourceColumn: Rule Id
 
 	column 'Rule Name'
 		dataType: string
+		lineageTag: 133e5380-e488-4d95-9c49-c8ffa69f0ca6
 		summarizeBy: none
 		sourceColumn: Rule Name
 
 	column FeedCode
 		dataType: string
 		isHidden
+		lineageTag: c52051b1-3f62-4f8d-9f3e-7f9993f1208b
 		summarizeBy: none
 		sourceColumn: FeedCode
 
 	/// Completeness / Validity / Uniqueness / Timeliness / Consistency.
 	column 'Quality Dimension'
 		dataType: string
+		lineageTag: 90b1b7be-9d9c-43bf-b2e6-366dd0b468c4
 		summarizeBy: none
 		sourceColumn: Quality Dimension
 
 	/// What the rule counts: rows, pounds (amount reconciliations) or files (arrival checks).
 	column Unit
 		dataType: string
+		lineageTag: 26cef640-94b5-4e28-8c4b-616ef9f53c55
 		summarizeBy: none
 		sourceColumn: Unit
 
 	column 'Is Load Check'
 		dataType: boolean
 		isHidden
+		lineageTag: 7e8ab2ea-ca16-411b-b8a5-0e97a3fc7184
 		summarizeBy: none
 		sourceColumn: Is Load Check
 
 	/// Human-readable tolerance, stated on visuals.
 	column Tolerance
 		dataType: string
+		lineageTag: 77d60520-e1cb-486c-ac8e-d898a3d71838
 		summarizeBy: none
 		sourceColumn: Tolerance
 
 	column 'Warn Above %'
 		dataType: double
 		isHidden
-		summarizeBy: none
+		lineageTag: 6722c32e-4abd-4c5f-97a2-d26c153aa0fb
+		summarizeBy: sum
 		sourceColumn: Warn Above %
+
+		annotation SummarizationSetBy = Automatic
 
 	column 'Fail Above %'
 		dataType: double
 		isHidden
-		summarizeBy: none
+		lineageTag: 45e5ea7e-f823-4cf2-845f-0c077fbb0cc5
+		summarizeBy: sum
 		sourceColumn: Fail Above %
+
+		annotation SummarizationSetBy = Automatic
 
 	column 'Warn Late Mins'
 		dataType: int64
 		isHidden
-		summarizeBy: none
+		lineageTag: 46fe8200-abae-47c1-90b3-92a8bb349dfb
+		summarizeBy: sum
 		sourceColumn: Warn Late Mins
+
+		annotation SummarizationSetBy = Automatic
 
 	column 'Fail Late Mins'
 		dataType: int64
 		isHidden
-		summarizeBy: none
+		lineageTag: 20986cb9-6396-44ca-9149-13bd5796ffcd
+		summarizeBy: sum
 		sourceColumn: Fail Late Mins
+
+		annotation SummarizationSetBy = Automatic
 
 	/// First night the rule was evaluated; blank = whole window (W3).
 	column 'Active From'
 		dataType: dateTime
 		formatString: dd mmm yyyy
+		lineageTag: 8d88ca6e-00d6-4af3-9070-7ef2e4ca2706
 		summarizeBy: none
 		sourceColumn: Active From
+
+		annotation UnderlyingDateTimeDataType = Date
 
 	partition Rule = m
 		mode: import
@@ -83,3 +106,4 @@ table Rule
 				    Renamed = Table.RenameColumns(Typed, {{"rule_id", "Rule Id"}, {"rule_name", "Rule Name"}, {"feed_code", "FeedCode"}, {"quality_dimension", "Quality Dimension"}, {"unit", "Unit"}, {"is_load_check", "Is Load Check"}, {"tolerance_label", "Tolerance"}, {"warn_above_pct", "Warn Above %"}, {"fail_above_pct", "Fail Above %"}, {"warn_late_mins", "Warn Late Mins"}, {"fail_late_mins", "Fail Late Mins"}, {"active_from", "Active From"}})
 				in
 				    Renamed
+

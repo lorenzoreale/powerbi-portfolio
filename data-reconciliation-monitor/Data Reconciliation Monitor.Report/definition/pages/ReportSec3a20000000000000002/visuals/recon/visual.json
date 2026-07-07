@@ -1,5 +1,5 @@
 {
-  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.9.0/schema.json",
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.10.0/schema.json",
   "name": "recon",
   "position": {
     "x": 24,
@@ -126,20 +126,6 @@
               },
               "queryRef": "Feed Run.Amount Delta",
               "nativeQueryRef": "Amount Delta"
-            },
-            {
-              "field": {
-                "Column": {
-                  "Expression": {
-                    "SourceRef": {
-                      "Entity": "Check Result"
-                    }
-                  },
-                  "Property": "Feed Verdict"
-                }
-              },
-              "queryRef": "Check Result.Feed Verdict",
-              "nativeQueryRef": "Feed Verdict"
             }
           ]
         }
@@ -159,8 +145,7 @@
             },
             "direction": "Ascending"
           }
-        ],
-        "isDefaultSort": false
+        ]
       }
     },
     "objects": {
@@ -288,36 +273,6 @@
               }
             }
           }
-        },
-        {
-          "properties": {
-            "fontColor": {
-              "solid": {
-                "color": {
-                  "expr": {
-                    "Measure": {
-                      "Expression": {
-                        "SourceRef": {
-                          "Entity": "Check Result"
-                        }
-                      },
-                      "Property": "Feed Verdict Colour"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "selector": {
-            "data": [
-              {
-                "dataViewWildcard": {
-                  "matchingOption": 1
-                }
-              }
-            ],
-            "metadata": "Check Result.Feed Verdict"
-          }
         }
       ]
     },
@@ -415,5 +370,121 @@
         }
       ]
     }
+  },
+  "filterConfig": {
+    "filters": [
+      {
+        "name": "8f52b4d9b7cb8faa3edd",
+        "field": {
+          "Column": {
+            "Expression": {
+              "SourceRef": {
+                "Entity": "Feed"
+              }
+            },
+            "Property": "Feed"
+          }
+        },
+        "type": "Categorical"
+      },
+      {
+        "name": "606fc0038c127e77f23e",
+        "field": {
+          "Column": {
+            "Expression": {
+              "SourceRef": {
+                "Entity": "Feed"
+              }
+            },
+            "Property": "Source System"
+          }
+        },
+        "type": "Categorical"
+      },
+      {
+        "name": "635419b2380e1247080a",
+        "field": {
+          "Measure": {
+            "Expression": {
+              "SourceRef": {
+                "Entity": "Feed Run"
+              }
+            },
+            "Property": "Source Rows"
+          }
+        },
+        "type": "Advanced"
+      },
+      {
+        "name": "895cf7283bb5a9b5f0d0",
+        "field": {
+          "Measure": {
+            "Expression": {
+              "SourceRef": {
+                "Entity": "Feed Run"
+              }
+            },
+            "Property": "Warehouse Rows"
+          }
+        },
+        "type": "Advanced"
+      },
+      {
+        "name": "66a86cdf0df823a4e439",
+        "field": {
+          "Measure": {
+            "Expression": {
+              "SourceRef": {
+                "Entity": "Feed Run"
+              }
+            },
+            "Property": "Row Delta"
+          }
+        },
+        "type": "Advanced"
+      },
+      {
+        "name": "da5bef32d02a33a71b13",
+        "field": {
+          "Measure": {
+            "Expression": {
+              "SourceRef": {
+                "Entity": "Feed Run"
+              }
+            },
+            "Property": "Source Amount"
+          }
+        },
+        "type": "Advanced"
+      },
+      {
+        "name": "54398e4c0a3b81092357",
+        "field": {
+          "Measure": {
+            "Expression": {
+              "SourceRef": {
+                "Entity": "Feed Run"
+              }
+            },
+            "Property": "Warehouse Amount"
+          }
+        },
+        "type": "Advanced"
+      },
+      {
+        "name": "61bad6bf421b2141a536",
+        "field": {
+          "Measure": {
+            "Expression": {
+              "SourceRef": {
+                "Entity": "Feed Run"
+              }
+            },
+            "Property": "Amount Delta"
+          }
+        },
+        "type": "Advanced"
+      }
+    ]
   }
 }

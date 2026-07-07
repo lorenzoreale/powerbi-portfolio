@@ -1,5 +1,5 @@
 {
-  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.9.0/schema.json",
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.10.0/schema.json",
   "name": "checks",
   "position": {
     "x": 760,
@@ -42,20 +42,6 @@
               },
               "queryRef": "Check Result.Units Failed",
               "nativeQueryRef": "Units Failed"
-            },
-            {
-              "field": {
-                "Column": {
-                  "Expression": {
-                    "SourceRef": {
-                      "Entity": "Check Result"
-                    }
-                  },
-                  "Property": "Check Verdict"
-                }
-              },
-              "queryRef": "Check Result.Check Verdict",
-              "nativeQueryRef": "Check Verdict"
             }
           ]
         }
@@ -75,8 +61,7 @@
             },
             "direction": "Descending"
           }
-        ],
-        "isDefaultSort": false
+        ]
       }
     },
     "objects": {
@@ -204,36 +189,6 @@
               }
             }
           }
-        },
-        {
-          "properties": {
-            "fontColor": {
-              "solid": {
-                "color": {
-                  "expr": {
-                    "Measure": {
-                      "Expression": {
-                        "SourceRef": {
-                          "Entity": "Check Result"
-                        }
-                      },
-                      "Property": "Check Verdict Colour"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "selector": {
-            "data": [
-              {
-                "dataViewWildcard": {
-                  "matchingOption": 1
-                }
-              }
-            ],
-            "metadata": "Check Result.Check Verdict"
-          }
         }
       ]
     },
@@ -331,5 +286,37 @@
         }
       ]
     }
+  },
+  "filterConfig": {
+    "filters": [
+      {
+        "name": "4cdd2ab613925242d1e9",
+        "field": {
+          "Column": {
+            "Expression": {
+              "SourceRef": {
+                "Entity": "Rule"
+              }
+            },
+            "Property": "Rule Name"
+          }
+        },
+        "type": "Categorical"
+      },
+      {
+        "name": "b223c5c281c803b7b02d",
+        "field": {
+          "Measure": {
+            "Expression": {
+              "SourceRef": {
+                "Entity": "Check Result"
+              }
+            },
+            "Property": "Units Failed"
+          }
+        },
+        "type": "Advanced"
+      }
+    ]
   }
 }

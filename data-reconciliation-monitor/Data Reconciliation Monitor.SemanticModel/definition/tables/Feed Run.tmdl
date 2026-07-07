@@ -1,5 +1,6 @@
 /// Fact: one row per feed per scheduled night - pairwise source/warehouse counts and amounts, files, arrival. Measurements about data, not the data itself. Normalises DepotTrack's inconsistent arrival formats at load (W4); non-monetary feeds have genuinely blank amounts (W6).
 table 'Feed Run'
+	lineageTag: 0fe5486c-d475-4301-8fc0-a9c7ea103a7a
 
 	/// Source rows in the selected night's extracts.
 	measure 'Source Rows' =
@@ -8,6 +9,7 @@ table 'Feed Run'
 			    CALCULATE ( SUM ( 'Feed Run'[SourceRows] ), REMOVEFILTERS ( 'Date' ), 'Date'[Date] = d )
 		formatString: #,0
 		displayFolder: Reconciliation
+		lineageTag: b7fa8d48-38be-4222-9504-d7baa6d883d5
 
 	/// Rows landed in the warehouse on the selected night.
 	measure 'Warehouse Rows' =
@@ -16,16 +18,19 @@ table 'Feed Run'
 			    CALCULATE ( SUM ( 'Feed Run'[WarehouseRows] ), REMOVEFILTERS ( 'Date' ), 'Date'[Date] = d )
 		formatString: #,0
 		displayFolder: Reconciliation
+		lineageTag: 2cdab66f-6759-48dc-8fa9-c6077afc3983
 
 	/// Warehouse minus source, signed. A matched feed shows 0, not blank.
 	measure 'Row Delta' = IF ( NOT ISBLANK ( [Source Rows] ), [Warehouse Rows] - [Source Rows] )
 		formatString: +#,0;-#,0;0
 		displayFolder: Reconciliation
+		lineageTag: 853db4c8-ab3f-482c-9b02-253be8eb123d
 
 	/// Source rows compared on the selected night - the headline volume KPI.
 	measure 'Rows Reconciled' = [Source Rows]
 		formatString: #,0
 		displayFolder: Reconciliation
+		lineageTag: 3b81a9e1-70af-4c14-9a5a-02c398a7dcf4
 
 	/// 1 minus (absolute row deltas over source rows), selected night. Judged against the stated 99.90% threshold.
 	measure 'Row Match Rate %' =
@@ -34,11 +39,13 @@ table 'Feed Run'
 			    CALCULATE ( 1 - DIVIDE ( SUMX ( 'Feed Run', ABS ( 'Feed Run'[WarehouseRows] - 'Feed Run'[SourceRows] ) ), SUM ( 'Feed Run'[SourceRows] ) ), REMOVEFILTERS ( 'Date' ), 'Date'[Date] = d )
 		formatString: 0.00%
 		displayFolder: Reconciliation
+		lineageTag: 21d48d80-849d-442a-9aef-de15a97f05a7
 
 	/// The stated row match threshold, drawn on the trend.
 	measure 'Match Rate Threshold' = 0.999
 		formatString: 0.00%
 		displayFolder: Reconciliation
+		lineageTag: b98b289c-e1c0-4392-a59a-1b40ade50792
 
 	/// Source amount on the selected night. BLANK (a dash) for non-monetary feeds - absence shown honestly (W6).
 	measure 'Source Amount' =
@@ -47,6 +54,7 @@ table 'Feed Run'
 			    CALCULATE ( SUM ( 'Feed Run'[SourceAmount] ), REMOVEFILTERS ( 'Date' ), 'Date'[Date] = d )
 		formatString: #,0
 		displayFolder: Reconciliation
+		lineageTag: f1bc0ae5-0f36-4b30-8d84-22b737887d9f
 
 	measure 'Warehouse Amount' =
 			VAR d = [Run Anchor]
@@ -54,16 +62,19 @@ table 'Feed Run'
 			    CALCULATE ( SUM ( 'Feed Run'[WarehouseAmount] ), REMOVEFILTERS ( 'Date' ), 'Date'[Date] = d )
 		formatString: #,0
 		displayFolder: Reconciliation
+		lineageTag: e56c5726-993a-4e82-abd6-578ffc40294e
 
 	/// Warehouse minus source amount, signed; 0 when matched, blank when the feed carries no amount.
 	measure 'Amount Delta' = IF ( NOT ISBLANK ( [Source Amount] ), [Warehouse Amount] - [Source Amount] )
 		formatString: +#,0;-#,0;0
 		displayFolder: Reconciliation
+		lineageTag: c8ef5243-b197-4705-bd26-1e18736363b1
 
 	/// Amount delta over the absolute source amount. Tolerance +/-0.05%.
 	measure 'Amount Delta %' = DIVIDE ( [Amount Delta], ABS ( [Source Amount] ) )
 		formatString: +0.00%;-0.00%;0.00%
 		displayFolder: Reconciliation
+		lineageTag: 0a2ea822-d94f-4a93-a65d-381fe594332a
 
 	/// Normalised HH:MM arrival of the last received file on the selected night.
 	measure 'Arrival Time' =
@@ -71,6 +82,7 @@ table 'Feed Run'
 			RETURN
 			    CALCULATE ( MAX ( 'Feed Run'[ArrivalTime] ), REMOVEFILTERS ( 'Date' ), 'Date'[Date] = d )
 		displayFolder: Reconciliation
+		lineageTag: 5ec3c06f-1409-4ea3-a685-c2beffbf0fef
 
 	/// Files received against files expected on the selected night, e.g. "2 of 3".
 	measure 'Files Received of Expected' =
@@ -80,6 +92,7 @@ table 'Feed Run'
 			RETURN
 			    IF ( NOT ISBLANK ( e ), r & " of " & e )
 		displayFolder: Reconciliation
+		lineageTag: 6f766ee4-0a02-4eb6-a7bc-39d7f2a6a65a
 
 	/// Nightly match rate for the trailing-30-night trend; blank outside the window.
 	measure 'Row Match Rate (nightly)' =
@@ -90,6 +103,7 @@ table 'Feed Run'
 			        1 - DIVIDE ( SUMX ( 'Feed Run', ABS ( 'Feed Run'[WarehouseRows] - 'Feed Run'[SourceRows] ) ), SUM ( 'Feed Run'[SourceRows] ) ) )
 		formatString: 0.00%
 		displayFolder: Trends
+		lineageTag: 53295e70-54e5-4fc2-b1eb-d2154d4706ba
 
 	/// Nightly source rows for the feed-detail paired columns, trailing 14 nights.
 	measure 'Source Rows (nightly)' =
@@ -99,6 +113,7 @@ table 'Feed Run'
 			    IF ( NOT ISBLANK ( cur ) && cur > d - 14 && cur <= d, SUM ( 'Feed Run'[SourceRows] ) )
 		formatString: #,0
 		displayFolder: Trends
+		lineageTag: 836efcd6-81e1-4ab6-a20d-1408f2a2ed4c
 
 	measure 'Warehouse Rows (nightly)' =
 			VAR d = [Run Anchor]
@@ -107,63 +122,76 @@ table 'Feed Run'
 			    IF ( NOT ISBLANK ( cur ) && cur > d - 14 && cur <= d, SUM ( 'Feed Run'[WarehouseRows] ) )
 		formatString: #,0
 		displayFolder: Trends
+		lineageTag: 4a7f211a-7e3b-48d0-84b9-797a6a3ee170
 
 	/// Compact headline volume, e.g. "4.65m".
 	measure 'KPI Rows Reconciled Label' = FORMAT ( DIVIDE ( [Rows Reconciled], 1000000 ), "0.00" ) & "m"
 		isHidden
 		displayFolder: Presentation
+		lineageTag: 2e228340-22dd-4758-9bf4-457f6a62c0f9
 
 	/// Whether the selected night's match rate clears the stated threshold.
 	measure 'KPI Match Context' = "threshold >= 99.90%  ·  " & IF ( [Row Match Rate %] >= [Match Rate Threshold], "in tolerance", "below threshold" )
 		isHidden
 		displayFolder: Presentation
+		lineageTag: ddf50096-6088-4dd7-b388-7dbbc6ddfd62
 
 	column Date
 		dataType: dateTime
 		isHidden
 		formatString: dd mmm yyyy
+		lineageTag: cf1c1f7b-6e51-47fa-97ef-3469d6975df2
 		summarizeBy: none
 		sourceColumn: Date
+
+		annotation UnderlyingDateTimeDataType = Date
 
 	column FeedCode
 		dataType: string
 		isHidden
+		lineageTag: c774b4d5-d290-48cf-b9aa-e0f4bcfcd117
 		summarizeBy: none
 		sourceColumn: FeedCode
 
 	column SourceRows
 		dataType: int64
 		isHidden
+		lineageTag: cc9cb927-e301-4bab-831d-c7f209759de3
 		summarizeBy: sum
 		sourceColumn: SourceRows
 
 	column WarehouseRows
 		dataType: int64
 		isHidden
+		lineageTag: b0204e9a-e937-4064-8acc-26d6e569f85a
 		summarizeBy: sum
 		sourceColumn: WarehouseRows
 
 	column SourceAmount
 		dataType: int64
 		isHidden
+		lineageTag: ab027750-a33d-41c4-8a31-360a17789f64
 		summarizeBy: sum
 		sourceColumn: SourceAmount
 
 	column WarehouseAmount
 		dataType: int64
 		isHidden
+		lineageTag: 022cf100-6405-4b29-ac1b-c7a429ef16e7
 		summarizeBy: sum
 		sourceColumn: WarehouseAmount
 
 	column FilesExpected
 		dataType: int64
 		isHidden
+		lineageTag: 6d906811-db07-4749-9353-665b47b59aed
 		summarizeBy: none
 		sourceColumn: FilesExpected
 
 	column FilesReceived
 		dataType: int64
 		isHidden
+		lineageTag: a929457d-a630-433d-b542-7e55a5b130b0
 		summarizeBy: none
 		sourceColumn: FilesReceived
 
@@ -171,12 +199,14 @@ table 'Feed Run'
 	column ArrivalTimeRaw
 		dataType: string
 		isHidden
+		lineageTag: 57797b81-6c1e-46b6-8d5a-0325a13634fb
 		summarizeBy: none
 		sourceColumn: ArrivalTimeRaw
 
 	column ArrivalTime
 		dataType: string
 		isHidden
+		lineageTag: afea9271-f0ed-4a24-9c04-34048def7f24
 		summarizeBy: none
 		sourceColumn: ArrivalTime
 
@@ -191,3 +221,4 @@ table 'Feed Run'
 				    Renamed = Table.RenameColumns(NormaliseArrival, {{"date", "Date"}, {"feed_code", "FeedCode"}, {"source_rows", "SourceRows"}, {"warehouse_rows", "WarehouseRows"}, {"source_amount", "SourceAmount"}, {"warehouse_amount", "WarehouseAmount"}, {"files_expected", "FilesExpected"}, {"files_received", "FilesReceived"}, {"arrival_time_raw", "ArrivalTimeRaw"}})
 				in
 				    Renamed
+

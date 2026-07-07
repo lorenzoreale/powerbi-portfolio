@@ -7,6 +7,12 @@ model 'Data Reconciliation Monitor'
 		legacyRedirects
 		returnErrorValuesAsNull
 
+annotation PBI_QueryOrder = ["Date","Feed","Rule","Feed Run","Check Result","Break","Run Date","Data Folder"]
+
+annotation __PBI_TimeIntelligenceEnabled = 0
+
+annotation PBI_ProTooling = ["DevMode"]
+
 ref table Date
 ref table Feed
 ref table Rule
@@ -14,3 +20,4 @@ ref table 'Feed Run'
 ref table 'Check Result'
 ref table Break
 ref table 'Run Date'
+

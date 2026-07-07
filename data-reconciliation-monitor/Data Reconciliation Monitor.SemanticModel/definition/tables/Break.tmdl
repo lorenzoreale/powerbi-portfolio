@@ -1,5 +1,6 @@
 /// Register: one row per discrepancy raised. Open/closed state is always judged as at the selected run date - the register is time-travelling, not a snapshot. One record is resolved before it opened (W5): flagged, excluded from MTTR, left visible.
 table Break
+	lineageTag: ec54847b-149d-4527-95ae-4c80e60388a6
 
 	/// Breaks open as at the selected night: opened on or before it, not yet resolved by it.
 	measure 'Open Breaks' =
@@ -10,16 +11,19 @@ table Break
 			        REMOVEFILTERS ( 'Date' ) )
 		formatString: #,0
 		displayFolder: Breaks
+		lineageTag: 935c3da2-1eea-444c-b547-d9bc16a6bf4d
 
 	measure 'Critical Open Breaks' = CALCULATE ( [Open Breaks], Break[Severity] = "Critical" )
 		formatString: #,0
 		displayFolder: Breaks
+		lineageTag: 4007a6c2-f8e8-462d-b2fc-bc23dc81c714
 
 	/// 1 when the break in context is open as at the selected night. Filters the register.
 	measure 'Is Open' = IF ( [Open Breaks] > 0, 1 )
 		formatString: 0
 		isHidden
 		displayFolder: Breaks
+		lineageTag: 83906ac3-1f30-4a47-b04b-6352ce5ba0c8
 
 	/// Days since the break in context opened, as at the selected night.
 	measure 'Break Age Days' =
@@ -32,6 +36,7 @@ table Break
 			        REMOVEFILTERS ( 'Date' ) )
 		formatString: 0\d
 		displayFolder: Breaks
+		lineageTag: aa694134-7492-4f2f-9cea-9cf6a5ec56ea
 
 	/// Median age of the open breaks, in days.
 	measure 'Median Open Age' =
@@ -44,6 +49,7 @@ table Break
 			        REMOVEFILTERS ( 'Date' ) )
 		formatString: #,0
 		displayFolder: Breaks
+		lineageTag: 8b2294ff-5826-4dfb-9657-de16f941c017
 
 	measure 'Oldest Open Break Age' =
 			VAR d = [Run Anchor]
@@ -55,6 +61,7 @@ table Break
 			        REMOVEFILTERS ( 'Date' ) )
 		formatString: 0\d
 		displayFolder: Breaks
+		lineageTag: 368ecb72-82fc-4912-945f-d72c80ea5210
 
 	/// Id, feed and category of the oldest open break, for the KPI context line.
 	measure 'Oldest Open Break Detail' =
@@ -67,6 +74,7 @@ table Break
 			            CONCATENATEX ( oldest, Break[Break Id] & "  ·  " & RELATED ( Feed[Feed] ) & "  ·  " & LOWER ( Break[Category] ), ", " ),
 			        REMOVEFILTERS ( 'Date' ) )
 		displayFolder: Breaks
+		lineageTag: 6a81495b-6d25-4316-a419-3e5c8ceb74e3
 
 	/// Mean days to resolve, over breaks resolved in the trailing 28 nights. Excludes the impossible record (W5) via Resolved >= Opened.
 	measure 'Mean Time To Resolve' =
@@ -79,11 +87,13 @@ table Break
 			        REMOVEFILTERS ( 'Date' ) )
 		formatString: 0.0
 		displayFolder: Breaks
+		lineageTag: 12850958-273a-4cee-ba38-dac15af1ea56
 
 	/// The stated resolution target, in days.
 	measure 'MTTR Target' = 3.0
 		formatString: 0.0
 		displayFolder: Breaks
+		lineageTag: 4ec8f680-1950-43d4-ad6c-33a12764c0e4
 
 	measure 'Resolved This Week' =
 			VAR d = [Run Anchor]
@@ -93,6 +103,7 @@ table Break
 			        REMOVEFILTERS ( 'Date' ) )
 		formatString: #,0
 		displayFolder: Breaks
+		lineageTag: 28494cce-d0b2-4c05-b361-ff71c28e8284
 
 	measure 'Opened This Week' =
 			VAR d = [Run Anchor]
@@ -102,12 +113,13 @@ table Break
 			        REMOVEFILTERS ( 'Date' ) )
 		formatString: #,0
 		displayFolder: Breaks
+		lineageTag: f21d12a3-c9b4-40bc-8d5f-545bf9a5e78e
 
 	/// Breaks resolved per calendar night, through the inactive resolved-date relationship.
-	measure 'Resolved per Night' =
-			CALCULATE ( COUNTROWS ( Break ), USERELATIONSHIP ( Break[Resolved], 'Date'[Date] ) )
+	measure 'Resolved per Night' = CALCULATE ( COUNTROWS ( Break ), USERELATIONSHIP ( Break[Resolved], 'Date'[Date] ) )
 		formatString: #,0
 		displayFolder: Breaks
+		lineageTag: 4e6cf67d-5ac7-45fe-8d62-6cd807454b10
 
 	/// The feed carrying the most open breaks.
 	measure 'Repeat Offender Feed' =
@@ -115,6 +127,7 @@ table Break
 			RETURN
 			    CONCATENATEX ( t, Feed[Feed], ", " )
 		displayFolder: Breaks
+		lineageTag: bb16d3ae-acf3-4ece-9419-16f89749cf17
 
 	measure 'Open Breaks (0-1 days)' =
 			VAR d = [Run Anchor]
@@ -124,6 +137,7 @@ table Break
 			        REMOVEFILTERS ( 'Date' ) )
 		formatString: #,0
 		displayFolder: Breaks
+		lineageTag: 954d887c-28f9-4d7b-bd58-193a10a6fb03
 
 	measure 'Open Breaks (2-3 days)' =
 			VAR d = [Run Anchor]
@@ -133,6 +147,7 @@ table Break
 			        REMOVEFILTERS ( 'Date' ) )
 		formatString: #,0
 		displayFolder: Breaks
+		lineageTag: 8e990285-3231-4ab3-aec6-3878094c84ee
 
 	measure 'Open Breaks (4-7 days)' =
 			VAR d = [Run Anchor]
@@ -142,6 +157,7 @@ table Break
 			        REMOVEFILTERS ( 'Date' ) )
 		formatString: #,0
 		displayFolder: Breaks
+		lineageTag: 89d846eb-4d24-4e38-892e-13204bc58617
 
 	measure 'Open Breaks (over 7 days)' =
 			VAR d = [Run Anchor]
@@ -151,54 +167,66 @@ table Break
 			        REMOVEFILTERS ( 'Date' ) )
 		formatString: #,0
 		displayFolder: Breaks
+		lineageTag: fed25e0c-6e9b-44d8-b77f-99ecc6c3718d
 
 	/// Breaks with a resolved date before their opened date (W5). The monitor monitors itself; expected 1.
-	measure 'Invalid Break Records' =
-			COUNTROWS ( FILTER ( Break, NOT ISBLANK ( Break[Resolved] ) && Break[Resolved] < Break[Opened] ) ) + 0
+	measure 'Invalid Break Records' = COUNTROWS ( FILTER ( Break, NOT ISBLANK ( Break[Resolved] ) && Break[Resolved] < Break[Opened] ) ) + 0
 		formatString: #,0
 		displayFolder: Data quality
+		lineageTag: bd416405-1d86-4887-a0e1-87a29c048a8f
 
 	/// Critical count and total, for the alarm card context line.
 	measure 'KPI Breaks Context' = [Critical Open Breaks] & " critical  ·  " & [Open Breaks] & " open"
 		isHidden
 		displayFolder: Presentation
+		lineageTag: 22d09772-dba5-4086-8fc5-c0ee5846b211
 
 	/// Font colour for the severity chip in the register. Reuses the traffic discipline; nothing else on the register is coloured.
-	measure 'Severity Colour' =
-			SWITCH ( SELECTEDVALUE ( Break[Severity] ), "Critical", "#E58A8A", "High", "#E0B25E", "Medium", "#E0B25E", "Low", "#8A96A6" )
+	measure 'Severity Colour' = SWITCH ( SELECTEDVALUE ( Break[Severity] ), "Critical", "#E58A8A", "High", "#E0B25E", "Medium", "#E0B25E", "Low", "#8A96A6" )
 		isHidden
 		displayFolder: Presentation
+		lineageTag: 343cc479-fc89-4800-88ae-3b51f3aa8d13
 
 	column 'Break Id'
 		dataType: string
+		lineageTag: 7a960afc-cfc1-456c-b4a3-0661290dc556
 		summarizeBy: none
 		sourceColumn: Break Id
 
 	column Opened
 		dataType: dateTime
 		formatString: dd mmm
+		lineageTag: c90f28fe-b0d4-4238-8042-f01199cc23ae
 		summarizeBy: none
 		sourceColumn: Opened
+
+		annotation UnderlyingDateTimeDataType = Date
 
 	column Resolved
 		dataType: dateTime
 		formatString: dd mmm
+		lineageTag: 0137be41-d384-4dd9-b78e-fc54eb6a0e46
 		summarizeBy: none
 		sourceColumn: Resolved
+
+		annotation UnderlyingDateTimeDataType = Date
 
 	column FeedCode
 		dataType: string
 		isHidden
+		lineageTag: f15be575-34a1-40c9-af7b-e8c516e02890
 		summarizeBy: none
 		sourceColumn: FeedCode
 
 	column Category
 		dataType: string
+		lineageTag: 0856306f-3bd3-45ee-a54a-4ac6ed66854a
 		summarizeBy: none
 		sourceColumn: Category
 
 	column Severity
 		dataType: string
+		lineageTag: ee3cf9e5-5d0c-458d-b7e8-2155bde08ab0
 		summarizeBy: none
 		sourceColumn: Severity
 		sortByColumn: SeveritySort
@@ -206,16 +234,19 @@ table Break
 	column SeveritySort
 		dataType: int64
 		isHidden
+		lineageTag: ad00f733-bb0c-4308-ae7a-61c1192ba746
 		summarizeBy: none
 		sourceColumn: SeveritySort
 
 	column Owner
 		dataType: string
+		lineageTag: c3d28c29-8b84-45f3-95f2-e6c4ce7dc00f
 		summarizeBy: none
 		sourceColumn: Owner
 
 	column Status
 		dataType: string
+		lineageTag: 1f2e71f2-1e92-43e2-85c8-4cacc65797c5
 		summarizeBy: none
 		sourceColumn: Status
 
@@ -230,3 +261,4 @@ table Break
 				    Renamed = Table.RenameColumns(AddSeveritySort, {{"break_id", "Break Id"}, {"opened", "Opened"}, {"resolved", "Resolved"}, {"feed_code", "FeedCode"}, {"category", "Category"}, {"severity", "Severity"}, {"owner", "Owner"}, {"status", "Status"}})
 				in
 				    Renamed
+

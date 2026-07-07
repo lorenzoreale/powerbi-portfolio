@@ -1,5 +1,6 @@
 /// Fact: one row per rule per scheduled night after keep-latest dedupe on run_seq (W2). Raw observations only - units checked, units failed, minutes late; the verdict measures derive pass/warn/fail from the Rule table's thresholds.
 table 'Check Result'
+	lineageTag: 7e3b624a-ddb3-4335-8688-4c6aa789c980
 
 	/// Verdict rank for a single rule-night: 1 pass, 2 warn, 3 fail; blank when not evaluated. Needs a single rule in context.
 	measure '_Check Rank' =
@@ -20,6 +21,7 @@ table 'Check Result'
 		formatString: 0
 		isHidden
 		displayFolder: Verdicts
+		lineageTag: 2e4a4533-19cd-47c0-9a54-e3f21676a24c
 
 	/// Worst rank across the feed's load checks (row count, amount, arrival) for the night in context. In-warehouse rule warns do not turn the board amber.
 	measure '_Feed Rank' =
@@ -29,6 +31,7 @@ table 'Check Result'
 		formatString: 0
 		isHidden
 		displayFolder: Verdicts
+		lineageTag: 34061f76-1295-4bc7-9637-21e3a5b89d2a
 
 	/// PASS / WARN / FAIL for the rule in context on the selected night.
 	measure 'Check Verdict' =
@@ -37,6 +40,7 @@ table 'Check Result'
 			RETURN
 			    SWITCH ( r, 3, "FAIL", 2, "WARN", 1, "PASS" )
 		displayFolder: Verdicts
+		lineageTag: c9acb72d-f8c5-43a8-bea6-7f7f218ffede
 
 	/// The feed's verdict on the selected night, judged on load checks; "No run" when the feed was not scheduled.
 	measure 'Feed Verdict' =
@@ -45,6 +49,7 @@ table 'Check Result'
 			RETURN
 			    SWITCH ( r, 3, "FAIL", 2, "WARN", 1, "PASS", "No run" )
 		displayFolder: Verdicts
+		lineageTag: a1182b06-0d57-4cf5-a416-2df4cdb03e7a
 
 	/// Feed verdict per night for the check grid, trailing 14 nights; blank outside the window.
 	measure 'Feed Verdict (nightly)' =
@@ -54,48 +59,52 @@ table 'Check Result'
 			    IF ( NOT ISBLANK ( cur ) && cur > d - 14 && cur <= d,
 			        SWITCH ( [_Feed Rank], 3, "FAIL", 2, "WARN", 1, "PASS", "No run" ) )
 		displayFolder: Verdicts
+		lineageTag: 77f77813-bdc5-42af-a09d-4c8772c97147
 
 	/// Chip font colour for the rule verdict in context. The single place the traffic discipline lives.
-	measure 'Check Verdict Colour' =
-			SWITCH ( [Check Verdict], "FAIL", "#E58A8A", "WARN", "#E0B25E", "PASS", "#7FC79A" )
+	measure 'Check Verdict Colour' = SWITCH ( [Check Verdict], "FAIL", "#E58A8A", "WARN", "#E0B25E", "PASS", "#7FC79A" )
 		isHidden
 		displayFolder: Verdicts
+		lineageTag: 76f4a2f0-97ef-48b4-bc47-b3744490380c
 
 	/// Chip background for the rule verdict in context.
-	measure 'Check Verdict Fill' =
-			SWITCH ( [Check Verdict], "FAIL", "#342226", "WARN", "#322E1E", "PASS", "#243530" )
+	measure 'Check Verdict Fill' = SWITCH ( [Check Verdict], "FAIL", "#342226", "WARN", "#322E1E", "PASS", "#243530" )
 		isHidden
 		displayFolder: Verdicts
+		lineageTag: cd48bb90-d624-496a-8c1a-7a366e04e21c
 
 	/// Status colour for the feed verdict on the selected night.
-	measure 'Feed Verdict Colour' =
-			SWITCH ( [Feed Verdict], "FAIL", "#D65F5F", "WARN", "#D9A03F", "PASS", "#57A773", "No run", "#232B36" )
+	measure 'Feed Verdict Colour' = SWITCH ( [Feed Verdict], "FAIL", "#D65F5F", "WARN", "#D9A03F", "PASS", "#57A773", "No run", "#232B36" )
 		isHidden
 		displayFolder: Verdicts
+		lineageTag: 0956f950-2462-4918-bf41-a9600232c4e6
 
 	/// Cell colour for the check grid, trailing 14 nights.
-	measure 'Feed Verdict Colour (nightly)' =
-			SWITCH ( [Feed Verdict (nightly)], "FAIL", "#D65F5F", "WARN", "#D9A03F", "PASS", "#57A773", "No run", "#232B36" )
+	measure 'Feed Verdict Colour (nightly)' = SWITCH ( [Feed Verdict (nightly)], "FAIL", "#D65F5F", "WARN", "#D9A03F", "PASS", "#57A773", "No run", "#232B36" )
 		isHidden
 		displayFolder: Verdicts
+		lineageTag: 348d2612-c8d5-489a-a9b7-d6e3f18d3344
 
 	/// Feeds scheduled on the selected night.
-	measure 'Feeds Scheduled' =
-			COUNTROWS ( FILTER ( VALUES ( Feed[Feed] ), NOT ISBLANK ( [Feed Verdict] ) && [Feed Verdict] <> "No run" ) )
+	measure 'Feeds Scheduled' = COUNTROWS ( FILTER ( VALUES ( Feed[Feed] ), NOT ISBLANK ( [Feed Verdict] ) && [Feed Verdict] <> "No run" ) )
 		formatString: #,0
 		displayFolder: Verdicts
+		lineageTag: 573026ca-8d73-448f-8dcf-3e84745b3fbb
 
 	measure 'Feeds Passing' = COUNTROWS ( FILTER ( VALUES ( Feed[Feed] ), [Feed Verdict] = "PASS" ) ) + 0
 		formatString: #,0
 		displayFolder: Verdicts
+		lineageTag: ba8e92a1-6260-4ff6-bea9-2507d3afb3bb
 
 	measure 'Feeds Warning' = COUNTROWS ( FILTER ( VALUES ( Feed[Feed] ), [Feed Verdict] = "WARN" ) ) + 0
 		formatString: #,0
 		displayFolder: Verdicts
+		lineageTag: ee190d3b-6ee5-4359-a353-33867c5e1155
 
 	measure 'Feeds Failing' = COUNTROWS ( FILTER ( VALUES ( Feed[Feed] ), [Feed Verdict] = "FAIL" ) ) + 0
 		formatString: #,0
 		displayFolder: Verdicts
+		lineageTag: 3b137c66-0d99-4e19-afea-a3c605cf23c5
 
 	/// Rules with a result on the selected night. Denominators count evaluations, not nights x rules (W3).
 	measure 'Rules Evaluated' =
@@ -104,18 +113,22 @@ table 'Check Result'
 			    CALCULATE ( COUNTROWS ( 'Check Result' ), REMOVEFILTERS ( 'Date' ), 'Date'[Date] = d )
 		formatString: #,0
 		displayFolder: Quality rules
+		lineageTag: 6d706c64-bb57-443c-bb11-e40f82a19fdf
 
 	measure 'Rules Passing' = COUNTROWS ( FILTER ( VALUES ( 'Rule'[Rule Id] ), [Check Verdict] = "PASS" ) ) + 0
 		formatString: #,0
 		displayFolder: Quality rules
+		lineageTag: 7c3d611b-78c6-4ffa-b429-0409ba8afbac
 
 	measure 'Rules Warning' = COUNTROWS ( FILTER ( VALUES ( 'Rule'[Rule Id] ), [Check Verdict] = "WARN" ) ) + 0
 		formatString: #,0
 		displayFolder: Quality rules
+		lineageTag: 84d41112-d141-429d-b316-8327baef3e77
 
 	measure 'Rules Failing' = COUNTROWS ( FILTER ( VALUES ( 'Rule'[Rule Id] ), [Check Verdict] = "FAIL" ) ) + 0
 		formatString: #,0
 		displayFolder: Quality rules
+		lineageTag: 1e7500ba-c4a8-4f3e-9698-3db8397b1a66
 
 	/// Units checked on the selected night, in the rule's unit.
 	measure 'Units Checked' =
@@ -124,6 +137,7 @@ table 'Check Result'
 			    CALCULATE ( SUM ( 'Check Result'[UnitsChecked] ), REMOVEFILTERS ( 'Date' ), 'Date'[Date] = d )
 		formatString: #,0
 		displayFolder: Quality rules
+		lineageTag: 827926eb-0947-455f-9b1a-3a9698ac3004
 
 	/// Units failing on the selected night; 0 means zero.
 	measure 'Units Failed' =
@@ -132,10 +146,12 @@ table 'Check Result'
 			    CALCULATE ( SUM ( 'Check Result'[UnitsFailed] ), REMOVEFILTERS ( 'Date' ), 'Date'[Date] = d )
 		formatString: #,0
 		displayFolder: Quality rules
+		lineageTag: 9a4286d5-42f3-4bb0-b975-9fab781289b0
 
 	measure 'Fail Rate %' = DIVIDE ( [Units Failed], [Units Checked] )
 		formatString: 0.00%
 		displayFolder: Quality rules
+		lineageTag: 0c391a44-3962-4c70-a58d-9155c91c58eb
 
 	/// Minutes past the 05:00 deadline on the selected night (timeliness rules).
 	measure 'Minutes Late' =
@@ -144,6 +160,7 @@ table 'Check Result'
 			    CALCULATE ( MAX ( 'Check Result'[MinutesLate] ), REMOVEFILTERS ( 'Date' ), 'Date'[Date] = d )
 		formatString: #,0
 		displayFolder: Quality rules
+		lineageTag: 78e6607c-64c1-4821-91d7-8ef8148b45d0
 
 	/// Share of rule-night evaluations passing over the trailing 30 nights. Sliced by Quality Dimension for the dimension bars.
 	measure 'Dimension Pass Rate %' =
@@ -156,6 +173,7 @@ table 'Check Result'
 			        REMOVEFILTERS ( 'Date' ), 'Date'[Date] > d - 30, 'Date'[Date] <= d )
 		formatString: 0.0%
 		displayFolder: Quality rules
+		lineageTag: cee221af-259d-4261-a9f1-e06d9704284e
 
 	/// Records failing rows-unit rules per night, trailing 30 nights - the incident-memory trend.
 	measure 'Rows Failing (nightly)' =
@@ -166,58 +184,70 @@ table 'Check Result'
 			        CALCULATE ( SUM ( 'Check Result'[UnitsFailed] ), 'Rule'[Unit] = "rows" ) )
 		formatString: #,0
 		displayFolder: Trends
+		lineageTag: 40943588-65e0-4330-8d99-7322abb7518d
 
 	/// "x / y" feeds-passing headline.
 	measure 'KPI Feeds Label' = [Feeds Passing] & " / " & [Feeds Scheduled]
 		isHidden
 		displayFolder: Presentation
+		lineageTag: f3d00d20-882c-4ea3-aaba-b5799722ea66
 
 	/// 1 when the rule warns or fails on the selected night, blank otherwise. Advanced-filters the "what failed" tables to attention rows only.
 	measure 'Attention Flag' = IF ( [Check Verdict] = "WARN" || [Check Verdict] = "FAIL", 1 )
 		formatString: 0
 		isHidden
 		displayFolder: Verdicts
+		lineageTag: 1f1fffbc-4557-4bc7-8ad1-45ed1316f207
 
 	column Date
 		dataType: dateTime
 		isHidden
 		formatString: dd mmm yyyy
+		lineageTag: 1467753e-c49a-4d95-b497-39e21b96d6bb
 		summarizeBy: none
 		sourceColumn: Date
+
+		annotation UnderlyingDateTimeDataType = Date
 
 	column RuleId
 		dataType: string
 		isHidden
+		lineageTag: 192e5620-86f5-4991-a360-6fe06836fcb2
 		summarizeBy: none
 		sourceColumn: RuleId
 
 	column FeedCode
 		dataType: string
 		isHidden
+		lineageTag: c17a10d8-ddb7-4d08-8241-4ac6c4fb38b2
 		summarizeBy: none
 		sourceColumn: FeedCode
 
 	column RunSeq
 		dataType: int64
 		isHidden
+		lineageTag: 142c0714-411a-4dd7-a58f-42b386b26d70
 		summarizeBy: none
 		sourceColumn: RunSeq
 
 	column UnitsChecked
 		dataType: int64
 		isHidden
+		lineageTag: 5004c077-d5b4-488e-bbf6-6eef9bd9afa8
 		summarizeBy: sum
 		sourceColumn: UnitsChecked
 
 	column UnitsFailed
 		dataType: int64
 		isHidden
+		lineageTag: 3dd49520-13ed-4ad7-9b7b-45397ee77fb0
 		summarizeBy: sum
 		sourceColumn: UnitsFailed
 
 	column MinutesLate
 		dataType: int64
 		isHidden
+		lineageTag: 0fbb1d7b-a6d7-4602-bdd5-3faba93112e0
 		summarizeBy: none
 		sourceColumn: MinutesLate
 
@@ -234,3 +264,4 @@ table 'Check Result'
 				    Renamed = Table.RenameColumns(Retyped, {{"date", "Date"}, {"rule_id", "RuleId"}, {"feed_code", "FeedCode"}, {"run_seq", "RunSeq"}, {"units_checked", "UnitsChecked"}, {"units_failed", "UnitsFailed"}, {"minutes_late", "MinutesLate"}})
 				in
 				    Renamed
+

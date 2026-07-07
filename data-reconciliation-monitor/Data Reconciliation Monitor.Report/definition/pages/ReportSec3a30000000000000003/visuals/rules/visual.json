@@ -1,5 +1,5 @@
 {
-  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.9.0/schema.json",
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.10.0/schema.json",
   "name": "rules",
   "position": {
     "x": 24,
@@ -126,20 +126,6 @@
               },
               "queryRef": "Rule.Tolerance",
               "nativeQueryRef": "Tolerance"
-            },
-            {
-              "field": {
-                "Column": {
-                  "Expression": {
-                    "SourceRef": {
-                      "Entity": "Check Result"
-                    }
-                  },
-                  "Property": "Check Verdict"
-                }
-              },
-              "queryRef": "Check Result.Check Verdict",
-              "nativeQueryRef": "Check Verdict"
             }
           ]
         }
@@ -159,8 +145,7 @@
             },
             "direction": "Descending"
           }
-        ],
-        "isDefaultSort": false
+        ]
       }
     },
     "objects": {
@@ -288,36 +273,6 @@
               }
             }
           }
-        },
-        {
-          "properties": {
-            "fontColor": {
-              "solid": {
-                "color": {
-                  "expr": {
-                    "Measure": {
-                      "Expression": {
-                        "SourceRef": {
-                          "Entity": "Check Result"
-                        }
-                      },
-                      "Property": "Check Verdict Colour"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "selector": {
-            "data": [
-              {
-                "dataViewWildcard": {
-                  "matchingOption": 1
-                }
-              }
-            ],
-            "metadata": "Check Result.Check Verdict"
-          }
         }
       ]
     },
@@ -415,5 +370,121 @@
         }
       ]
     }
+  },
+  "filterConfig": {
+    "filters": [
+      {
+        "name": "0c1bf65a20c4842ffb4e",
+        "field": {
+          "Column": {
+            "Expression": {
+              "SourceRef": {
+                "Entity": "Rule"
+              }
+            },
+            "Property": "Rule Id"
+          }
+        },
+        "type": "Categorical"
+      },
+      {
+        "name": "5e65e0c7dc04822919e5",
+        "field": {
+          "Column": {
+            "Expression": {
+              "SourceRef": {
+                "Entity": "Rule"
+              }
+            },
+            "Property": "Rule Name"
+          }
+        },
+        "type": "Categorical"
+      },
+      {
+        "name": "40e6fce96605f6990657",
+        "field": {
+          "Column": {
+            "Expression": {
+              "SourceRef": {
+                "Entity": "Feed"
+              }
+            },
+            "Property": "Feed"
+          }
+        },
+        "type": "Categorical"
+      },
+      {
+        "name": "5492459c41b8b9c3160e",
+        "field": {
+          "Column": {
+            "Expression": {
+              "SourceRef": {
+                "Entity": "Rule"
+              }
+            },
+            "Property": "Quality Dimension"
+          }
+        },
+        "type": "Categorical"
+      },
+      {
+        "name": "ac3700750074226a37cb",
+        "field": {
+          "Measure": {
+            "Expression": {
+              "SourceRef": {
+                "Entity": "Check Result"
+              }
+            },
+            "Property": "Units Checked"
+          }
+        },
+        "type": "Advanced"
+      },
+      {
+        "name": "c38e4a36b111b0db6b0d",
+        "field": {
+          "Measure": {
+            "Expression": {
+              "SourceRef": {
+                "Entity": "Check Result"
+              }
+            },
+            "Property": "Units Failed"
+          }
+        },
+        "type": "Advanced"
+      },
+      {
+        "name": "5e7e75b918c3e9c9c906",
+        "field": {
+          "Measure": {
+            "Expression": {
+              "SourceRef": {
+                "Entity": "Check Result"
+              }
+            },
+            "Property": "Fail Rate %"
+          }
+        },
+        "type": "Advanced"
+      },
+      {
+        "name": "6b19af14702adfe41cfa",
+        "field": {
+          "Column": {
+            "Expression": {
+              "SourceRef": {
+                "Entity": "Rule"
+              }
+            },
+            "Property": "Tolerance"
+          }
+        },
+        "type": "Categorical"
+      }
+    ]
   }
 }

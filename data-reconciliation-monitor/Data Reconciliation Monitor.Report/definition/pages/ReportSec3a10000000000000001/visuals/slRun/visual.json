@@ -1,5 +1,5 @@
 {
-  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.9.0/schema.json",
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.10.0/schema.json",
   "name": "slRun",
   "position": {
     "x": 812,
@@ -11,11 +11,6 @@
   },
   "visual": {
     "visualType": "slicer",
-    "syncGroup": {
-      "groupName": "SyncRun",
-      "fieldChanges": true,
-      "filterChanges": true
-    },
     "query": {
       "queryState": {
         "Values": {
@@ -32,7 +27,8 @@
                 }
               },
               "queryRef": "Run Date.Run Date",
-              "nativeQueryRef": "Run Date"
+              "nativeQueryRef": "Run Date",
+              "active": true
             }
           ]
         }
@@ -212,6 +208,11 @@
           }
         }
       ]
+    },
+    "syncGroup": {
+      "groupName": "SyncRun",
+      "fieldChanges": true,
+      "filterChanges": true
     }
   }
 }

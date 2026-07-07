@@ -1,2 +1,6 @@
 /// Folder containing the generated CSVs. The only value to change after cloning the repo.
 expression 'Data Folder' = "C:\powerbi-portfolio\data-reconciliation-monitor\data" meta [IsParameterQuery=true, Type="Text", IsParameterQueryRequired=true]
+	lineageTag: 753fe8ad-b255-41f5-b546-6dd1b704bb31
+
+	annotation PBI_ResultType = Text
+

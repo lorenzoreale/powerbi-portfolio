@@ -1,55 +1,65 @@
 /// The eight monitored feeds, with source system, schedule and steward. A night a feed is not scheduled is a no-run, not a failure (W1).
 table Feed
+	lineageTag: c8b8fd6f-3f52-42fc-b1f0-51e01de12c8d
 
 	column FeedKey
 		dataType: int64
 		isHidden
+		lineageTag: 04553b83-7c22-4d76-bfad-a85aad47c28b
 		summarizeBy: none
 		sourceColumn: FeedKey
 
 	column FeedCode
 		dataType: string
 		isHidden
+		lineageTag: 4af71007-b8ac-4268-9fc7-948609985ce5
 		summarizeBy: none
 		sourceColumn: FeedCode
 
 	/// Feed name, in load order.
 	column Feed
 		dataType: string
+		lineageTag: bce2909e-9519-4166-b9ba-55c815b3d437
 		summarizeBy: none
 		sourceColumn: Feed
 		sortByColumn: FeedKey
 
 	column 'Source System'
 		dataType: string
+		lineageTag: 682dbd99-b449-45ac-9b9e-1828b8dba970
 		summarizeBy: none
 		sourceColumn: Source System
 
 	/// Daily / Weekdays / Mon-Sat. Drives which nights are no-runs.
 	column Schedule
 		dataType: string
+		lineageTag: b4c6cc75-fee8-45a4-b1ce-e2cb61d919f4
 		summarizeBy: none
 		sourceColumn: Schedule
 
 	column Steward
 		dataType: string
+		lineageTag: 93297e5b-e1c0-477e-913a-0043b8349d2e
 		summarizeBy: none
 		sourceColumn: Steward
 
 	column 'Has Amount'
 		dataType: boolean
 		isHidden
+		lineageTag: 848b11ad-2dae-4b77-b8e3-df462dc9949d
 		summarizeBy: none
 		sourceColumn: Has Amount
 
 	column 'Arrival Deadline'
 		dataType: string
+		lineageTag: aee8002a-ac2b-4641-ad2f-edba233a87fa
 		summarizeBy: none
 		sourceColumn: Arrival Deadline
 
 	column FilesExpected
 		dataType: int64
 		isHidden
+		lineageTag: d4d2556e-5606-4795-b82c-1c5551e5f7df
 		summarizeBy: none
 		sourceColumn: FilesExpected
 
@@ -63,3 +73,4 @@ table Feed
 				    Renamed = Table.RenameColumns(Typed, {{"feed_key", "FeedKey"}, {"feed_code", "FeedCode"}, {"feed", "Feed"}, {"source_system", "Source System"}, {"schedule", "Schedule"}, {"steward", "Steward"}, {"has_amount", "Has Amount"}, {"arrival_deadline", "Arrival Deadline"}, {"files_expected", "FilesExpected"}})
 				in
 				    Renamed
+

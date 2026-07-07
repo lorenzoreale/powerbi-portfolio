@@ -1,5 +1,4 @@
 /// Data reconciliation and quality monitor for Thornfield Retail Group (fictional). Synthetic data. Source-vs-warehouse reconciliation, quality rulebook, break register.
-database 3f6b2c91-8e47-4d0a-9b52-71c4e5a8d316
+database
 	compatibilityLevel: 1702
-	compatibilityMode: powerBI
-	language: 1033
+
