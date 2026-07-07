@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Data Reconciliation Monitor - design reference (Control Room)</title>
+<style>
+  :root {
+    --canvas: #14181F;      /* page canvas, deep slate */
+    --card: #1C222B;        /* visual cards */
+    --hair: #2A323E;        /* hairlines / borders */
+    --ink: #E6EBF2;         /* body text */
+    --sub: #8A96A6;         /* secondary text */
+    --cyan: #58B7D4;        /* data ink: volumes, trends, flow */
+    --cyan-dim: #2C5A6B;    /* muted cyan for secondary series */
+    --pass: #57A773;        /* pass, and pass only */
+    --warn: #D9A03F;        /* warning / tolerance edge only */
+    --fail: #D65F5F;        /* failed check / open break only */
+    --passbg: rgba(87,167,115,0.14);
+    --warnbg: rgba(217,160,63,0.14);
+    --failbg: rgba(214,95,95,0.16);
+    --passtx: #7FC79A;
+    --warntx: #E0B25E;
+    --failtx: #E58A8A;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #0F1319; color: var(--ink);
+    font-family: 'Segoe UI', -apple-system, 'Helvetica Neue', sans-serif; }
+  .wrap { padding: 56px; display: flex; flex-direction: column; gap: 48px; }
+  .intro { max-width: 940px; display: flex; flex-direction: column; gap: 10px; }
+  .intro h1 { margin: 0; font-size: 30px; font-weight: 650; letter-spacing: -0.3px; color: var(--ink); }
+  .intro p { margin: 0; font-size: 15px; color: var(--sub); line-height: 1.55; }
+  .badge { display: inline-flex; padding: 4px 12px; background: var(--cyan); color: #0F1319;
+    border-radius: 4px; font-size: 13px; font-weight: 700; }
+  .setrow { display: flex; align-items: center; gap: 12px; margin-bottom: 4px; }
+  .setrow span.lbl { font-size: 16px; font-weight: 600; }
+
+  /* spec sheet */
+  .spec { width: 1280px; background: var(--card); border: 1px solid var(--hair); border-radius: 8px;
+    padding: 32px; display: flex; flex-direction: column; gap: 24px; }
+  .spec h2 { margin: 0; font-size: 15px; font-weight: 700; letter-spacing: 0.4px; text-transform: uppercase; color: var(--cyan); }
+  .spec-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; }
+  .col-h { font-size: 12px; font-weight: 700; color: var(--sub); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; }
+  .swatchrow { display: flex; align-items: center; gap: 10px; font-size: 12px; margin-bottom: 8px; }
+  .swatch { width: 34px; height: 22px; border-radius: 4px; border: 1px solid var(--hair); flex: none; }
+  code { color: var(--sub); font-size: 11px; }
+  .rules { margin: 0; padding-left: 18px; font-size: 12px; line-height: 1.85; }
+  .typeblk div { margin-bottom: 3px; }
+
+  /* mockup frame */
+  .page { display: flex; gap: 32px; align-items: flex-start; }
+  .frame { position: relative; width: 1280px; height: 720px; flex: none; background: var(--canvas);
+    border: 1px solid #2E3743; box-shadow: 0 4px 20px rgba(0,0,0,0.45);
+    padding: 24px; display: flex; flex-direction: column; gap: 16px; }
+  .tband { height: 52px; flex: none; display: flex; align-items: center; justify-content: space-between; }
+  .brand { display: flex; align-items: center; gap: 13px; }
+  .logo { width: 40px; height: 40px; border-radius: 8px; background: var(--cyan); color: #0F1319;
+    display: flex; align-items: center; justify-content: center; font-size: 19px; font-weight: 800; }
+  .ttl { font-size: 20px; font-weight: 650; color: var(--ink); line-height: 1.15; }
+  .sub { font-size: 11px; color: var(--sub); }
+  .slicers { display: flex; align-items: center; gap: 8px; }
+  .slicer { height: 32px; padding: 0 12px; background: var(--card); border: 1px solid #333D4B;
+    border-radius: 4px; display: flex; align-items: center; gap: 18px; font-size: 11px; color: var(--ink); }
+  .slicer .caret { color: var(--sub); }
+
+  .kpiband { height: 104px; flex: none; display: grid; gap: 16px; }
+  .kpi { background: var(--card); border: 1px solid var(--hair); border-top: 3px solid var(--cyan);
+    border-radius: 6px; padding: 13px 16px;
+    display: flex; flex-direction: column; justify-content: space-between; }
+  .kpi .k-lbl { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--sub); }
+  .kpi .k-val { font-size: 29px; font-weight: 700; color: var(--ink); line-height: 1; font-variant-numeric: tabular-nums; }
+  .kpi .k-ctx { font-size: 10px; color: var(--sub); }
+  .kpi.alarm { border-top-color: var(--fail); }
+  .kpi.alarm .k-lbl { color: var(--failtx); }
+  .kpi.alarm .k-val { color: var(--failtx); }
+  .kpi.good .k-val { color: var(--passtx); }
+  .u { color: var(--failtx); font-weight: 600; }
+  .w { color: var(--warntx); font-weight: 600; }
+  .f { color: var(--passtx); font-weight: 600; }
+
+  .card { background: var(--card); border: 1px solid var(--hair); border-radius: 6px;
+    padding: 13px 16px; display: flex; flex-direction: column; gap: 10px; min-height: 0; }
+  .vtitle { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; color: var(--cyan); }
+  .vhead { display: flex; justify-content: space-between; align-items: baseline; }
+  .legend { display: flex; gap: 12px; font-size: 9px; color: var(--sub); align-items: center; }
+  .legend i { width: 8px; height: 8px; border-radius: 2px; display: inline-block; vertical-align: middle; margin-right: 3px; }
+
+  .grid2 { display: grid; gap: 16px; min-height: 0; }
+
+  /* status chips */
+  .chip { padding: 1px 9px; border-radius: 10px; font-size: 9.5px; font-weight: 700; letter-spacing: 0.4px; }
+  .chip.p { background: var(--passbg); color: var(--passtx); }
+  .chip.w { background: var(--warnbg); color: var(--warntx); }
+  .chip.x { background: var(--failbg); color: var(--failtx); }
+
+  /* feed tiles */
+  .tiles { flex: 1; display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+  .tile { background: #1A202A; border: 1px solid var(--hair); border-left: 3px solid var(--pass); border-radius: 5px;
+    padding: 9px 11px; display: flex; flex-direction: column; justify-content: space-between; gap: 4px; }
+  .tile.warn { border-left-color: var(--warn); }
+  .tile.fail { border-left-color: var(--fail); background: #211B1E; }
+  .tile .t-name { font-size: 11px; font-weight: 650; color: var(--ink); }
+  .tile .t-meta { font-size: 9.5px; color: var(--sub); font-variant-numeric: tabular-nums; }
+  .tile .t-row { display: flex; justify-content: space-between; align-items: center; }
+
+  /* horizontal bars */
+  .hbars { flex: 1; display: flex; flex-direction: column; justify-content: space-around; gap: 6px; font-size: 11px; }
+  .hbar { display: grid; grid-template-columns: 130px 1fr 56px; gap: 10px; align-items: center; }
+  .track { position: relative; height: 13px; background: #232B36; border-radius: 2px; }
+  .fill { position: absolute; top: 0; left: 0; height: 100%; background: var(--cyan); border-radius: 2px; }
+  .num { text-align: right; font-variant-numeric: tabular-nums; }
+
+  /* tables */
+  table.tb { width: 100%; border-collapse: collapse; font-size: 10.5px; }
+  table.tb th { font-size: 9px; font-weight: 700; color: var(--sub); text-transform: uppercase;
+    letter-spacing: 0.4px; text-align: left; padding: 4px 8px; border-bottom: 1px solid var(--hair); }
+  table.tb th.r, table.tb td.r { text-align: right; font-variant-numeric: tabular-nums; }
+  table.tb td { padding: 5px 8px; border-bottom: 1px solid #222932; color: var(--ink); }
+  table.tb td.mono { font-variant-numeric: tabular-nums; }
+
+  /* check grid (signature) */
+  .cg { display: grid; grid-template-columns: 150px repeat(14, 1fr); gap: 4px; align-items: center; font-size: 10px; }
+  .cg .rowlbl { color: var(--ink); font-size: 10.5px; padding-right: 6px; }
+  .cg .daylbl { color: var(--sub); font-size: 8.5px; text-align: center; }
+  .cell { height: 20px; border-radius: 3px; background: var(--pass); opacity: 0.82; }
+  .cell.w { background: var(--warn); }
+  .cell.x { background: var(--fail); }
+  .cell.n { background: #232B36; }
+
+  /* svg charts */
+  svg text { font-family: 'Segoe UI', sans-serif; }
+
+  /* notes */
+  .notes { width: 320px; flex: none; display: flex; flex-direction: column; gap: 13px; }
+  .notes h3 { margin: 0; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--cyan); }
+  .note { display: flex; gap: 10px; font-size: 12.5px; line-height: 1.5; color: #B9C2CE; }
+  .note .n { flex: none; width: 20px; height: 20px; border-radius: 50%; background: var(--cyan); color: #0F1319;
+    font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+  .dotmark { position: absolute; width: 22px; height: 22px; border-radius: 50%; background: var(--cyan); color: #0F1319;
+    font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 0 3px var(--canvas); z-index: 5; }
+  .dotmark.red { background: var(--fail); color: #fff; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="intro">
+    <div class="setrow"><span class="badge">3a</span><span class="lbl">Data Reconciliation Monitor - "Control Room"</span></div>
+    <h1>Design reference - Thornfield Retail Group</h1>
+    <p>Five page archetypes for a source-vs-warehouse reconciliation and data quality monitor. Fictional client: <strong style="color:var(--ink)">Thornfield Retail Group</strong>, a multi-channel retailer whose data platform team runs this report as the morning check before the business opens its dashboards: did last night's loads land, do the warehouse numbers match the source systems, and which breaks need chasing. The audience is engineers and analysts, so the set goes dark - the visual language of observability tooling, kept quiet. Canvas is 1280x720 (Power BI default). Numbers on these mockups are illustrative placeholders; in the built report every figure traces to the committed data generator. Numbered dots map to the notes beside each page.</p>
+  </div>
+
+  <!-- ===================== SPEC SHEET ===================== -->
+  <div class="spec">
+    <h2>Design system at a glance</h2>
+    <div class="spec-grid">
+      <div>
+        <div class="col-h">Palette - status is a traffic discipline, everything else stays quiet</div>
+        <div class="swatchrow"><span class="swatch" style="background:#14181F"></span><code>#14181F</code><span>Page canvas - deep slate, never pure black</span></div>
+        <div class="swatchrow"><span class="swatch" style="background:#1C222B"></span><code>#1C222B</code><span>Visual cards, 6px radius, hairline border</span></div>
+        <div class="swatchrow"><span class="swatch" style="background:#58B7D4"></span><code>#58B7D4</code><span>Cyan = <strong>data flow</strong>: row volumes, trends, titles</span></div>
+        <div class="swatchrow"><span class="swatch" style="background:#57A773"></span><code>#57A773</code><span>Green = <strong>check passed</strong>, nothing else</span></div>
+        <div class="swatchrow"><span class="swatch" style="background:#D9A03F"></span><code>#D9A03F</code><span>Amber = <strong>warning</strong>: inside tolerance but drifting, or late</span></div>
+        <div class="swatchrow"><span class="swatch" style="background:#D65F5F"></span><code>#D65F5F</code><span>Red = <strong>failed check or open break</strong>, nothing else</span></div>
+        <div class="swatchrow"><span class="swatch" style="background:#E6EBF2"></span><code>#E6EBF2</code><span>Ink - headings and body on dark</span></div>
+        <div class="swatchrow"><span class="swatch" style="background:#8A96A6"></span><code>#8A96A6</code><span>Secondary text, axis labels, context lines</span></div>
+      </div>
+      <div>
+        <div class="col-h">Type - Segoe UI (Power BI native), tabular figures throughout</div>
+        <div class="typeblk">
+          <div style="font-size:20px;font-weight:650;color:var(--ink)">Report title 20px semibold</div>
+          <div style="font-size:28px;font-weight:700;color:var(--ink)">99.97% <span style="font-size:12px;font-weight:400;color:var(--sub)">KPI number 28-30px bold</span></div>
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.6px;color:var(--cyan)">Visual title 11px caps 700 cyan</div>
+          <div style="font-size:10px;color:var(--sub)">Axis / table body 10-11px, tabular numerals, secondary #8A96A6</div>
+        </div>
+        <div class="col-h" style="margin-top:16px">Signature rules</div>
+        <ul class="rules">
+          <li><strong>Pass / warn / fail is the only colour story.</strong> Green means a check passed, red means it failed or a break is open, amber means inside tolerance but worth a look. No other meaning ever borrows these colours.</li>
+          <li><strong>The check grid</strong> (feed by day, one square per nightly run) is the recurring signature move - a CI pipeline read: scan a fortnight of history in one glance.</li>
+          <li><strong>Zero means zero.</strong> Variances are shown exactly, signed, with thousands separators; a matched feed shows 0, not blank. Every count is pairwise: source next to warehouse.</li>
+          <li>24px margins, 8px grid. Fixed bands: title + slicers, KPI band (~104px), then content rows. Money and counts right-aligned, tabular numerals.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== PAGE 1: MORNING CHECK ===================== -->
+  <div class="page">
+    <div class="frame">
+      <div class="tband">
+        <div class="brand">
+          <div class="logo">T</div>
+          <div><div class="ttl">Thornfield Retail Group</div><div class="sub">Data Reconciliation Monitor &middot; run for Mon 29 Jun 2026 &middot; loaded 06:12 &middot; warehouse vs source</div></div>
+        </div>
+        <div class="slicers">
+          <div class="slicer"><span>Run date: <strong>29 Jun 2026</strong></span><span class="caret">&#9662;</span></div>
+          <div class="slicer"><span>Source system: <strong>All</strong></span><span class="caret">&#9662;</span></div>
+          <div class="slicer"><span>Severity: <strong>All</strong></span><span class="caret">&#9662;</span></div>
+        </div>
+      </div>
+
+      <div class="kpiband" style="grid-template-columns:repeat(5,1fr)">
+        <div class="kpi"><div class="k-lbl">Rows reconciled</div><div class="k-val">4.65m</div><div class="k-ctx">last night, across 8 feeds</div></div>
+        <div class="kpi good"><div class="k-lbl">Row match rate</div><div class="k-val">99.97%</div><div class="k-ctx">threshold &ge; 99.90% &middot; <span class="f">in tolerance</span></div></div>
+        <div class="kpi"><div class="k-lbl">Feeds passing</div><div class="k-val">6 / 8</div><div class="k-ctx"><span class="w">1 warning</span> &middot; <span class="u">1 failed</span></div></div>
+        <div class="kpi alarm"><div class="k-lbl">Open breaks</div><div class="k-val">14</div><div class="k-ctx"><span class="u">3 critical</span> &middot; 11 assigned</div></div>
+        <div class="kpi"><div class="k-lbl">Oldest open break</div><div class="k-val">9 <span style="font-size:15px;font-weight:600">days</span></div><div class="k-ctx">BRK-0171 &middot; Product master &middot; schema drift</div></div>
+      </div>
+
+      <div class="grid2" style="grid-template-columns:1.45fr 1fr;flex:1.25">
+        <div class="card">
+          <div class="vhead"><div class="vtitle">Feed status board &middot; last night's run</div>
+            <div class="legend"><span><i style="background:var(--pass)"></i>Pass</span><span><i style="background:var(--warn)"></i>Warning</span><span><i style="background:var(--fail)"></i>Fail</span></div></div>
+          <div class="tiles">
+            <div class="tile"><div class="t-row"><span class="t-name">POS transactions</span><span class="chip p">PASS</span></div><div class="t-meta">2,412,384 rows &middot; &Delta; 0</div></div>
+            <div class="tile warn"><div class="t-row"><span class="t-name">E-commerce orders</span><span class="chip w">WARN</span></div><div class="t-meta">148,059 rows &middot; &Delta; &minus;3 &middot; 3rd night</div></div>
+            <div class="tile"><div class="t-row"><span class="t-name">ERP GL journal</span><span class="chip p">PASS</span></div><div class="t-meta">96,410 rows &middot; &Delta; 0 &middot; to the penny</div></div>
+            <div class="tile fail"><div class="t-row"><span class="t-name">Supplier EDI invoices</span><span class="chip x">FAIL</span></div><div class="t-meta">7,736 rows &middot; &Delta; &minus;1,204 &middot; file missing</div></div>
+            <div class="tile"><div class="t-row"><span class="t-name">Logistics shipments</span><span class="chip p">PASS</span></div><div class="t-meta">31,254 rows &middot; &Delta; 0</div></div>
+            <div class="tile"><div class="t-row"><span class="t-name">Loyalty members</span><span class="chip p">PASS</span></div><div class="t-meta">1,872,455 rows &middot; &Delta; 0</div></div>
+            <div class="tile"><div class="t-row"><span class="t-name">Product master</span><span class="chip p">PASS</span></div><div class="t-meta">84,312 rows &middot; &Delta; 0</div></div>
+            <div class="tile"><div class="t-row"><span class="t-name">Store master</span><span class="chip p">PASS</span></div><div class="t-meta">642 rows &middot; &Delta; 0</div></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="vhead"><div class="vtitle">Row match rate &middot; last 30 nights</div>
+            <div class="legend"><span><i style="background:var(--cyan)"></i>Match rate</span><span><i style="background:var(--warn)"></i>Threshold 99.90%</span></div></div>
+          <div style="flex:1;position:relative">
+            <svg viewBox="0 0 460 170" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:100%">
+              <line x1="30" y1="35" x2="452" y2="35" stroke="#D9A03F" stroke-width="1" stroke-dasharray="5 4"/>
+              <polyline fill="none" stroke="#58B7D4" stroke-width="2"
+                points="30,22 60,20 90,24 120,18 150,22 180,26 210,130 240,30 270,20 300,24 330,18 360,22 390,50 420,46 452,20"/>
+              <circle cx="210" cy="130" r="4" fill="#D65F5F"/>
+              <text x="216" y="122" font-size="9" fill="#E58A8A">14 Jun &middot; 98.9%</text>
+              <text x="2" y="38" font-size="8" fill="#8A96A6">99.90</text>
+              <text x="2" y="22" font-size="8" fill="#8A96A6">100</text>
+              <text x="30" y="164" font-size="8" fill="#8A96A6">31 May</text>
+              <text x="420" y="164" font-size="8" fill="#8A96A6">29 Jun</text>
+            </svg>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid2" style="grid-template-columns:1fr 1.45fr;flex:1">
+        <div class="card">
+          <div class="vtitle">Open breaks by category</div>
+          <div class="hbars">
+            <div class="hbar"><span>Missing file</span><div class="track"><div class="fill" style="width:88%;background:var(--fail)"></div></div><span class="num">4</span></div>
+            <div class="hbar"><span>Row count mismatch</span><div class="track"><div class="fill" style="width:66%;background:var(--fail)"></div></div><span class="num">3</span></div>
+            <div class="hbar"><span>Amount mismatch</span><div class="track"><div class="fill" style="width:66%;background:var(--fail)"></div></div><span class="num">3</span></div>
+            <div class="hbar"><span>Late arrival</span><div class="track"><div class="fill" style="width:44%;background:var(--warn)"></div></div><span class="num">2</span></div>
+            <div class="hbar"><span>Schema drift</span><div class="track"><div class="fill" style="width:22%;background:var(--fail)"></div></div><span class="num">1</span></div>
+            <div class="hbar"><span>Duplicate keys</span><div class="track"><div class="fill" style="width:22%;background:var(--warn)"></div></div><span class="num">1</span></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="vtitle">What failed last night</div>
+          <table class="tb">
+            <thead><tr><th>Feed</th><th>Check</th><th class="r">Expected</th><th class="r">Got</th><th class="r">&Delta;</th><th>Status</th></tr></thead>
+            <tbody>
+              <tr><td>Supplier EDI invoices</td><td>Row count vs source</td><td class="r">8,940</td><td class="r">7,736</td><td class="r u">&minus;1,204</td><td><span class="chip x">FAIL</span></td></tr>
+              <tr><td>Supplier EDI invoices</td><td>Amount total vs source</td><td class="r">1,594,208</td><td class="r">1,379,600</td><td class="r u">&minus;214,608</td><td><span class="chip x">FAIL</span></td></tr>
+              <tr><td>Supplier EDI invoices</td><td>File arrival by 05:00</td><td class="r">05:00</td><td class="r">05:41</td><td class="r w">+41 min</td><td><span class="chip w">WARN</span></td></tr>
+              <tr><td>E-commerce orders</td><td>Amount total vs source</td><td class="r">1,048,650</td><td class="r">1,048,238</td><td class="r w">&minus;412</td><td><span class="chip w">WARN</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="dotmark" style="top:16px;left:330px">1</div>
+      <div class="dotmark" style="top:88px;right:12px">2</div>
+      <div class="dotmark red" style="top:88px;right:262px">3</div>
+      <div class="dotmark" style="top:212px;left:390px">4</div>
+      <div class="dotmark" style="top:212px;right:300px">5</div>
+    </div>
+    <div class="notes">
+      <h3>Morning check - the 10-second read</h3>
+      <div class="note"><span class="n">1</span><span><strong>Title band carries the run context</strong>: which night's run, when it landed. Slicers top-right, same order on every page: Run date, Source system, Severity.</span></div>
+      <div class="note"><span class="n">2</span><span><strong>KPI cards</strong> pair each number with its threshold or context line. Green figures only when a check passes its threshold; the match-rate card names the tolerance it is judged against.</span></div>
+      <div class="note"><span class="n">3</span><span><strong>The alarm card.</strong> Red on exactly one thing - the count of open breaks, the queue the team works through today.</span></div>
+      <div class="note"><span class="n">4</span><span><strong>Feed status board</strong>: one tile per feed with last night's verdict, row count and delta. The failed tile is the only red object on the board.</span></div>
+      <div class="note"><span class="n">5</span><span><strong>30-night match rate</strong> against the dashed amber threshold. The 14 Jun dip is annotated, not hidden - the monitor's job is to remember incidents.</span></div>
+    </div>
+  </div>
+
+  <!-- ===================== PAGE 2: RECONCILIATION ===================== -->
+  <div class="page">
+    <div class="frame">
+      <div class="tband">
+        <div class="brand"><div class="logo">T</div>
+          <div><div class="ttl">Reconciliation</div><div class="sub">Source vs warehouse, feed by feed &middot; counts and amounts, pairwise</div></div></div>
+        <div class="slicers">
+          <div class="slicer"><span>Run date: <strong>29 Jun 2026</strong></span><span class="caret">&#9662;</span></div>
+          <div class="slicer"><span>Source system: <strong>All</strong></span><span class="caret">&#9662;</span></div>
+          <div class="slicer"><span>Severity: <strong>All</strong></span><span class="caret">&#9662;</span></div>
+        </div>
+      </div>
+
+      <div class="card" style="flex:1.25">
+        <div class="vhead"><div class="vtitle">Feed reconciliation &middot; 29 Jun 2026</div>
+          <div class="legend"><span>Tolerance: rows exact unless stated &middot; amounts &plusmn;0.05%</span></div></div>
+        <table class="tb">
+          <thead><tr><th>Feed</th><th>Source system</th><th class="r">Source rows</th><th class="r">Warehouse rows</th><th class="r">&Delta; rows</th><th class="r">Source amount</th><th class="r">Warehouse amount</th><th class="r">&Delta; amount</th><th>Status</th></tr></thead>
+          <tbody>
+            <tr><td>POS transactions</td><td>Storeline POS</td><td class="r">2,412,384</td><td class="r">2,412,384</td><td class="r">0</td><td class="r">18,424,913</td><td class="r">18,424,913</td><td class="r">0</td><td><span class="chip p">PASS</span></td></tr>
+            <tr><td>E-commerce orders</td><td>Webshop</td><td class="r">148,062</td><td class="r">148,059</td><td class="r w">&minus;3</td><td class="r">1,048,650</td><td class="r">1,048,238</td><td class="r w">&minus;412</td><td><span class="chip w">WARN</span></td></tr>
+            <tr><td>ERP GL journal</td><td>Ledger ERP</td><td class="r">96,410</td><td class="r">96,410</td><td class="r">0</td><td class="r">42,806,114</td><td class="r">42,806,114</td><td class="r">0</td><td><span class="chip p">PASS</span></td></tr>
+            <tr><td>Supplier EDI invoices</td><td>EDI gateway</td><td class="r">8,940</td><td class="r">7,736</td><td class="r u">&minus;1,204</td><td class="r">1,594,208</td><td class="r">1,379,600</td><td class="r u">&minus;214,608</td><td><span class="chip x">FAIL</span></td></tr>
+            <tr><td>Logistics shipments</td><td>DepotTrack</td><td class="r">31,254</td><td class="r">31,254</td><td class="r">0</td><td class="r">&mdash;</td><td class="r">&mdash;</td><td class="r">&mdash;</td><td><span class="chip p">PASS</span></td></tr>
+            <tr><td>Loyalty members</td><td>Loyalty CRM</td><td class="r">1,872,455</td><td class="r">1,872,455</td><td class="r">0</td><td class="r">&mdash;</td><td class="r">&mdash;</td><td class="r">&mdash;</td><td><span class="chip p">PASS</span></td></tr>
+            <tr><td>Product master</td><td>Ledger ERP</td><td class="r">84,312</td><td class="r">84,312</td><td class="r">0</td><td class="r">&mdash;</td><td class="r">&mdash;</td><td class="r">&mdash;</td><td><span class="chip p">PASS</span></td></tr>
+            <tr><td>Store master</td><td>Ledger ERP</td><td class="r">642</td><td class="r">642</td><td class="r">0</td><td class="r">&mdash;</td><td class="r">&mdash;</td><td class="r">&mdash;</td><td><span class="chip p">PASS</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="card" style="flex:1">
+        <div class="vhead"><div class="vtitle">Nightly run history &middot; feed by day, last 14 nights</div>
+          <div class="legend"><span><i style="background:var(--pass)"></i>Pass</span><span><i style="background:var(--warn)"></i>Warning</span><span><i style="background:var(--fail)"></i>Fail</span><span><i style="background:#232B36"></i>No run</span></div></div>
+        <div class="cg">
+          <span class="rowlbl"></span>
+          <span class="daylbl">16</span><span class="daylbl">17</span><span class="daylbl">18</span><span class="daylbl">19</span><span class="daylbl">20</span><span class="daylbl">21</span><span class="daylbl">22</span><span class="daylbl">23</span><span class="daylbl">24</span><span class="daylbl">25</span><span class="daylbl">26</span><span class="daylbl">27</span><span class="daylbl">28</span><span class="daylbl">29</span>
+          <span class="rowlbl">POS transactions</span>
+          <div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div>
+          <span class="rowlbl">E-commerce orders</span>
+          <div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell w"></div><div class="cell w"></div><div class="cell w"></div>
+          <span class="rowlbl">ERP GL journal</span>
+          <div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell n"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div>
+          <span class="rowlbl">Supplier EDI invoices</span>
+          <div class="cell"></div><div class="cell"></div><div class="cell w"></div><div class="cell"></div><div class="cell"></div><div class="cell n"></div><div class="cell x"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell x"></div>
+          <span class="rowlbl">Logistics shipments</span>
+          <div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell w"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div>
+          <span class="rowlbl">Loyalty members</span>
+          <div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell w"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div>
+        </div>
+      </div>
+
+      <div class="dotmark" style="top:100px;left:560px">1</div>
+      <div class="dotmark" style="top:100px;right:120px">2</div>
+      <div class="dotmark red" style="top:470px;left:420px">3</div>
+    </div>
+    <div class="notes">
+      <h3>Reconciliation - the pairwise proof</h3>
+      <div class="note"><span class="n">1</span><span><strong>Every count is pairwise</strong>: source rows next to warehouse rows, source amount next to warehouse amount, then the signed delta. A matched feed shows 0, not blank - zero means zero. Master-data feeds without a monetary measure show a dash, honestly.</span></div>
+      <div class="note"><span class="n">2</span><span><strong>Status is judged against a stated tolerance</strong> (in the card header, not hidden in a tooltip): row counts exact, amounts within &plusmn;0.05%. E-commerce is inside tolerance, so amber not red.</span></div>
+      <div class="note"><span class="n">3</span><span><strong>The check grid, the signature move</strong>: one square per feed per night, a fortnight deep. Recurring amber on one feed reads as a pattern, not an incident. Right-click a row to drill through to the feed detail page.</span></div>
+    </div>
+  </div>
+
+  <!-- ===================== PAGE 3: QUALITY RULES ===================== -->
+  <div class="page">
+    <div class="frame">
+      <div class="tband">
+        <div class="brand"><div class="logo">T</div>
+          <div><div class="ttl">Quality Rules</div><div class="sub">Rule-level results inside the warehouse: completeness, validity, uniqueness, timeliness, consistency</div></div></div>
+        <div class="slicers">
+          <div class="slicer"><span>Run date: <strong>29 Jun 2026</strong></span><span class="caret">&#9662;</span></div>
+          <div class="slicer"><span>Source system: <strong>All</strong></span><span class="caret">&#9662;</span></div>
+          <div class="slicer"><span>Dimension: <strong>All</strong></span><span class="caret">&#9662;</span></div>
+        </div>
+      </div>
+
+      <div class="kpiband" style="grid-template-columns:repeat(4,1fr)">
+        <div class="kpi"><div class="k-lbl">Rules evaluated</div><div class="k-val">48</div><div class="k-ctx">across 8 feeds, nightly</div></div>
+        <div class="kpi good"><div class="k-lbl">Passing</div><div class="k-val">41</div><div class="k-ctx">85% of the rulebook</div></div>
+        <div class="kpi"><div class="k-lbl">Warnings</div><div class="k-val" style="color:var(--warntx)">5</div><div class="k-ctx">failing rows inside tolerance</div></div>
+        <div class="kpi alarm"><div class="k-lbl">Failing</div><div class="k-val">2</div><div class="k-ctx">both on Supplier EDI invoices</div></div>
+      </div>
+
+      <div class="grid2" style="grid-template-columns:1fr 1.5fr;flex:1">
+        <div class="card">
+          <div class="vtitle">Pass rate by quality dimension</div>
+          <div class="hbars">
+            <div class="hbar"><span>Uniqueness</span><div class="track"><div class="fill" style="width:96%"></div></div><span class="num">99.9%</span></div>
+            <div class="hbar"><span>Consistency</span><div class="track"><div class="fill" style="width:95%"></div></div><span class="num">99.6%</span></div>
+            <div class="hbar"><span>Completeness</span><div class="track"><div class="fill" style="width:94%"></div></div><span class="num">99.2%</span></div>
+            <div class="hbar"><span>Validity</span><div class="track"><div class="fill" style="width:92%"></div></div><span class="num">98.7%</span></div>
+            <div class="hbar"><span>Timeliness</span><div class="track"><div class="fill" style="width:88%;background:var(--warn)"></div></div><span class="num w">97.5%</span></div>
+          </div>
+          <div style="font-size:9.5px;color:var(--sub)">% of rule evaluations passing, last 30 nights. Timeliness drags: two feeds keep missing the 05:00 window.</div>
+        </div>
+        <div class="card">
+          <div class="vhead"><div class="vtitle">Failing records &middot; last 30 nights</div>
+            <div class="legend"><span><i style="background:var(--cyan)"></i>Records failing any rule</span></div></div>
+          <div style="flex:1;position:relative">
+            <svg viewBox="0 0 560 150" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:100%">
+              <polyline fill="none" stroke="#58B7D4" stroke-width="2"
+                points="30,96 66,92 102,98 138,88 174,94 210,30 246,58 282,74 318,84 354,90 390,86 426,92 462,88 498,84 545,80"/>
+              <circle cx="210" cy="30" r="4" fill="#D65F5F"/>
+              <text x="216" y="24" font-size="9" fill="#E58A8A">14 Jun &middot; 61k &middot; POS incident</text>
+              <text x="2" y="34" font-size="8" fill="#8A96A6">60k</text>
+              <text x="2" y="98" font-size="8" fill="#8A96A6">15k</text>
+              <text x="30" y="144" font-size="8" fill="#8A96A6">31 May</text>
+              <text x="512" y="144" font-size="8" fill="#8A96A6">29 Jun</text>
+            </svg>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="flex:1.15">
+        <div class="vtitle">Rule results &middot; worst first</div>
+        <table class="tb">
+          <thead><tr><th>Rule</th><th>Feed</th><th>Dimension</th><th class="r">Rows checked</th><th class="r">Rows failing</th><th class="r">Fail rate</th><th class="r">Tolerance</th><th>Status</th></tr></thead>
+          <tbody>
+            <tr><td class="mono">R-017 &middot; file lands by 05:00</td><td>Supplier EDI invoices</td><td>Timeliness</td><td class="r">1</td><td class="r">1</td><td class="r u">&mdash;</td><td class="r">05:00</td><td><span class="chip x">FAIL</span></td></tr>
+            <tr><td class="mono">R-019 &middot; invoice count vs manifest</td><td>Supplier EDI invoices</td><td>Completeness</td><td class="r">8,940</td><td class="r">1,204</td><td class="r u">13.47%</td><td class="r">0%</td><td><span class="chip x">FAIL</span></td></tr>
+            <tr><td class="mono">R-014 &middot; email format valid</td><td>Loyalty members</td><td>Validity</td><td class="r">1,872,455</td><td class="r">12,480</td><td class="r w">0.67%</td><td class="r">&le; 1%</td><td><span class="chip w">WARN</span></td></tr>
+            <tr><td class="mono">R-008 &middot; customer id present</td><td>E-commerce orders</td><td>Completeness</td><td class="r">148,059</td><td class="r">214</td><td class="r w">0.14%</td><td class="r">&le; 0.5%</td><td><span class="chip w">WARN</span></td></tr>
+            <tr><td class="mono">R-021 &middot; barcode unique</td><td>Product master</td><td>Uniqueness</td><td class="r">84,312</td><td class="r">14</td><td class="r w">0.02%</td><td class="r">0</td><td><span class="chip w">WARN</span></td></tr>
+            <tr><td class="mono">R-011 &middot; debits equal credits</td><td>ERP GL journal</td><td>Consistency</td><td class="r">96,410</td><td class="r">0</td><td class="r">0.00%</td><td class="r">0</td><td><span class="chip p">PASS</span></td></tr>
+            <tr><td class="mono">R-003 &middot; basket total equals line sum</td><td>POS transactions</td><td>Consistency</td><td class="r">2,412,384</td><td class="r">0</td><td class="r">0.00%</td><td class="r">0</td><td><span class="chip p">PASS</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="dotmark" style="top:88px;left:120px">1</div>
+      <div class="dotmark" style="top:230px;left:300px">2</div>
+      <div class="dotmark" style="top:470px;left:520px">3</div>
+    </div>
+    <div class="notes">
+      <h3>Quality rules - inside the warehouse</h3>
+      <div class="note"><span class="n">1</span><span><strong>The rulebook as a KPI band</strong>: evaluated, passing, warning, failing. Reconciliation (page 2) proves warehouse equals source; this page proves the data is fit to use once it is in.</span></div>
+      <div class="note"><span class="n">2</span><span><strong>Pass rate by dimension</strong> names the five classic data-quality dimensions and shows where the rulebook drags - here timeliness, the operational one.</span></div>
+      <div class="note"><span class="n">3</span><span><strong>Rule results, worst first</strong>, each with its stated tolerance. A rule failing 14 rows out of 84k is amber against a zero tolerance, not buried by the percentage. Rule ids are stable and quotable in stand-up.</span></div>
+    </div>
+  </div>
+
+  <!-- ===================== PAGE 4: BREAK REGISTER ===================== -->
+  <div class="page">
+    <div class="frame">
+      <div class="tband">
+        <div class="brand"><div class="logo">T</div>
+          <div><div class="ttl">Break Register</div><div class="sub">Every unresolved discrepancy, owned and aged &middot; the team's queue</div></div></div>
+        <div class="slicers">
+          <div class="slicer"><span>Status: <strong>Open</strong></span><span class="caret">&#9662;</span></div>
+          <div class="slicer"><span>Source system: <strong>All</strong></span><span class="caret">&#9662;</span></div>
+          <div class="slicer"><span>Severity: <strong>All</strong></span><span class="caret">&#9662;</span></div>
+        </div>
+      </div>
+
+      <div class="kpiband" style="grid-template-columns:repeat(5,1fr)">
+        <div class="kpi alarm"><div class="k-lbl">Open breaks</div><div class="k-val">14</div><div class="k-ctx"><span class="u">3 critical</span>, 4 high, 7 lower</div></div>
+        <div class="kpi"><div class="k-lbl">Median age</div><div class="k-val">3 <span style="font-size:15px;font-weight:600">days</span></div><div class="k-ctx">open breaks, as at 29 Jun</div></div>
+        <div class="kpi good"><div class="k-lbl">Mean time to resolve</div><div class="k-val">2.1 <span style="font-size:15px;font-weight:600">days</span></div><div class="k-ctx">target &le; 3.0 &middot; <span class="f">on target</span></div></div>
+        <div class="kpi"><div class="k-lbl">Resolved this week</div><div class="k-val">11</div><div class="k-ctx">vs 9 opened</div></div>
+        <div class="kpi"><div class="k-lbl">Repeat offender</div><div class="k-val" style="font-size:20px">Supplier EDI</div><div class="k-ctx">5 of 14 open breaks on one feed</div></div>
+      </div>
+
+      <div class="grid2" style="grid-template-columns:1fr 1fr;flex:1">
+        <div class="card">
+          <div class="vtitle">Open breaks by age</div>
+          <div class="hbars">
+            <div class="hbar"><span>0-1 days</span><div class="track"><div class="fill" style="width:78%"></div></div><span class="num">5</span></div>
+            <div class="hbar"><span>2-3 days</span><div class="track"><div class="fill" style="width:62%"></div></div><span class="num">4</span></div>
+            <div class="hbar"><span>4-7 days</span><div class="track"><div class="fill" style="width:47%"></div></div><span class="num">3</span></div>
+            <div class="hbar"><span>Over 7 days</span><div class="track"><div class="fill" style="width:31%;background:var(--fail)"></div></div><span class="num u">2</span></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="vtitle">Open breaks by feed</div>
+          <div class="hbars">
+            <div class="hbar"><span>Supplier EDI invoices</span><div class="track"><div class="fill" style="width:82%"></div></div><span class="num">5</span></div>
+            <div class="hbar"><span>E-commerce orders</span><div class="track"><div class="fill" style="width:66%"></div></div><span class="num">4</span></div>
+            <div class="hbar"><span>Loyalty members</span><div class="track"><div class="fill" style="width:33%"></div></div><span class="num">2</span></div>
+            <div class="hbar"><span>Product master</span><div class="track"><div class="fill" style="width:17%"></div></div><span class="num">1</span></div>
+            <div class="hbar"><span>POS transactions</span><div class="track"><div class="fill" style="width:17%"></div></div><span class="num">1</span></div>
+            <div class="hbar"><span>ERP GL journal</span><div class="track"><div class="fill" style="width:17%"></div></div><span class="num">1</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="flex:1.3">
+        <div class="vtitle">Break register &middot; open, oldest critical first</div>
+        <table class="tb">
+          <thead><tr><th>Break</th><th>Opened</th><th>Feed</th><th>Category</th><th>Severity</th><th>Owner</th><th>Status</th><th class="r">Age</th></tr></thead>
+          <tbody>
+            <tr><td class="mono">BRK-0171</td><td>20 Jun</td><td>Product master</td><td>Schema drift</td><td><span class="chip x">CRITICAL</span></td><td>J. Meads</td><td>Change raised with ERP team</td><td class="r u">9d</td></tr>
+            <tr><td class="mono">BRK-0175</td><td>22 Jun</td><td>Supplier EDI invoices</td><td>Row count mismatch</td><td><span class="chip x">CRITICAL</span></td><td>D. Okafor</td><td>Waiting on supplier resend</td><td class="r u">7d</td></tr>
+            <tr><td class="mono">BRK-0182</td><td>29 Jun</td><td>Supplier EDI invoices</td><td>Missing file</td><td><span class="chip x">CRITICAL</span></td><td>D. Okafor</td><td>Investigating</td><td class="r">0d</td></tr>
+            <tr><td class="mono">BRK-0181</td><td>27 Jun</td><td>E-commerce orders</td><td>Amount mismatch</td><td><span class="chip w">MEDIUM</span></td><td>L. Prentice</td><td>Root cause: refunds timing</td><td class="r">2d</td></tr>
+            <tr><td class="mono">BRK-0178</td><td>25 Jun</td><td>Loyalty members</td><td>Duplicate keys</td><td><span class="chip w">LOW</span></td><td>S. Varga</td><td>Fix scheduled 01 Jul</td><td class="r">4d</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="dotmark" style="top:88px;left:520px">1</div>
+      <div class="dotmark" style="top:230px;left:130px">2</div>
+      <div class="dotmark" style="top:440px;left:420px">3</div>
+    </div>
+    <div class="notes">
+      <h3>Break register - the queue, owned</h3>
+      <div class="note"><span class="n">1</span><span><strong>Flow KPIs, not just stock</strong>: median age and mean time to resolve against a stated target, resolved vs opened this week. The register is judged as a process.</span></div>
+      <div class="note"><span class="n">2</span><span><strong>Ageing buckets</strong> - red only on the over-7-days tail, the two items that have outlived the resolution target.</span></div>
+      <div class="note"><span class="n">3</span><span><strong>Every break has an id, an owner and a status in plain words.</strong> Severity chips reuse the traffic discipline; nothing else on the page is coloured. Right-click a row to drill to the feed detail.</span></div>
+    </div>
+  </div>
+
+  <!-- ===================== PAGE 5: FEED DETAIL DRILLTHROUGH ===================== -->
+  <div class="page">
+    <div class="frame">
+      <div class="tband">
+        <div class="brand">
+          <div style="width:32px;height:32px;border-radius:6px;background:var(--card);border:1px solid #333D4B;color:var(--cyan);display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700">&larr;</div>
+          <div><div class="ttl">Feed Detail</div><div class="sub">Drillthrough target &middot; reached by right-click from any page</div></div>
+        </div>
+        <div class="slicer" style="background:rgba(88,183,212,0.12);color:var(--cyan);font-weight:600;border-color:#2C5A6B">Filtered to: Supplier EDI invoices</div>
+      </div>
+
+      <div style="height:92px;flex:none;background:var(--card);border:1px solid var(--hair);border-left:4px solid var(--fail);border-radius:6px;padding:14px 22px;display:grid;grid-template-columns:repeat(6,1fr);gap:16px;align-items:center">
+        <div><div style="font-size:10px;font-weight:700;text-transform:uppercase;color:var(--sub)">Feed</div><div style="font-size:15px;font-weight:700;color:var(--ink)">Supplier EDI invoices</div></div>
+        <div><div style="font-size:10px;font-weight:700;text-transform:uppercase;color:var(--sub)">Source system</div><div style="font-size:15px;font-weight:700;color:var(--ink)">EDI gateway</div></div>
+        <div><div style="font-size:10px;font-weight:700;text-transform:uppercase;color:var(--sub)">Last run</div><div style="font-size:15px;font-weight:700" class="u">FAIL</div></div>
+        <div><div style="font-size:10px;font-weight:700;text-transform:uppercase;color:var(--sub)">Rows whse / source</div><div style="font-size:15px;font-weight:700;color:var(--ink)">7,736 / 8,940</div></div>
+        <div><div style="font-size:10px;font-weight:700;text-transform:uppercase;color:var(--sub)">&Delta; amount</div><div style="font-size:15px;font-weight:700" class="u">&minus;214,608</div></div>
+        <div><div style="font-size:10px;font-weight:700;text-transform:uppercase;color:var(--sub)">Steward</div><div style="font-size:15px;font-weight:700;color:var(--ink)">D. Okafor</div></div>
+      </div>
+
+      <div class="grid2" style="grid-template-columns:1.4fr 1fr;flex:1">
+        <div class="card">
+          <div class="vhead"><div class="vtitle">Rows loaded vs source &middot; last 14 nights</div>
+            <div class="legend"><span><i style="background:var(--cyan)"></i>Warehouse</span><span><i style="background:#2C5A6B"></i>Source</span></div></div>
+          <div style="flex:1;display:flex;align-items:flex-end;gap:7px;padding-top:8px">
+            <div style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;height:100%;gap:2px"><div style="display:flex;gap:2px;align-items:flex-end;height:100%"><div style="flex:1;height:78%;background:#2C5A6B;border-radius:2px 2px 0 0"></div><div style="flex:1;height:78%;background:var(--cyan);border-radius:2px 2px 0 0"></div></div><div style="font-size:8px;color:var(--sub);text-align:center">16</div></div>
+            <div style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;height:100%;gap:2px"><div style="display:flex;gap:2px;align-items:flex-end;height:100%"><div style="flex:1;height:74%;background:#2C5A6B;border-radius:2px 2px 0 0"></div><div style="flex:1;height:74%;background:var(--cyan);border-radius:2px 2px 0 0"></div></div><div style="font-size:8px;color:var(--sub);text-align:center">17</div></div>
+            <div style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;height:100%;gap:2px"><div style="display:flex;gap:2px;align-items:flex-end;height:100%"><div style="flex:1;height:81%;background:#2C5A6B;border-radius:2px 2px 0 0"></div><div style="flex:1;height:81%;background:var(--cyan);border-radius:2px 2px 0 0"></div></div><div style="font-size:8px;color:var(--sub);text-align:center">18</div></div>
+            <div style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;height:100%;gap:2px"><div style="display:flex;gap:2px;align-items:flex-end;height:100%"><div style="flex:1;height:76%;background:#2C5A6B;border-radius:2px 2px 0 0"></div><div style="flex:1;height:76%;background:var(--cyan);border-radius:2px 2px 0 0"></div></div><div style="font-size:8px;color:var(--sub);text-align:center">19</div></div>
+            <div style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;height:100%;gap:2px"><div style="display:flex;gap:2px;align-items:flex-end;height:100%"><div style="flex:1;height:72%;background:#2C5A6B;border-radius:2px 2px 0 0"></div><div style="flex:1;height:72%;background:var(--cyan);border-radius:2px 2px 0 0"></div></div><div style="font-size:8px;color:var(--sub);text-align:center">20</div></div>
+            <div style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;height:100%;gap:2px"><div style="display:flex;gap:2px;align-items:flex-end;height:100%"><div style="flex:1;height:2%;background:#2C5A6B"></div><div style="flex:1;height:2%;background:var(--cyan)"></div></div><div style="font-size:8px;color:var(--sub);text-align:center">21</div></div>
+            <div style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;height:100%;gap:2px"><div style="display:flex;gap:2px;align-items:flex-end;height:100%"><div style="flex:1;height:79%;background:#2C5A6B;border-radius:2px 2px 0 0"></div><div style="flex:1;height:57%;background:var(--fail);border-radius:2px 2px 0 0"></div></div><div style="font-size:8px;color:var(--sub);text-align:center">22</div></div>
+            <div style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;height:100%;gap:2px"><div style="display:flex;gap:2px;align-items:flex-end;height:100%"><div style="flex:1;height:75%;background:#2C5A6B;border-radius:2px 2px 0 0"></div><div style="flex:1;height:75%;background:var(--cyan);border-radius:2px 2px 0 0"></div></div><div style="font-size:8px;color:var(--sub);text-align:center">23</div></div>
+            <div style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;height:100%;gap:2px"><div style="display:flex;gap:2px;align-items:flex-end;height:100%"><div style="flex:1;height:80%;background:#2C5A6B;border-radius:2px 2px 0 0"></div><div style="flex:1;height:80%;background:var(--cyan);border-radius:2px 2px 0 0"></div></div><div style="font-size:8px;color:var(--sub);text-align:center">24</div></div>
+            <div style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;height:100%;gap:2px"><div style="display:flex;gap:2px;align-items:flex-end;height:100%"><div style="flex:1;height:73%;background:#2C5A6B;border-radius:2px 2px 0 0"></div><div style="flex:1;height:73%;background:var(--cyan);border-radius:2px 2px 0 0"></div></div><div style="font-size:8px;color:var(--sub);text-align:center">25</div></div>
+            <div style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;height:100%;gap:2px"><div style="display:flex;gap:2px;align-items:flex-end;height:100%"><div style="flex:1;height:77%;background:#2C5A6B;border-radius:2px 2px 0 0"></div><div style="flex:1;height:77%;background:var(--cyan);border-radius:2px 2px 0 0"></div></div><div style="font-size:8px;color:var(--sub);text-align:center">26</div></div>
+            <div style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;height:100%;gap:2px"><div style="display:flex;gap:2px;align-items:flex-end;height:100%"><div style="flex:1;height:82%;background:#2C5A6B;border-radius:2px 2px 0 0"></div><div style="flex:1;height:82%;background:var(--cyan);border-radius:2px 2px 0 0"></div></div><div style="font-size:8px;color:var(--sub);text-align:center">27</div></div>
+            <div style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;height:100%;gap:2px"><div style="display:flex;gap:2px;align-items:flex-end;height:100%"><div style="flex:1;height:76%;background:#2C5A6B;border-radius:2px 2px 0 0"></div><div style="flex:1;height:76%;background:var(--cyan);border-radius:2px 2px 0 0"></div></div><div style="font-size:8px;color:var(--sub);text-align:center">28</div></div>
+            <div style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;height:100%;gap:2px"><div style="display:flex;gap:2px;align-items:flex-end;height:100%"><div style="flex:1;height:80%;background:#2C5A6B;border-radius:2px 2px 0 0"></div><div style="flex:1;height:69%;background:var(--fail);border-radius:2px 2px 0 0"></div></div><div style="font-size:8px;color:var(--sub);text-align:center">29</div></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="vtitle">Checks on this feed &middot; last night</div>
+          <table class="tb">
+            <thead><tr><th>Check</th><th class="r">Result</th><th>Status</th></tr></thead>
+            <tbody>
+              <tr><td>Row count vs source</td><td class="r u">&minus;1,204</td><td><span class="chip x">FAIL</span></td></tr>
+              <tr><td>Amount total vs source</td><td class="r u">&minus;214,608</td><td><span class="chip x">FAIL</span></td></tr>
+              <tr><td>File arrival by 05:00</td><td class="r w">05:41</td><td><span class="chip w">WARN</span></td></tr>
+              <tr><td>Invoice number unique</td><td class="r">0 dup</td><td><span class="chip p">PASS</span></td></tr>
+              <tr><td>Supplier code valid</td><td class="r">0 invalid</td><td><span class="chip p">PASS</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card" style="flex:0.8">
+        <div class="vtitle">Open breaks on this feed</div>
+        <table class="tb">
+          <thead><tr><th>Break</th><th>Opened</th><th>Category</th><th>Severity</th><th>Owner</th><th>Status</th><th class="r">Age</th></tr></thead>
+          <tbody>
+            <tr><td class="mono">BRK-0182</td><td>29 Jun</td><td>Missing file</td><td><span class="chip x">CRITICAL</span></td><td>D. Okafor</td><td>Investigating &middot; file 2 of 3 absent from the gateway</td><td class="r">0d</td></tr>
+            <tr><td class="mono">BRK-0175</td><td>22 Jun</td><td>Row count mismatch</td><td><span class="chip x">CRITICAL</span></td><td>D. Okafor</td><td>Waiting on supplier resend</td><td class="r u">7d</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="dotmark" style="top:30px;left:8px">1</div>
+      <div class="dotmark red" style="top:92px;left:390px">2</div>
+      <div class="dotmark" style="top:250px;left:420px">3</div>
+      <div class="dotmark" style="top:560px;left:320px">4</div>
+    </div>
+    <div class="notes">
+      <h3>Feed detail - the drillthrough target</h3>
+      <div class="note"><span class="n">1</span><span><strong>Back button</strong> (auto-added by drillthrough) replaces the logo - this page is a destination, not a nav stop. One detail page serves all eight feeds.</span></div>
+      <div class="note"><span class="n">2</span><span><strong>Header card holds the whole feed in one band</strong>: source system, last verdict, pairwise rows, amount delta, and the named data steward. The left edge takes the status colour.</span></div>
+      <div class="note"><span class="n">3</span><span><strong>Paired columns, source beside warehouse</strong>, a fortnight deep. The warehouse bar turns red only on the nights it failed to match; the 21st shows near-zero volume because no files were due (Sunday), which the checks treat as no-run, not failure.</span></div>
+      <div class="note"><span class="n">4</span><span><strong>The feed's open breaks</strong> travel with it, same columns as the register, so the drill ends at the action list.</span></div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>
