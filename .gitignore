@@ -15,3 +15,7 @@ Desktop.ini
 
 # Working screenshots (optimised copies live in the website repo)
 Screenshots/
+
+# Local editor config
+.vscode/
+.idea/
