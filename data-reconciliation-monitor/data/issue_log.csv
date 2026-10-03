@@ -1,0 +1,69 @@
+issue_id,opened,resolved,feed_code,category,severity,owner,status
+ISS-0126,2026-04-02,2026-04-04,PRD,Duplicate records,Low,J. Meads,Resolved
+ISS-0127,2026-04-04,2026-04-10,POS,Value difference,High,L. Prentice,Resolved
+ISS-0128,2026-04-06,2026-04-07,GL,Duplicate records,Low,J. Meads,Resolved
+ISS-0129,2026-04-08,2026-04-12,GL,Late arrival,Medium,J. Meads,Resolved
+ISS-0130,2026-04-10,2026-04-12,EDI,Rows missing,Low,D. Okafor,Resolved
+ISS-0131,2026-04-11,2026-04-12,ECOM,Missing file,Critical,L. Prentice,Resolved
+ISS-0132,2026-04-13,2026-04-16,ECOM,Late arrival,Critical,L. Prentice,Resolved
+ISS-0133,2026-04-15,2026-04-21,POS,Schema change,Medium,L. Prentice,Resolved
+ISS-0134,2026-04-17,2026-04-18,POS,Value difference,High,L. Prentice,Resolved
+ISS-0135,2026-04-19,2026-04-21,POS,Value difference,High,L. Prentice,Resolved
+ISS-0136,2026-04-20,2026-04-20,GL,Late arrival,Low,J. Meads,Resolved
+ISS-0137,2026-04-22,2026-04-23,ECOM,Late arrival,Low,L. Prentice,Resolved
+ISS-0138,2026-04-24,2026-04-28,LOG,Duplicate records,Medium,S. Varga,Resolved
+ISS-0139,2026-04-26,2026-04-28,ECOM,Rows missing,Medium,L. Prentice,Resolved
+ISS-0140,2026-04-28,2026-05-01,ECOM,Rows missing,Medium,L. Prentice,Resolved
+ISS-0141,2026-04-30,2026-05-02,ECOM,Rows missing,High,L. Prentice,Resolved
+ISS-0142,2026-05-01,2026-05-01,GL,Late arrival,Medium,J. Meads,Resolved
+ISS-0143,2026-05-03,2026-05-03,LOG,Late arrival,Low,S. Varga,Resolved
+ISS-0144,2026-05-05,2026-05-11,LOY,Late arrival,Low,S. Varga,Resolved
+ISS-0145,2026-05-09,2026-05-11,POS,Late arrival,Medium,L. Prentice,Resolved
+ISS-0146,2026-05-10,2026-05-12,LOY,Missing file,High,S. Varga,Resolved
+ISS-0147,2026-05-12,2026-05-10,ECOM,Late arrival,Medium,L. Prentice,Resolved
+ISS-0148,2026-05-12,2026-05-14,ECOM,Late arrival,Low,L. Prentice,Resolved
+ISS-0149,2026-05-14,2026-05-20,LOY,Missing file,Medium,S. Varga,Resolved
+ISS-0150,2026-05-16,2026-05-18,EDI,Late arrival,Medium,D. Okafor,Resolved
+ISS-0151,2026-05-18,2026-05-19,POS,Late arrival,High,L. Prentice,Resolved
+ISS-0152,2026-05-20,2026-05-23,GL,Late arrival,Medium,J. Meads,Resolved
+ISS-0153,2026-05-21,2026-05-22,LOG,Duplicate records,Medium,S. Varga,Resolved
+ISS-0154,2026-05-23,2026-05-25,EDI,Late arrival,Medium,D. Okafor,Resolved
+ISS-0155,2026-05-25,2026-05-28,EDI,Rows missing,High,D. Okafor,Resolved
+ISS-0156,2026-05-27,2026-05-30,PRD,Missing file,Low,J. Meads,Resolved
+ISS-0157,2026-05-29,2026-06-01,EDI,Missing file,Low,D. Okafor,Resolved
+ISS-0158,2026-05-30,2026-06-02,EDI,Missing file,Low,D. Okafor,Resolved
+ISS-0159,2026-06-01,2026-06-03,ECOM,Missing file,High,L. Prentice,Resolved
+ISS-0160,2026-06-03,2026-06-04,PRD,Rows missing,High,J. Meads,Resolved
+ISS-0161,2026-06-05,2026-06-11,GL,Duplicate records,Low,J. Meads,Resolved
+ISS-0162,2026-06-07,2026-06-07,LOG,Duplicate records,Medium,S. Varga,Resolved
+ISS-0163,2026-06-09,2026-06-12,LOY,Late arrival,Medium,S. Varga,Resolved
+ISS-0164,2026-06-10,2026-06-13,EDI,Late arrival,Medium,D. Okafor,Resolved
+ISS-0165,2026-06-12,2026-06-18,PRD,Late arrival,Medium,J. Meads,Resolved
+ISS-0166,2026-06-14,2026-06-16,PRD,Late arrival,Low,J. Meads,Resolved
+ISS-0167,2026-06-14,2026-06-15,POS,Rows missing,Critical,L. Prentice,Resolved
+ISS-0168,2026-06-16,2026-06-17,ECOM,Missing file,Medium,L. Prentice,Resolved
+ISS-0169,2026-06-18,2026-06-20,POS,Late arrival,Low,L. Prentice,Resolved
+ISS-0170,2026-06-19,2026-06-22,EDI,Rows missing,Low,D. Okafor,Resolved
+ISS-0171,2026-06-20,,PRD,Schema change,Critical,J. Meads,Change raised with the ERP team
+ISS-0172,2026-06-20,2026-06-23,EDI,Late arrival,Low,D. Okafor,Resolved
+ISS-0173,2026-06-20,2026-06-24,POS,Value difference,Medium,L. Prentice,Resolved
+ISS-0174,2026-06-21,2026-06-23,LOG,Late arrival,Low,S. Varga,Resolved
+ISS-0175,2026-06-21,2026-06-24,ECOM,Rows missing,Medium,L. Prentice,Resolved
+ISS-0176,2026-06-21,2026-06-25,LOY,Duplicate records,Low,S. Varga,Resolved
+ISS-0177,2026-06-21,,EDI,Late arrival,High,D. Okafor,Monitoring since the gateway change
+ISS-0178,2026-06-22,2026-06-23,GL,Late arrival,Low,J. Meads,Resolved
+ISS-0179,2026-06-22,2026-06-24,EDI,Rows missing,High,D. Okafor,Resolved
+ISS-0180,2026-06-22,2026-06-25,PRD,Duplicate records,Low,J. Meads,Resolved
+ISS-0181,2026-06-22,2026-06-26,EDI,Value difference,Medium,D. Okafor,Resolved
+ISS-0182,2026-06-22,,EDI,Rows missing,Critical,D. Okafor,Waiting on the supplier to resend
+ISS-0183,2026-06-22,,GL,Schema change,High,J. Meads,Loader change for the new extract column in test
+ISS-0184,2026-06-23,,ECOM,Duplicate records,High,L. Prentice,Fix in code review
+ISS-0185,2026-06-24,,EDI,Value difference,Medium,D. Okafor,Investigating a small recurring difference
+ISS-0186,2026-06-26,,EDI,Late arrival,Medium,D. Okafor,Supplier upload window under review
+ISS-0187,2026-06-26,,LOY,Duplicate records,Low,S. Varga,Fix scheduled for 1 July
+ISS-0188,2026-06-27,,ECOM,Rows missing,Low,L. Prentice,Linked to the refund timing issue
+ISS-0189,2026-06-27,,LOY,Rule breach,Medium,S. Varga,"Invalid emails rising, sign-up form under investigation"
+ISS-0190,2026-06-28,,ECOM,Value difference,Medium,L. Prentice,"Refunds posted after the extract closes, fix agreed"
+ISS-0191,2026-06-28,,POS,Schema change,High,L. Prentice,New till software field under review
+ISS-0192,2026-06-28,,PRD,Duplicate records,Medium,J. Meads,Duplicate barcodes traced to a catalogue upload
+ISS-0193,2026-06-29,,EDI,Missing file,Critical,D. Okafor,Waiting on the supplier to resend file 2

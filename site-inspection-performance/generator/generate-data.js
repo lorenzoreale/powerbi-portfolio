@@ -1,6 +1,6 @@
 'use strict';
 // Deterministic mock data generator for the Site Inspection Performance project.
-// Ground truth for shapes and volumes: docs/spec-site-inspection.md.
+// The figures the report has to show are listed in the project README.
 // Run: node generate-data.js   (writes CSVs to ../data and prints a verification summary)
 
 const fs = require('fs');
@@ -98,7 +98,7 @@ const SITES = [
   type: null, freq: null, adj: null,
 }));
 
-// Seeded narrative overrides (spec section 3): coverage cut-offs, the repeat
+// Seeded narrative overrides (see the spec): coverage cut-offs, the repeat
 // offender, a model site and two rarely visited sites.
 const CUTOFF = { 'Neath Yard': d(2026, 3, 24), 'Ely Sidings': d(2026, 4, 15), 'Perth North': d(2026, 4, 24) };
 for (const s of SITES) {
@@ -208,7 +208,7 @@ for (const { y, m, idx } of MONTHS) {
   }
 }
 // Forced final visits on the cut-off dates (all weekdays), so staleness at the
-// as-at date is exactly the story the Coverage page tells.
+// as-at date is exactly the story the Sites page tells.
 for (const [name, t] of Object.entries(CUTOFF)) {
   const idx = MONTHS.findIndex((mm) => mm.y === new Date(t).getUTCFullYear() && mm.m === new Date(t).getUTCMonth() + 1);
   addVisit(byName[name], t, idx);
@@ -275,7 +275,7 @@ for (const fRow of findings) {
 actions.sort((a, b) => a.raised - b.raised || a.inspectionId.localeCompare(b.inspectionId));
 actions.forEach((a, i) => { a.ref = `AC-${String(i + 1).padStart(3, '0')}`; });
 
-// Wrinkle W4: one orphan action referencing an inspection ID that never existed.
+// Data problem: one orphan action referencing an inspection ID that never existed.
 const orphanId = `SI-2026-${String(seq[2026] + 37).padStart(4, '0')}`;
 actions.push({
   ref: `AC-${String(actions.length + 1).padStart(3, '0')}`, inspectionId: orphanId,
@@ -284,9 +284,9 @@ actions.push({
   owner: PEOPLE[3], desc: 'Arrange additional waste collection at the yard gate', severity: 'Medium',
 });
 
-// Wrinkle W5: two open 2026 actions with no owner recorded.
-const w5 = actions.filter((a) => a.closed === null && a.raised >= d(2026, 1, 1)).slice(2, 4);
-for (const a of w5) a.owner = null;
+// Data problem: two open 2026 actions with no owner recorded.
+const noOwner = actions.filter((a) => a.closed === null && a.raised >= d(2026, 1, 1)).slice(2, 4);
+for (const a of noOwner) a.owner = null;
 
 // ---------------------------------------------------------------- CSV output
 const esc = (x) => { const s = String(x ?? ''); return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
@@ -310,7 +310,7 @@ writeCsv(path.join(dataDir, 'questions.csv'),
   ['question_id', 'question_code', 'section', 'question_text'],
   QUESTIONS.map((q) => [q.key, q.code, q.section, q.text]));
 
-// Wrinkle W2: a re-exported batch, five duplicate rows appended verbatim.
+// Data problem: a re-exported batch, five duplicate rows appended verbatim.
 const inspectionRows = visits.map((v) => [v.id, fmt(v.t), v.site.key, v.inspector.key]);
 const dupSource = visits.filter((v) => v.t >= d(2026, 5, 11) && v.t <= d(2026, 5, 15)).slice(0, 5);
 for (const v of dupSource) inspectionRows.push([v.id, fmt(v.t), v.site.key, v.inspector.key]);
@@ -321,7 +321,7 @@ writeCsv(path.join(dataDir, 'responses.csv'),
   ['inspection_id', 'question_id', 'result', 'severity', 'inspector_note'],
   responses.map((r) => [r.v.id, r.q.key, r.result, r.severity, r.note]));
 
-// Wrinkle W6: the actions extract comes from a different system, so ~10 rows
+// Data problem: the actions extract comes from a different system, so ~10 rows
 // carry untrimmed or badly cased site names. Cleaned in Power Query at load.
 const dirty = new Map();
 const dirtyCandidates = actions.filter((a) => a.raised >= d(2026, 2, 1)).slice(0, 10);
@@ -399,7 +399,7 @@ console.log(`\nActions: total ${real.length} (+1 orphan) · per inspection ${(re
 console.log(`  raised YTD ${ytd.length} · closed YTD ${ytd.filter((a) => a.closed).length} (closure ${fPct(pct(ytd.filter((a) => a.closed).length, ytd.length))}%)`);
 console.log(`  open ${real.filter((a) => status(a) === 'Open' || status(a) === 'Due<7d').length} (due<7d ${real.filter((a) => status(a) === 'Due<7d').length}) · overdue ${overdue.length} · max days overdue ${overdue.length ? Math.max(...overdue.map((a) => diffDays(a.due, AS_AT))) : 0}`);
 console.log(`  median days to close ${closedDays[Math.floor(closedDays.length / 2)]}`);
-console.log(`\nWrinkles: W2 dup rows ${dupSource.length} · W3 NA ${responses.filter((r) => r.result === 'NA').length} (${fPct(pct(responses.filter((r) => r.result === 'NA').length, responses.length))}%) · W4 orphan 1 (${orphanId}) · W5 unassigned ${actions.filter((a) => !a.owner).length} · W6 dirty names ${dirty.size}`);
+console.log(`\nData problems: duplicate rows ${dupSource.length} · N/A answers ${responses.filter((r) => r.result === 'NA').length} (${fPct(pct(responses.filter((r) => r.result === 'NA').length, responses.length))}%) · orphan actions 1 (${orphanId}) · no owner ${actions.filter((a) => !a.owner).length} · untidy site names ${dirty.size}`);
 
 console.log('\nCompliance by section (full window):');
 for (const section of Object.keys(SECTION_MULT)) {

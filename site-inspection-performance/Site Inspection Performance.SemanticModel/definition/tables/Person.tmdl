@@ -1,32 +1,27 @@
-/// One row per inspector or site manager, plus an explicit Unassigned member (key 0) so actions with no recorded owner cannot hide in a blank label (wrinkle W5).
+/// Inspectors and site managers, plus an Unassigned member for actions recorded without an owner.
 table Person
-	lineageTag: 615dd821-22a1-4c0d-92d0-407331c325c1
+	lineageTag: c82da659-3898-4348-b08e-c81c4ae42e4f
 
 	column PersonKey
 		dataType: int64
 		isHidden
-		lineageTag: 65012714-c188-4044-b2d4-b5e9def293d4
+		formatString: 0
+		lineageTag: 90a09837-2579-480f-a2eb-90efdc392188
 		summarizeBy: none
 		sourceColumn: PersonKey
 
 	column 'Person Name'
 		dataType: string
-		lineageTag: e27eb899-a512-4db2-bd10-c78f77384aca
+		lineageTag: 1b32b304-d518-4df5-bc7d-7a02c52a9143
 		summarizeBy: none
 		sourceColumn: Person Name
 
-	/// Inspector or Site manager. The Inspector slicer filters on this.
+	/// Inspector, Site manager or Unassigned.
 	column Role
 		dataType: string
-		lineageTag: 60e12867-f725-42b2-862c-76480852abea
+		lineageTag: 1ec4a358-1bf1-4b56-9998-4da10e89c9d2
 		summarizeBy: none
 		sourceColumn: Role
-
-	column 'Home Region'
-		dataType: string
-		lineageTag: 7cdd8629-28e7-4f8e-a743-e3fcf6840100
-		summarizeBy: none
-		sourceColumn: Home Region
 
 	partition Person = m
 		mode: import
@@ -34,9 +29,10 @@ table Person
 				let
 				    Source = Csv.Document(File.Contents(#"Data Folder" & "\people.csv"), [Delimiter = ",", Columns = 4, Encoding = 65001, QuoteStyle = QuoteStyle.Csv]),
 				    #"Promoted Headers" = Table.PromoteHeaders(Source, [PromoteAllScalars = true]),
-				    #"Added Unassigned Member" = Table.InsertRows(#"Promoted Headers", 0, {[person_id = "0", person_name = "Unassigned", role = "Unassigned", home_region = "Unassigned"]}),
-				    #"Renamed Columns" = Table.RenameColumns(#"Added Unassigned Member", {{"person_id", "PersonKey"}, {"person_name", "Person Name"}, {"role", "Role"}, {"home_region", "Home Region"}}),
-				    #"Changed Types" = Table.TransformColumnTypes(#"Renamed Columns", {{"PersonKey", Int64.Type}, {"Person Name", type text}, {"Role", type text}, {"Home Region", type text}})
+				    #"Removed Home Region" = Table.RemoveColumns(#"Promoted Headers", {"home_region"}),
+				    #"Added Unassigned" = Table.InsertRows(#"Removed Home Region", 0, {[person_id = "0", person_name = "Unassigned", role = "Unassigned"]}),
+				    #"Renamed Columns" = Table.RenameColumns(#"Added Unassigned", {{"person_id", "PersonKey"}, {"person_name", "Person Name"}, {"role", "Role"}}),
+				    #"Changed Types" = Table.TransformColumnTypes(#"Renamed Columns", {{"PersonKey", Int64.Type}, {"Person Name", type text}, {"Role", type text}})
 				in
 				    #"Changed Types"
 

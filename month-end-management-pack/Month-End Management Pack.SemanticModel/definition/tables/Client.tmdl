@@ -1,22 +1,83 @@
-/// Client portfolio plus an explicit Unallocated member for non-client (overhead) rows.
+/// The firm's thirteen clients, plus Unallocated for costs that belong to no client (the overheads).
 table Client
-	lineageTag: cfc74f6e-cb28-4aa4-a726-2512a9782ad6
+
+	/// The lowest gross margin the partners accept on a client.
+	measure 'Client Margin Floor' = 0.3
+		formatString: 0%
+		displayFolder: Clients
+
+	/// Clients with revenue in the period whose gross margin is below the floor.
+	measure 'Clients Below Floor' =
+			VAR floor = [Client Margin Floor]
+			RETURN
+			    COUNTROWS ( FILTER ( VALUES ( Client[Client] ), Client[Client] <> "Unallocated" && NOT ISBLANK ( [Revenue] ) && [Gross Margin %] < floor ) ) + 0
+		formatString: 0
+		displayFolder: Clients
+
+	/// Names and margins of the clients below the floor, lowest margin first.
+	measure 'Clients Below Floor Names' =
+			VAR floor = [Client Margin Floor]
+			VAR clients = ADDCOLUMNS ( FILTER ( VALUES ( Client[Client] ), Client[Client] <> "Unallocated" && NOT ISBLANK ( [Revenue] ) ), "@Margin", [Gross Margin %] )
+			VAR below = FILTER ( clients, [@Margin] < floor )
+			RETURN
+			    CONCATENATEX ( below, Client[Client] & " (" & FORMAT ( [@Margin], "0.0%" ) & ")", " and ", [@Margin], ASC )
+		displayFolder: Report text
+
+	/// The client with the lowest gross margin, and that margin.
+	measure 'Lowest Margin Client' =
+			VAR clients = ADDCOLUMNS ( FILTER ( VALUES ( Client[Client] ), Client[Client] <> "Unallocated" && NOT ISBLANK ( [Revenue] ) ), "@Margin", [Gross Margin %] )
+			VAR lowest = TOPN ( 1, clients, [@Margin], ASC )
+			RETURN
+			    MAXX ( lowest, Client[Client] & " at " & FORMAT ( [@Margin], "0.0%" ) )
+		displayFolder: Report text
+
+	/// First line of the Clients page.
+	measure 'Headline Clients' =
+			VAR below = [Clients Below Floor]
+			VAR floor = FORMAT ( [Client Margin Floor], "0%" )
+			VAR month = SELECTEDVALUE ( 'Calendar'[Month Name] )
+			RETURN
+			    SWITCH (
+			        TRUE (),
+			        below = 0, "Every client earned at least the " & floor & " margin floor in " & month & ".",
+			        below <= 2, [Clients Below Floor Names] & IF ( below = 1, " is", " are" ) & " below the " & floor & " margin floor in " & month & ".",
+			        below & " clients are below the " & floor & " margin floor in " & month & ". Lowest: " & [Lowest Margin Client] & "."
+			    )
+		displayFolder: Report text
+
+	/// Second line of the Clients page: how much revenue the three largest clients bring.
+	measure 'Headline Clients Follow-up' =
+			VAR clients = ADDCOLUMNS ( FILTER ( VALUES ( Client[Client] ), Client[Client] <> "Unallocated" ), "@Revenue", [Revenue] )
+			VAR top3 = TOPN ( 3, clients, [@Revenue], DESC )
+			VAR ranked = ADDCOLUMNS ( top3, "@Rank", RANKX ( top3, [@Revenue] ) )
+			VAR share = DIVIDE ( SUMX ( top3, [@Revenue] ), [Revenue] )
+			RETURN
+			    MAXX ( FILTER ( ranked, [@Rank] = 1 ), Client[Client] ) & ", " & MAXX ( FILTER ( ranked, [@Rank] = 2 ), Client[Client] ) & " and "
+			        & MAXX ( FILTER ( ranked, [@Rank] = 3 ), Client[Client] ) & " bring " & FORMAT ( share, "0%" ) & " of revenue between them."
+		displayFolder: Report text
+
+	/// Bar colour for client margins: red below the floor, teal otherwise.
+	measure 'Colour Client Margin Bar' = IF ( [Gross Margin %] < [Client Margin Floor], "#B23A2E", "#0F6B6B" )
+		displayFolder: Colours
+
+	/// Text colour for client margins in the register.
+	measure 'Colour Client Margin Text' = IF ( [Gross Margin %] < [Client Margin Floor], "#B23A2E", "#1D2A36" )
+		displayFolder: Colours
 
 	column Client
 		dataType: string
-		lineageTag: 558b5b0c-424e-4e75-be59-2791ba146187
 		summarizeBy: none
 		sourceColumn: Client
 
+	/// The service line that wins most of the client's work.
 	column 'Lead Service Line'
 		dataType: string
-		lineageTag: 2726dd53-042c-44f4-a906-db5a25a3b426
 		summarizeBy: none
 		sourceColumn: Lead Service Line
 
 	column 'Client Since'
 		dataType: int64
-		lineageTag: 8b59c4e2-9b95-4fe8-8c44-169f05917dd2
+		formatString: 0
 		summarizeBy: none
 		sourceColumn: Client Since
 
@@ -24,10 +85,11 @@ table Client
 		mode: import
 		source =
 				let
-				    Source = #"Clients Raw",
-				    Renamed = Table.RenameColumns(Source, {{"client_name", "Client"}, {"lead_service_line", "Lead Service Line"}, {"client_since", "Client Since"}}),
-				    Typed = Table.TransformColumnTypes(Renamed, {{"Client", type text}, {"Lead Service Line", type text}, {"Client Since", Int64.Type}}),
-				    AddUnallocated = Table.InsertRows(Typed, 0, {[Client = "Unallocated", #"Lead Service Line" = "Central", #"Client Since" = null]})
+				    Source = Csv.Document(File.Contents(#"Data Folder" & "\client.csv"), [Delimiter = ",", Columns = 3, Encoding = 65001, QuoteStyle = QuoteStyle.Csv]),
+				    #"Promoted Headers" = Table.PromoteHeaders(Source, [PromoteAllScalars = true]),
+				    #"Added Unallocated" = Table.InsertRows(#"Promoted Headers", Table.RowCount(#"Promoted Headers"), {[client = "Unallocated", lead_service_line = "Central", client_since = null]}),
+				    #"Renamed Columns" = Table.RenameColumns(#"Added Unallocated", {{"client", "Client"}, {"lead_service_line", "Lead Service Line"}, {"client_since", "Client Since"}}),
+				    #"Changed Types" = Table.TransformColumnTypes(#"Renamed Columns", {{"Client", type text}, {"Lead Service Line", type text}, {"Client Since", Int64.Type}})
 				in
-				    AddUnallocated
+				    #"Changed Types"
 

@@ -1,13 +1,18 @@
-# Power BI portfolio - Lorenzo Reale
+# Power BI portfolio
 
-Demonstration Power BI projects, each a complete working report published as a PBIP project so the semantic model and DAX are readable directly on GitHub. Compiled `.pbix` files are attached to releases.
+Three Power BI reports, each built end to end for a different reader and a different decision. They are saved as PBIP projects, so the model, the DAX and the Power Query steps can be read here without opening Power BI.
 
-> Every client is fictional and all data is synthetic, produced by the committed generator script in each project folder.
+The clients are fictional and the data is synthetic, written by the generator script in each project.
 
-| Project | Focus | Status |
+| Project | For | The question |
 |---|---|---|
-| [Site Inspection Performance](site-inspection-performance/) | Safety and compliance inspections across a site estate | Complete |
-| [Month-End Management Pack](month-end-management-pack/) | Budget vs actual, variance bridge, drillable P&L | Complete |
-| [Data Reconciliation Monitor](data-reconciliation-monitor/) | Source-vs-warehouse reconciliation and data-quality monitoring | Complete |
+| [Site Inspection Performance](site-inspection-performance/) | Operations review | Is the inspection programme on track, and which sites need a visit? |
+| [Month-End Management Pack](month-end-management-pack/) | Finance director and partners | Why is profit different from budget this month? |
+| [Data Reconciliation Monitor](data-reconciliation-monitor/) | The business each morning, and the data team | Can we use today's numbers? |
 
-Each project folder holds its data generator, the PBIP project, and a README with the model diagram, measure catalogue and data dictionary.
+Each project holds the PBIP files, the CSV data, the generator, and a README on what the report shows and how it is built.
+
+## Opening a project
+
+1. Open the `.pbip` file in Power BI Desktop.
+2. In Transform data, set the `Data Folder` parameter to the project's `data` folder, then refresh.

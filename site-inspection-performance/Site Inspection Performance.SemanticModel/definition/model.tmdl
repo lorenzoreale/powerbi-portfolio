@@ -1,5 +1,5 @@
-model 'Site Inspection Performance'
-	culture: en-US
+model Model
+	culture: en-GB
 	defaultPowerBIDataSourceVersion: powerBI_V3
 	discourageImplicitMeasures
 	sourceQueryCulture: en-GB
@@ -7,11 +7,11 @@ model 'Site Inspection Performance'
 		legacyRedirects
 		returnErrorValuesAsNull
 
-annotation PBI_ProTooling = ["MCP-PBIModeling","DevMode"]
-
-annotation PBI_QueryOrder = ["Date","Site","Person","Question","Inspection","Response","Action","MonthlyTarget","Data Folder","Inspections Clean","Sites Raw"]
-
 annotation __PBI_TimeIntelligenceEnabled = 0
+
+annotation PBI_QueryOrder = ["Data Folder","Date","Site","Person","Question","Inspection","Response","Action","Monthly Target"]
+
+annotation PBI_ProTooling = ["DevMode"]
 
 ref table Date
 ref table Site
@@ -20,5 +20,9 @@ ref table Question
 ref table Inspection
 ref table Response
 ref table Action
-ref table MonthlyTarget
+ref table 'Monthly Target'
+ref table 'Visit Rule'
+ref table 'Compare Regions By'
+
+ref cultureInfo en-GB
 

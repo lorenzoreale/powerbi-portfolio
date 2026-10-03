@@ -1,0 +1,147 @@
+/// What-if parameter for the Planning page: the longest gap allowed between two visits to the same site, from 15 to 90 days. The agreed rule, used everywhere else in the report, is 60 days.
+table 'Visit Rule'
+
+	/// The visit rule being tested on the Planning page. 60 days, the agreed rule, when nothing is selected.
+	measure 'Visit Rule Value' = SELECTEDVALUE ( 'Visit Rule'[Visit Rule], 60 )
+		formatString: 0
+		displayFolder: Planning
+
+	/// Sites whose last visit is further back than the rule being tested, as at the as-at date.
+	measure 'Sites Past Rule' =
+			VAR rule = [Visit Rule Value]
+			RETURN
+			    CALCULATE ( COUNTROWS ( 'Site' ), 'Site'[Visit Gap Days] > rule ) + 0
+		formatString: #,0
+		displayFolder: Planning
+
+	/// The fewest visits a month that would see every site in the selection within the rule: sites x (365 / 12) / rule days, rounded up.
+	measure 'Visits Needed per Month' = ROUNDUP ( DIVIDE ( COUNTROWS ( 'Site' ) * 365 / 12, [Visit Rule Value] ), 0 )
+		formatString: #,0
+		displayFolder: Planning
+
+	/// Inspections carried out per month in the selected period, counting only the days up to the as-at date.
+	measure 'Visits per Month' =
+			VAR firstDay = MIN ( 'Date'[Date] )
+			VAR lastDay = MIN ( MAX ( 'Date'[Date] ), [As-at Date] )
+			VAR months = ( lastDay - firstDay + 1 ) * 12 / 365
+			RETURN
+			    DIVIDE ( [Inspections], months )
+		formatString: #,0
+		displayFolder: Planning
+
+	/// Visits one site needs in the selected period to keep pace with the rule: days in the period / rule days.
+	measure 'Visits Needed per Site' =
+			VAR firstDay = MIN ( 'Date'[Date] )
+			VAR lastDay = MIN ( MAX ( 'Date'[Date] ), [As-at Date] )
+			RETURN
+			    DIVIDE ( lastDay - firstDay + 1, [Visit Rule Value] )
+		formatString: 0.0
+		displayFolder: Planning
+
+	/// First line of the Planning page: what the rule being tested means today.
+	measure 'Headline Planning' =
+			VAR rule = [Visit Rule Value]
+			VAR past = [Sites Past Rule]
+			RETURN
+			    "A " & rule & "-day rule "
+			        & SWITCH ( TRUE (), past = 0, "puts no site outside it today.", past = 1, "puts 1 site outside it today.", "puts " & past & " sites outside it today." )
+		displayFolder: Report text
+
+	/// Second line of the Planning page: whether the visits carried out can cover the rule being tested.
+	measure 'Headline Planning Follow-up' =
+			VAR needed = [Visits Needed per Month]
+			VAR made = ROUND ( [Visits per Month], 0 )
+			VAR past = [Sites Past Rule]
+			VAR comparison = "It needs at least " & needed & " visits a month and " & made & " are carried out: "
+			RETURN
+			    comparison
+			        & SWITCH (
+			            TRUE (),
+			            needed > made, "it would need more inspection capacity.",
+			            past > 0, "the gaps come from scheduling, not capacity.",
+			            "the current pace covers it."
+			        )
+		displayFolder: Report text
+
+	/// Context line under the visits needed.
+	measure 'Context Visits Needed' = "To see all " & COUNTROWS ( 'Site' ) & " sites within " & [Visit Rule Value] & " days"
+		displayFolder: Report text
+
+	/// Context line under the visits carried out.
+	measure 'Context Visits per Month' = FORMAT ( [Inspections], "#,0" ) & " visits in the year selected"
+		displayFolder: Report text
+
+	/// Visual title for the visit-gap chart on the Planning page. Ignores the chart's own site filter.
+	measure 'Title Planning Gaps' =
+			VAR rule = [Visit Rule Value]
+			VAR past = CALCULATE ( [Sites Past Rule], REMOVEFILTERS ( 'Site'[Site Name] ) )
+			RETURN
+			    SWITCH (
+			        TRUE (),
+			        past = 0, "Every site has been visited in the last " & rule & " days",
+			        past = 1, "1 site is past a " & rule & "-day rule",
+			        past & " sites are past a " & rule & "-day rule"
+			    )
+		displayFolder: Report text
+
+	/// Sites with fewer visits in the selected period than the rule being tested needs.
+	measure 'Sites Below Pace' =
+			VAR needed = [Visits Needed per Site]
+			RETURN
+			    COUNTROWS ( FILTER ( VALUES ( 'Site'[Site Name] ), [Inspections] + 0 < needed ) ) + 0
+		formatString: #,0
+		displayFolder: Planning
+
+	/// Visual title for the least-visited chart. Ignores the chart's own site filter.
+	measure 'Title Visit Spread' =
+			VAR rule = [Visit Rule Value]
+			VAR below = CALCULATE ( [Sites Below Pace], REMOVEFILTERS ( 'Site'[Site Name] ) )
+			RETURN
+			    SWITCH (
+			        TRUE (),
+			        below = 0, "Every site had the visits a " & rule & "-day rule needs",
+			        below = 1, "1 site had fewer visits than a " & rule & "-day rule needs",
+			        below & " sites had fewer visits than a " & rule & "-day rule needs"
+			    )
+		displayFolder: Report text
+
+	/// Visual subtitle for the least-visited chart, naming the most visited site for contrast.
+	measure 'Subtitle Visit Spread' =
+			VAR sites = ADDCOLUMNS ( CALCULATETABLE ( VALUES ( 'Site'[Site Name] ), REMOVEFILTERS ( 'Site'[Site Name] ) ), "@Visits", [Inspections] + 0 )
+			VAR most = MAXX ( sites, [@Visits] )
+			VAR mostSite = MAXX ( TOPN ( 1, sites, [@Visits], DESC, 'Site'[Site Name], ASC ), 'Site'[Site Name] )
+			RETURN
+			    "The 15 least visited sites in the year selected. Dashed line: the visits the rule needs. Most visited: " & mostSite & ", " & most & "."
+		displayFolder: Report text
+
+	/// Bar colour for visit gaps against the rule being tested: red past it, amber within 7 days of it, light blue otherwise.
+	measure 'Colour Planning Gap Bar' =
+			VAR gap = [Days Since Last Visit]
+			VAR rule = [Visit Rule Value]
+			RETURN
+			    SWITCH ( TRUE (), gap > rule, "#C2453A", gap > rule - 7, "#D9922F", "#A9C1E0" )
+		displayFolder: Colours
+
+	/// Bar colour for visits per site: red below the pace the rule needs, blue otherwise.
+	measure 'Colour Visit Spread Bar' = IF ( [Inspections] + 0 < [Visits Needed per Site], "#C2453A", "#24589E" )
+		displayFolder: Colours
+
+	/// Text colour for the count of sites past the rule being tested: red when there are any.
+	measure 'Colour Sites Past Rule Text' = IF ( [Sites Past Rule] > 0, "#C2453A", "#16324F" )
+		displayFolder: Colours
+
+	column 'Visit Rule'
+		dataType: int64
+		formatString: 0
+		summarizeBy: none
+		sourceColumn: [Value]
+
+		extendedProperty ParameterMetadata =
+				{
+				  "version": 0
+				}
+
+	partition 'Visit Rule' = calculated
+		mode: import
+		source = GENERATESERIES ( 15, 90, 5 )
+

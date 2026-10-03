@@ -1,20 +1,17 @@
-# Compiled Power BI files are release artefacts, not source
+# Compiled Power BI files are not source
 *.pbix
 
 # Power BI Desktop local state and caches (not part of the PBIP definition)
 **/.pbi/
 *.abf
 
-# Fabric item descriptors emitted by Desktop on save (not needed for the PBIP source)
+# Fabric item descriptors written by Desktop on save
 .platform
 
 # OS noise
 Thumbs.db
 Desktop.ini
 .DS_Store
-
-# Working screenshots (optimised copies live in the website repo)
-Screenshots/
 
 # Local editor config
 .vscode/

@@ -1,0 +1,55 @@
+/// The four movements between budget and actual operating profit, in the order the bridge shows them. Not related to the other tables: the bridge measures read the step in context.
+table 'Bridge Step'
+
+	/// The size of each movement. Positive helped profit.
+	measure 'Bridge Amount' =
+			SWITCH (
+			    SELECTEDVALUE ( 'Bridge Step'[Step Order] ),
+			    1, [Hours Effect],
+			    2, [Rate Effect],
+			    3, [Direct Costs Variance],
+			    4, [Overheads Variance]
+			)
+		formatString: #,0,;(#,0,);-
+		displayFolder: Bridge
+
+	/// Visual subtitle for the bridge: the two ends the movements connect.
+	measure 'Subtitle Bridge' =
+			"£000. Budget £" & FORMAT ( [Operating Profit Budget] / 1000, "#,0" ) & "k to actual £" & FORMAT ( [Operating Profit] / 1000, "#,0" )
+			    & "k operating profit. Hours valued at the budget rate."
+		displayFolder: Report text
+
+	/// Visual title for the bridge: the movement that did the most.
+	measure 'Title Bridge' =
+			VAR steps = ADDCOLUMNS ( ALL ( 'Bridge Step' ), "@Amount", [Bridge Amount] )
+			VAR biggest = TOPN ( 1, steps, ABS ( [@Amount] ), DESC )
+			VAR amount = MAXX ( biggest, [@Amount] )
+			RETURN
+			    "Biggest movement: " & LOWER ( MAXX ( biggest, 'Bridge Step'[Step] ) )
+			        & IF ( amount < 0, " took £", " added £" ) & FORMAT ( ABS ( amount ) / 1000, "#,0" ) & IF ( amount < 0, "k off profit", "k to profit" )
+		displayFolder: Report text
+
+	column 'Step Order'
+		dataType: int64
+		isHidden
+		formatString: 0
+		summarizeBy: none
+		sourceColumn: Step Order
+
+	column Step
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Step
+		sortByColumn: 'Step Order'
+
+	partition 'Bridge Step' = m
+		mode: import
+		source =
+				let
+				    Source = #table(
+				        type table [Step Order = Int64.Type, Step = text],
+				        {{1, "Billable hours"}, {2, "Billing rates"}, {3, "Direct costs"}, {4, "Overheads"}}
+				    )
+				in
+				    Source
+

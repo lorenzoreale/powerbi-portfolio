@@ -1,78 +1,38 @@
 # Data Reconciliation Monitor
 
-A working Power BI data-quality report: the morning check a data platform team runs before the business opens its dashboards - did last night's loads land, does the warehouse match the source systems, and which breaks need chasing. Built as a PBIP project, so the semantic model and DAX are readable here on GitHub.
+A morning check for a retailer whose warehouse is loaded every night from six source systems. Before the business opens its dashboards, the first page says in plain words which data can be used today, which reports to hold back, and why. The pages behind it give the data team the evidence: source against warehouse, the quality rules, and the issue log.
 
-> All data is synthetic and the client (Thornfield Retail Group, a multi-channel retailer) is fictional. Every figure traces to the deterministic generator in [`generator/`](generator/).
+Synthetic data, fictional client (Thornfield Retail Group).
 
-## What it answers
+![Status page](screenshots/1-status.png)
 
-| Page | Question |
-|---|---|
-| Morning Check | Did last night's run land clean, and what needs attention today? |
-| Reconciliation | Does the warehouse match the source, feed by feed, pairwise? |
-| Quality Rules | Once the data is in, is it fit to use? The rulebook across the five quality dimensions. |
-| Break Register | Every unresolved discrepancy, owned and aged - the team's queue. |
-| Feed Detail | One feed end to end (drillthrough). |
+## What it shows (load of 29 June 2026)
 
-The report is fixed to the run of Monday 29 June 2026, so the published numbers are stable; a Run date slicer walks back through the 90 nights of history.
+- Seven of eight data areas can be used. Supplier invoices are not ready: one of three files never arrived, so 1,204 invoices worth £214,608 are missing. Accounts payable and supplier spend reporting should wait for the resend.
+- Online orders are three orders (£412) short for the third night running, inside tolerance and traced to refunds posted after the extract closes. Fine for trends.
+- Supplier invoices are the recurring problem: trouble on 5 of the last 14 nights and 5 of the 14 open issues, mostly late or incomplete files from the supplier.
+- Issues are resolved in 2.7 days on average, inside the 3-day target, but 14 are open against 2 a month earlier.
 
-## The two ideas that run through it
+## Pages
 
-**1. The facts are measurements about data, not the data itself.** The model does not re-store 4.65 million POS rows; it stores that last night's POS extract had 2,412,384 rows at source and 2,412,384 landed, with matching amount totals. Around 4,700 fact rows describe the movement of millions of source rows a night. This is how a real reconciliation monitor works - a metadata store - and it keeps every headline an honest aggregation of stored measurements.
+Status, Reconciliation, Quality rules, Issue log and About, plus a Data area page reached by right-clicking any data area. The Load dropdown picks any of the 90 nights, and the report shows how things stood that morning.
 
-**2. Verdicts are computed, never stored.** The generator writes only raw observations - row counts, amount totals, rows failing a rule, minutes late. Pass / warn / fail is derived in DAX by comparing those against the thresholds held on the Rule table. Change a tolerance in the Rule table and every verdict, colour and KPI re-derives. One `Verdict Colour` measure drives the traffic discipline everywhere: green means a check passed, red means it failed or a break is open, amber means inside tolerance but worth a look - and nothing else ever borrows those colours.
+![Reconciliation page](screenshots/2-reconciliation.png)
 
-## Data model
+## How it is built
 
-A star schema of three dimensions and three facts, plus a disconnected run-date selector.
+- The facts are measurements about the data: rows and value at the source and in the warehouse, files received and when, and records failing each of 48 quality rules.
+- No status is stored. One measure compares every check with the thresholds in the `Rule` table, so changing a tolerance changes every status in the report.
+- Only the load checks (rows, value, file arrival) decide whether a data area can be used. Quality-rule warnings show as notes.
+- The Load dropdown filters `Date`. Trend charts use a separate `Night` axis and `TREATAS`, so they show the nights leading up to the load selected.
+- `Issue` is not related to `Date`. Its measures compare the dates opened and resolved with the night selected, so the log reads as it stood that morning.
+- Power Query keeps the latest of two result sets written for 14 June and cleans arrival times recorded three ways. One issue closed before it was opened is counted and left out of the averages.
 
-```mermaid
-erDiagram
-    Date ||--o{ FeedRun : Date
-    Feed ||--o{ FeedRun : FeedCode
-    Date ||--o{ CheckResult : Date
-    Rule ||--o{ CheckResult : "Rule Id"
-    Feed ||--o{ Rule : FeedCode
-    Date ||--o{ Break : Opened
-    Feed ||--o{ Break : FeedCode
-```
-
-| Table | Grain | Rows |
-|---|---|---|
-| Feed Run | Feed x scheduled night: pairwise counts, amounts, files, arrival | 681 |
-| Check Result | Rule x scheduled night: units checked, units failed, minutes late | 4,049 |
-| Break | One discrepancy raised (14 still open at 29 Jun) | 68 |
-| Date / Feed / Rule | dimensions (Date marked as a date table) | 91 / 8 / 48 |
-| Run Date | disconnected run-date selector | 90 |
-
-**Run Date** is a disconnected table: the Run date slicer binds to it, so the real Date table stays free for the trailing 14- and 30-night trend axes while every "as at the selected night" measure reads a single `Run Anchor`. **Break** carries a second, inactive relationship to Date on its resolved date, activated inside the mean-time-to-resolve measures. Full spec: [`docs/spec-data-reconciliation.md`](../docs/spec-data-reconciliation.md).
-
-## Measures
-
-~57 measures. Highlights:
-
-- **Check Verdict / Feed Verdict** - pass/warn/fail derived from the Rule thresholds (fail rate, minutes late, missing files); the feed's verdict is the worst of its load checks, so an in-warehouse rule warning never turns the status board amber.
-- **Row Match Rate %, Row/Amount Delta** - pairwise reconciliation; a matched feed reads 0, not blank, and a non-monetary feed reads a dash, not zero.
-- **Dimension Pass Rate %** - share of rule-night evaluations passing over the trailing 30 nights, counted per evaluation so a rule added mid-window does not depress history it was never part of.
-- **Open Breaks, Break Age Days, Mean Time To Resolve** - the register judged as at the selected night (time-travelling, not a snapshot), with MTTR flowing through the inactive resolved-date relationship.
-- **Verdict Colour / Severity Colour** - the single conditional-format measures behind the whole traffic-light palette.
-
-## Deliberate data-quality wrinkles
-
-Six realistic issues - this time in the monitoring data itself - handled in the open:
-
-| Wrinkle | Handling |
-|---|---|
-| No-run nights (weekday-only and Mon-Sat feeds) | Schedule-aware: a missing night reads "No run", never a failure, and stays out of every pass-rate denominator |
-| A reprocessed night wrote duplicate check results | Keep-latest on the run sequence in Power Query |
-| A rule added mid-window | Pass rates count actual evaluations, not nights x rules |
-| Inconsistent arrival-time formats from one source | Normalised to HH:MM in a named Power Query step, raw value preserved |
-| A break resolved before it opened | Flagged by a measure, excluded from MTTR, left visible in the register |
-| Feeds with no monetary measure | Amount columns genuinely blank, rendered as a dash - absence shown honestly |
+The figures above were recalculated from the CSVs outside Power BI and match the report.
 
 ## Opening it
 
-1. `node generator/generate-data.js` (no dependencies) writes the CSVs to [`data/`](data/).
-2. Open `Data Reconciliation Monitor.pbip` in Power BI Desktop; point the `Data Folder` parameter at your local `data` folder and refresh.
+1. Open `Data Reconciliation Monitor.pbip` in Power BI Desktop.
+2. In Transform data, set `Data Folder` to this project's [`data`](data/) folder and refresh.
 
-Design system: [`docs/design-reference-data-reconciliation.html`](../docs/design-reference-data-reconciliation.html).
+`node generator/generate-data.js` rebuilds the CSVs. See [`generator/`](generator/).

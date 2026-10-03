@@ -1,87 +1,35 @@
-/// Daily date table, 01 Apr to 30 Jun 2026, marked as a date table. Runs are nightly; trailing 14/30-night windows need day arithmetic.
+/// One row per overnight load, 1 April to 29 June 2026, marked as the date table. The Load dropdown on every page filters it, so a plain measure gives the figure for the load selected.
 table Date
-	lineageTag: d8b41aad-09ce-4035-a9d7-7aa41c74768a
 	dataCategory: Time
 
-	/// The calendar day. Key column.
+	/// The night of the load. Shown in the Load dropdown.
 	column Date
 		dataType: dateTime
 		isKey
-		formatString: dd mmm yyyy
-		lineageTag: 111dedbb-9107-45bf-94e1-a0d319065b85
+		formatString: ddd d mmm yyyy
 		summarizeBy: none
 		sourceColumn: Date
 
 		annotation UnderlyingDateTimeDataType = Date
 
-	column DateKey
-		dataType: int64
-		isHidden
-		lineageTag: a050992f-9eda-4c91-aed3-8cb7dff79b55
-		summarizeBy: none
-		sourceColumn: DateKey
-
-	/// Short label, e.g. 29 Jun. Sorted chronologically.
-	column 'Day Label'
-		dataType: string
-		lineageTag: ec1e9341-5c6d-41e7-ae3f-bf1125c57154
-		summarizeBy: none
-		sourceColumn: Day Label
-		sortByColumn: DateKey
-
 	column Weekday
 		dataType: string
-		lineageTag: 4c9a355d-76dc-45a5-866b-15b343d356eb
 		summarizeBy: none
 		sourceColumn: Weekday
-		sortByColumn: WeekdayNum
-
-	column WeekdayNum
-		dataType: int64
-		isHidden
-		lineageTag: c1f6ed9e-a9ac-484f-9912-0d3185e185f7
-		summarizeBy: none
-		sourceColumn: WeekdayNum
-
-	column 'Is Weekend'
-		dataType: boolean
-		lineageTag: 060579ff-094e-46cf-a897-c4011a3cbd4a
-		summarizeBy: none
-		sourceColumn: Is Weekend
-
-	column 'Week Start'
-		dataType: dateTime
-		formatString: dd mmm yyyy
-		lineageTag: ea1a38d1-d8ff-46d1-bd9c-3a50d5ef6cde
-		summarizeBy: none
-		sourceColumn: Week Start
-
-		annotation UnderlyingDateTimeDataType = Date
 
 	column Month
 		dataType: string
-		lineageTag: 1c243277-538c-49b0-a54b-4948d15f7919
 		summarizeBy: none
 		sourceColumn: Month
-		sortByColumn: MonthKey
-
-	column MonthKey
-		dataType: int64
-		isHidden
-		lineageTag: 22e29084-48ad-4245-b431-0fd01bbe3e76
-		summarizeBy: none
-		sourceColumn: MonthKey
 
 	partition Date = m
 		mode: import
 		source =
 				let
-				    Source = Csv.Document(File.Contents(#"Data Folder" & "\date.csv"), [Delimiter = ",", Columns = 7, Encoding = 65001, QuoteStyle = QuoteStyle.Csv]),
-				    Headers = Table.PromoteHeaders(Source, [PromoteAllScalars = true]),
-				    Typed = Table.TransformColumnTypes(Headers, {{"date", type date}, {"date_key", Int64.Type}, {"day_label", type text}, {"weekday", type text}, {"is_weekend", type logical}, {"week_start", type date}, {"month", type text}}),
-				    AddWeekdayNum = Table.AddColumn(Typed, "WeekdayNum", each Date.DayOfWeek([date], Day.Monday) + 1, Int64.Type),
-				    AddMonthKey = Table.AddColumn(AddWeekdayNum, "MonthKey", each Date.Year([date]) * 100 + Date.Month([date]), Int64.Type),
-				    Renamed = Table.RenameColumns(AddMonthKey, {{"date", "Date"}, {"date_key", "DateKey"}, {"day_label", "Day Label"}, {"weekday", "Weekday"}, {"is_weekend", "Is Weekend"}, {"week_start", "Week Start"}, {"month", "Month"}})
+				    Source = Csv.Document(File.Contents(#"Data Folder" & "\date.csv"), [Delimiter = ",", Columns = 3, Encoding = 65001, QuoteStyle = QuoteStyle.Csv]),
+				    #"Promoted Headers" = Table.PromoteHeaders(Source, [PromoteAllScalars = true]),
+				    #"Renamed Columns" = Table.RenameColumns(#"Promoted Headers", {{"date", "Date"}, {"weekday", "Weekday"}, {"month", "Month"}}),
+				    #"Changed Types" = Table.TransformColumnTypes(#"Renamed Columns", {{"Date", type date}, {"Weekday", type text}, {"Month", type text}})
 				in
-				    Renamed
+				    #"Changed Types"
 

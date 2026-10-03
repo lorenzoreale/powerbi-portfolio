@@ -1,0 +1,97 @@
+/// Field parameter for the region chart on the Briefing page: the measure the six regions are compared by.
+table 'Compare Regions By'
+
+	/// The measure chosen in the region chart's selector. 0 (compliance) when nothing is selected.
+	measure 'Region Comparison Choice' = SELECTEDVALUE ( 'Compare Regions By'[Compare Regions By Order], 0 )
+		formatString: 0
+		isHidden
+		displayFolder: Report text
+
+	/// Visual title for the region chart: the region (or regions, when tied) doing worst on the measure chosen.
+	measure 'Title Region Comparison' =
+			VAR choice = [Region Comparison Choice]
+			VAR scores =
+			    ADDCOLUMNS (
+			        VALUES ( 'Site'[Region] ),
+			        "@Worse", SWITCH ( choice, 0, - [Compliance %], 1, - [On-time %], 2, [Overdue Actions], 3, [Days Since Last Visit] )
+			    )
+			VAR worst = MAXX ( scores, [@Worse] )
+			VAR worstRegions = FILTER ( scores, [@Worse] = worst )
+			VAR names = CONCATENATEX ( worstRegions, 'Site'[Region], " and ", 'Site'[Region], ASC )
+			VAR verb = IF ( COUNTROWS ( worstRegions ) > 1, " have ", " has " )
+			RETURN
+			    names & verb
+			        & SWITCH (
+			            choice,
+			            0, "the lowest compliance",
+			            1, "the lowest on-time closure",
+			            2, "the most overdue actions",
+			            3, "the longest gap since a visit"
+			        )
+		displayFolder: Report text
+
+	/// Visual subtitle for the region chart: what is plotted and what red means for the measure chosen.
+	measure 'Subtitle Region Comparison' =
+			SWITCH (
+			    [Region Comparison Choice],
+			    0, "All six regions, year selected. Red: below the 90% target (dashed line).",
+			    1, "Actions due in the year selected. Red: below the 90% target (dashed).",
+			    2, "Open actions past due, as at 26 Jun 2026. Red: any overdue action.",
+			    3, "Longest gap at any site, as at 26 Jun 2026. Red: over 60 days (dashed)."
+			)
+		displayFolder: Report text
+
+	/// Reference line for the region chart: the target or rule for the measure chosen. Blank when there is none.
+	measure 'Region Comparison Line' = SWITCH ( [Region Comparison Choice], 0, [Compliance Target], 1, [On-time Target], 3, 60 )
+		displayFolder: Reference lines
+
+	/// Bar colour for the region chart, following the same rules as the rest of the report.
+	measure 'Colour Region Comparison Bar' =
+			SWITCH (
+			    [Region Comparison Choice],
+			    0, IF ( [Compliance %] < [Compliance Target], "#C2453A", "#24589E" ),
+			    1, IF ( [On-time %] < [On-time Target], "#C2453A", "#24589E" ),
+			    2, IF ( [Overdue Actions] > 0, "#C2453A", "#24589E" ),
+			    3, SWITCH ( TRUE (), [Days Since Last Visit] > 60, "#C2453A", [Days Since Last Visit] >= 54, "#D9922F", "#24589E" )
+			)
+		displayFolder: Colours
+
+	column 'Compare Regions By'
+		dataType: string
+		summarizeBy: none
+		sourceColumn: [Value1]
+		sortByColumn: 'Compare Regions By Order'
+
+		relatedColumnDetails
+			groupByColumn: 'Compare Regions By Fields'
+
+	column 'Compare Regions By Fields'
+		dataType: string
+		isHidden
+		summarizeBy: none
+		sourceColumn: [Value2]
+		sortByColumn: 'Compare Regions By Order'
+
+		extendedProperty ParameterMetadata =
+				{
+				  "version": 3,
+				  "kind": 2
+				}
+
+	column 'Compare Regions By Order'
+		dataType: int64
+		isHidden
+		formatString: 0
+		summarizeBy: sum
+		sourceColumn: [Value3]
+
+	partition 'Compare Regions By' = calculated
+		mode: import
+		source =
+				{
+				    ("By compliance", NAMEOF ( 'Response'[Compliance %] ), 0),
+				    ("By on-time closure", NAMEOF ( 'Action'[On-time %] ), 1),
+				    ("By overdue actions", NAMEOF ( 'Action'[Overdue Actions] ), 2),
+				    ("By visit gap", NAMEOF ( 'Site'[Days Since Last Visit] ), 3)
+				}
+

@@ -1,91 +1,153 @@
-/// Fact: one row per checklist question answered on an inspection (24 per visit). Result is Pass, Fail or NA; a Fail is a finding. N/A answers are excluded from the compliance denominator (wrinkle W3).
+/// One row per checklist question answered on an inspection: 24 per visit. Result is Pass, Fail or NA; every Fail is a finding.
 table Response
-	lineageTag: b31a5a1a-29d7-4205-8e7c-1c2fcef49e35
+	lineageTag: 98258525-9b0b-4874-a38b-bac4a6567aa3
 
-	/// Answers that count towards compliance. N/A answers are excluded from the denominator (wrinkle W3).
+	/// Answers that count towards compliance. N/A answers are left out of the denominator.
 	measure 'Questions Applicable' = CALCULATE ( COUNTROWS ( 'Response' ), 'Response'[Result] IN { "Pass", "Fail" } )
 		formatString: #,0
 		displayFolder: Compliance
-		lineageTag: b61a9b47-6b7b-4d9d-ac2c-a7f83253337a
+		lineageTag: 72fc1fb7-9ce0-418c-ba99-e01046d8304c
 
-	/// Answers recorded as Pass.
+	/// Answers marked Pass.
 	measure 'Questions Passed' = CALCULATE ( COUNTROWS ( 'Response' ), 'Response'[Result] = "Pass" )
 		formatString: #,0
 		displayFolder: Compliance
-		lineageTag: f2b07686-1796-4bfb-b496-fdd6f7971100
+		lineageTag: 42a51361-2175-4ec7-b360-58ab171adf4e
 
-	/// Passed over applicable answers. BLANK when nothing was inspected, so uninspected cells stay blank rather than reading 0%. The single compliance measure used everywhere, including the Inspection Detail score.
+	/// Questions passed as a share of questions applicable. Blank when nothing was inspected, so empty cells stay empty instead of showing 0%.
 	measure 'Compliance %' = DIVIDE ( [Questions Passed], [Questions Applicable] )
 		formatString: 0.0%
 		displayFolder: Compliance
-		lineageTag: 14325975-7a00-4b4e-ab4f-c24f4d2c2327
+		lineageTag: 1f0e7c5e-f4a5-4d3f-aa40-9ca58417a2c2
 
-	/// Compliance % of the as-at month. Feeds the MoM delta.
-	measure 'Compliance % Current Month' =
-			VAR asat = [As-at Date]
+	/// Compliance for the same period one year earlier, stopping at the same day (26 Jun 2025), so the comparison is like for like.
+	measure 'Compliance % Last Year' =
+			VAR sameDayLastYear = EDATE ( [As-at Date], -12 )
 			RETURN
-			    CALCULATE ( [Compliance %], DATESBETWEEN ( 'Date'[Date], DATE ( YEAR ( asat ), MONTH ( asat ), 1 ), asat ) )
-		formatString: 0.0%
-		isHidden
-		displayFolder: Compliance
-		lineageTag: f5ac966e-0d18-441b-9d55-6b2fba887e12
-
-	/// Compliance % of the full month before the as-at month.
-	measure 'Compliance % Previous Month' =
-			VAR pmEnd = EOMONTH ( [As-at Date], -1 )
-			RETURN
-			    CALCULATE ( [Compliance %], DATESBETWEEN ( 'Date'[Date], DATE ( YEAR ( pmEnd ), MONTH ( pmEnd ), 1 ), pmEnd ) )
+			    CALCULATE ( [Compliance %], SAMEPERIODLASTYEAR ( 'Date'[Date] ), 'Date'[Date] <= sameDayLastYear )
 		formatString: 0.0%
 		displayFolder: Compliance
-		lineageTag: 31cf9706-f50a-4b04-925d-3ebd79ee504c
+		lineageTag: f582e5a0-b1a0-416c-b86b-89232bb2f3b9
 
-	/// Change in compliance, as-at month versus the previous full month, in percentage points.
-	measure 'Compliance MoM (pts)' = ( [Compliance % Current Month] - [Compliance % Previous Month] ) * 100
-		formatString: +0.0;-0.0;0.0
+	/// Compliance from 1 January to the as-at date, whatever the period selected. Used on the site detail page.
+	measure 'Compliance This Year' =
+			VAR asAt = [As-at Date]
+			RETURN
+			    CALCULATE ( [Compliance %], DATESBETWEEN ( 'Date'[Date], DATE ( YEAR ( asAt ), 1, 1 ), asAt ) )
+		formatString: 0.0%
 		displayFolder: Compliance
-		lineageTag: b5f4dbae-74c8-4a5c-8291-1da5c89b6c2d
+		lineageTag: ba3623dc-63bd-413d-9d51-2a9676d7beea
 
-	/// The agreed compliance target. Amber dashed line on charts; never a data colour.
-	measure 'Compliance Target %' = 0.9
+	/// The agreed compliance target.
+	measure 'Compliance Target' = 0.9
 		formatString: 0%
 		displayFolder: Compliance
-		lineageTag: 1b1e7bdf-32a9-4789-914e-1ac29a4def92
+		lineageTag: 2df156b8-d419-4efa-9836-30be7e2f8c5f
 
-	/// Failed checklist answers. Every finding has a severity and an inspector note.
+	/// Failed checklist answers. Each has a severity and an inspector note.
 	measure Findings = CALCULATE ( COUNTROWS ( 'Response' ), 'Response'[Result] = "Fail" )
 		formatString: #,0
 		displayFolder: Findings
-		lineageTag: 1d00a74a-881b-4e11-8061-593b4bcc1c30
+		lineageTag: 67467cf1-9a4e-44fe-9b3d-9c37041e3c4d
 
-	/// Average findings per inspection visit.
+	/// Average number of failed answers per inspection visit.
 	measure 'Findings per Inspection' = DIVIDE ( [Findings], [Inspections] )
 		formatString: 0.0
 		displayFolder: Findings
-		lineageTag: 68e98e7d-4c12-46b0-b44b-a1c28e1657d0
+		lineageTag: 5c39c0b7-a329-4889-86bc-d8188522d196
 
-	/// Findings graded High. KEEPFILTERS so a severity context from a visual intersects rather than being overridden.
-	measure 'High Severity Findings' = CALCULATE ( [Findings], KEEPFILTERS ( 'Response'[Severity] = "High" ) )
+	/// Findings graded High.
+	measure 'High Severity Findings' = CALCULATE ( [Findings], 'Response'[Severity] = "High" )
 		formatString: #,0
 		displayFolder: Findings
-		lineageTag: c041d096-8aed-4d11-9989-885309cc3c3f
+		lineageTag: 696ecd0c-48b0-4847-b52d-50cbbb70ab1b
 
-	/// Context line for the Compliance % KPI card.
-	measure 'KPI Compliance Context' = FORMAT ( [Compliance MoM (pts)], "+0.0;-0.0;0.0" ) & " pts vs previous month"
-		isHidden
-		displayFolder: Presentation
-		lineageTag: 3f94701d-1a41-4002-b9cb-a08a073a8c06
+	/// High-severity findings as a share of all findings.
+	measure 'High Severity Share' = DIVIDE ( [High Severity Findings], [Findings] )
+		formatString: 0%
+		displayFolder: Findings
+		lineageTag: dc656e59-b7a7-45db-b8f6-9a3db20b2f5b
 
-	column InspectionKey
-		dataType: int64
+	/// First line of the briefing page.
+	measure Headline =
+			VAR compliance = [Compliance %]
+			VAR lastYear = [Compliance % Last Year]
+			VAR versusTarget = IF ( compliance >= [Compliance Target], "above", "below" )
+			VAR versusLastYear =
+			    IF (
+			        ISBLANK ( lastYear ),
+			        "",
+			        IF ( compliance >= lastYear, ", up from ", ", down from " ) & FORMAT ( lastYear, "0.0%" ) & " a year earlier"
+			    )
+			RETURN
+			    IF ( NOT ISBLANK ( compliance ), "Compliance is " & FORMAT ( compliance, "0.0%" ) & ", " & versusTarget & " the 90% target" & versusLastYear & "." )
+		displayFolder: Report text
+		lineageTag: db17265e-ec3a-4285-bf9e-8284d10c649a
+
+	/// Context line under the compliance figure.
+	measure 'Context Compliance' =
+			VAR lastYear = [Compliance % Last Year]
+			RETURN
+			    "Target 90%" & IF ( NOT ISBLANK ( lastYear ), " · a year earlier " & FORMAT ( lastYear, "0.0%" ) )
+		displayFolder: Report text
+		lineageTag: cd271712-c927-4dfb-8caa-a9e94496d464
+
+	/// Compliance this year for the region of the selected site, across all its sites.
+	measure 'Region Compliance This Year' = CALCULATE ( [Compliance This Year], REMOVEFILTERS ( 'Site' ), VALUES ( 'Site'[Region] ) )
+		formatString: 0.0%
+		displayFolder: Compliance
+		lineageTag: 27ffce41-f272-417d-a4d2-fbeb94845e72
+
+	/// Context line under a site's compliance on the site detail page.
+	measure 'Context Site Compliance' =
+			VAR region = SELECTEDVALUE ( 'Site'[Region] )
+			RETURN
+			    region & " " & FORMAT ( [Region Compliance This Year], "0.0%" ) & " · estate " & FORMAT ( CALCULATE ( [Compliance This Year], REMOVEFILTERS ( 'Site' ) ), "0.0%" )
+		displayFolder: Report text
+		lineageTag: ff49cacc-2e17-4a81-a4e9-b187b499d7c5
+
+	/// Text colour for compliance this year on the site detail page.
+	measure 'Colour Site Compliance Text' = IF ( [Compliance This Year] < [Compliance Target], "#C2453A", "#16324F" )
+		displayFolder: Colours
+		lineageTag: 1cf0089c-8e92-4dbd-85c9-87f03d8bbe9c
+
+	/// Text colour for compliance figures: red below target.
+	measure 'Colour Compliance Text' = IF ( [Compliance %] < [Compliance Target], "#C2453A", "#16324F" )
+		displayFolder: Colours
+		lineageTag: a344a224-3501-42ce-8ed6-29a0425a536a
+
+	/// Text colour for severity in the findings list: red for High.
+	measure 'Colour Severity Text' = IF ( SELECTEDVALUE ( 'Response'[Severity] ) = "High", "#C2453A", "#2A3A4D" )
+		displayFolder: Colours
+
+	/// Cell shading for compliance tables: three tints of red below target, none at or above it.
+	measure 'Colour Compliance Cell' =
+			VAR compliance = [Compliance %]
+			VAR target = [Compliance Target]
+			RETURN
+			    SWITCH (
+			        TRUE (),
+			        ISBLANK ( compliance ), BLANK (),
+			        compliance < target - 0.08, "#EBA79E",
+			        compliance < target - 0.04, "#F4C8C1",
+			        compliance < target, "#FBE5E1",
+			        BLANK ()
+			    )
+		displayFolder: Colours
+		lineageTag: f13b04b6-464d-409d-8554-939c7689ad04
+
+	column InspectionID
+		dataType: string
 		isHidden
-		lineageTag: 889a2c42-3866-4f8e-9c37-cee4ed5d9e79
+		lineageTag: 0c5bbfbe-75f4-4e60-be31-cfe5b5957c5f
 		summarizeBy: none
-		sourceColumn: InspectionKey
+		sourceColumn: InspectionID
 
 	column QuestionKey
 		dataType: int64
 		isHidden
-		lineageTag: d3088902-9694-4290-bb05-3e3cc35fa3ec
+		formatString: 0
+		lineageTag: 50c64745-7364-4a3f-8621-5676d0da2ff1
 		summarizeBy: none
 		sourceColumn: QuestionKey
 
@@ -93,28 +155,20 @@ table Response
 	column Result
 		dataType: string
 		isHidden
-		lineageTag: 8a3d4745-fc87-4827-a2e5-e87331ae9172
+		lineageTag: 84d6595f-0ad6-4297-a965-65947b27c208
 		summarizeBy: none
 		sourceColumn: Result
 
-	/// Low, Medium or High. Populated only when Result is Fail.
+	/// High, Medium or Low. Only filled in for failed answers.
 	column Severity
 		dataType: string
-		lineageTag: 68702ac9-f8cf-4513-8783-93f25c5fbd45
+		lineageTag: 76bdc5bf-07dd-4d0b-ad47-2f8468b9930f
 		summarizeBy: none
 		sourceColumn: Severity
-		sortByColumn: 'Severity Sort'
-
-	column 'Severity Sort'
-		dataType: int64
-		isHidden
-		lineageTag: d4846f73-6bf4-487e-94bf-670728e1bba9
-		summarizeBy: none
-		sourceColumn: Severity Sort
 
 	column 'Inspector Note'
 		dataType: string
-		lineageTag: 163fd6c7-0324-47a3-aee7-b35b3ac5d404
+		lineageTag: bcc7af45-a402-4d90-af4e-e95432098519
 		summarizeBy: none
 		sourceColumn: Inspector Note
 
@@ -124,12 +178,9 @@ table Response
 				let
 				    Source = Csv.Document(File.Contents(#"Data Folder" & "\responses.csv"), [Delimiter = ",", Columns = 5, Encoding = 65001, QuoteStyle = QuoteStyle.Csv]),
 				    #"Promoted Headers" = Table.PromoteHeaders(Source, [PromoteAllScalars = true]),
-				    #"Merged Inspection Keys" = Table.NestedJoin(#"Promoted Headers", {"inspection_id"}, #"Inspections Clean", {"inspection_id"}, "Inspection", JoinKind.Inner),
-				    #"Expanded Inspection" = Table.ExpandTableColumn(#"Merged Inspection Keys", "Inspection", {"InspectionKey"}),
-				    #"Removed Business Key" = Table.RemoveColumns(#"Expanded Inspection", {"inspection_id"}),
-				    #"Added Severity Sort" = Table.AddColumn(#"Removed Business Key", "Severity Sort", each if [severity] = "High" then 3 else if [severity] = "Medium" then 2 else if [severity] = "Low" then 1 else 0, Int64.Type),
-				    #"Renamed Columns" = Table.RenameColumns(#"Added Severity Sort", {{"question_id", "QuestionKey"}, {"result", "Result"}, {"severity", "Severity"}, {"inspector_note", "Inspector Note"}}),
-				    #"Changed Types" = Table.TransformColumnTypes(#"Renamed Columns", {{"InspectionKey", Int64.Type}, {"QuestionKey", Int64.Type}, {"Result", type text}, {"Severity", type text}, {"Inspector Note", type text}})
+				    #"Blank to Null" = Table.ReplaceValue(#"Promoted Headers", "", null, Replacer.ReplaceValue, {"severity", "inspector_note"}),
+				    #"Renamed Columns" = Table.RenameColumns(#"Blank to Null", {{"inspection_id", "InspectionID"}, {"question_id", "QuestionKey"}, {"result", "Result"}, {"severity", "Severity"}, {"inspector_note", "Inspector Note"}}),
+				    #"Changed Types" = Table.TransformColumnTypes(#"Renamed Columns", {{"InspectionID", type text}, {"QuestionKey", Int64.Type}, {"Result", type text}, {"Severity", type text}, {"Inspector Note", type text}})
 				in
 				    #"Changed Types"
 

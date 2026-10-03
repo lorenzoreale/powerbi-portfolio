@@ -1,354 +1,343 @@
-/// Fact: signed profit contribution (revenue positive, costs negative) per Month x Scenario x Entity x Service Line x Account x Client. Cleans the raw wrinkles at load: dedupes a duplicated journal batch (W2), resolves dirty client names against the master and maps blanks to Unallocated (W3, W4), and coerces cost accounts to negative (W5).
+/// One row per month, scenario (Actual or Budget), company, service line, account and client. Amounts are signed: revenue positive, costs negative, so adding them up gives profit at any level and Actual minus Budget is favourable when positive.
 table Ledger
-	lineageTag: 67f2329b-bbf4-45d6-b7e7-563016c622cf
 
-	/// Signed profit contribution for the Actual scenario in context. In GBP; formatted to thousands.
-	measure Actual = CALCULATE ( SUM ( Ledger[Amount] ), Scenario[Scenario] = "Actual" )
-		formatString: #,0,
-		displayFolder: Scenario
-		lineageTag: 19db4646-4dd8-4ee7-afba-2c45692ebc49
-
-	/// Signed profit contribution for the Budget scenario in context.
-	measure Budget = CALCULATE ( SUM ( Ledger[Amount] ), Scenario[Scenario] = "Budget" )
-		formatString: #,0,
-		displayFolder: Scenario
-		lineageTag: aec8f82b-18ee-4368-aca5-9ebb55f04899
-
-	/// Actual minus Budget. Positive is favourable, negative unfavourable, for every line (signed-amount convention).
-	measure Variance = [Actual] - [Budget]
-		formatString: #,0,;(#,0,);0
-		displayFolder: Scenario
-		lineageTag: 2bdb3e4f-98fc-4953-a5ac-25cd6d814be6
-
-	/// Variance over the absolute budget, keeping the favourable/unfavourable sign. BLANK when there is no budget (wrinkle W1).
-	measure 'Variance %' = DIVIDE ( [Variance], ABS ( [Budget] ) )
-		formatString: 0.0%
-		displayFolder: Scenario
-		lineageTag: 8905ae00-616b-475a-9d58-6022355b13c1
-
-	/// 1 when the variance is favourable, 0 when unfavourable. Drives the single green/red conditional-format rule.
-	measure 'Is Favourable' = IF ( NOT ISBLANK ( [Variance] ), IF ( [Variance] >= 0, 1, 0 ) )
-		formatString: 0
+	/// Actual amounts, before any category filter. The base of every actual figure.
+	measure Actual = CALCULATE ( SUM ( Ledger[Amount] ), Ledger[Scenario] = "Actual" )
+		formatString: #,0,;(#,0,);-
 		isHidden
-		displayFolder: Scenario
-		lineageTag: 7788d9b7-7c6f-43d0-b5dc-de8b6cb83d40
+		displayFolder: Base
 
-	/// Actual from January of the selected year to the selected month. Computed at month grain, no daily date table.
-	measure 'YTD Actual' =
-			VAR mk = MAX ( 'Calendar'[MonthKey] )
-			VAR yr = INT ( mk / 100 )
-			RETURN
-			    CALCULATE ( [Actual], REMOVEFILTERS ( 'Calendar' ), 'Calendar'[Year] = yr, 'Calendar'[MonthKey] <= mk )
-		formatString: #,0,
-		displayFolder: Scenario
-		lineageTag: b200d28b-fba7-4ac6-8a5e-4f283526d58d
+	/// Budget amounts, before any category filter.
+	measure Budget = CALCULATE ( SUM ( Ledger[Amount] ), Ledger[Scenario] = "Budget" )
+		formatString: #,0,;(#,0,);-
+		isHidden
+		displayFolder: Base
 
-	/// Budget over the same year-to-date window.
-	measure 'YTD Budget' =
-			VAR mk = MAX ( 'Calendar'[MonthKey] )
-			VAR yr = INT ( mk / 100 )
-			RETURN
-			    CALCULATE ( [Budget], REMOVEFILTERS ( 'Calendar' ), 'Calendar'[Year] = yr, 'Calendar'[MonthKey] <= mk )
-		formatString: #,0,
-		displayFolder: Scenario
-		lineageTag: 9cd12db8-74b5-4873-b44d-4ec855cf16dd
+	/// Revenue from every service line, in pounds.
+	measure Revenue = CALCULATE ( [Actual], Account[Category] = "Revenue" )
+		formatString: #,0,;(#,0,);-
+		displayFolder: Revenue
 
-	/// Year-to-date Actual minus Budget.
-	measure 'YTD Variance' = [YTD Actual] - [YTD Budget]
-		formatString: #,0,;(#,0,);0
-		displayFolder: Scenario
-		lineageTag: 54fba69e-4669-471e-ae80-2c0e5473231a
+	/// Budgeted revenue: the flexed budget, 82% utilisation of the hours available at the rate card.
+	measure 'Revenue Budget' = CALCULATE ( [Budget], Account[Category] = "Revenue" )
+		formatString: #,0,;(#,0,);-
+		displayFolder: Revenue
 
-	/// Actual revenue, independent of any account filter.
-	measure Revenue = CALCULATE ( [Actual], REMOVEFILTERS ( Account ), Account[Category] = "Revenue" )
-		formatString: #,0,
-		displayFolder: P&L
-		lineageTag: 10a372fe-ee4a-4b3d-a607-d79a928d6ca5
-
-	measure 'Revenue Budget' = CALCULATE ( [Budget], REMOVEFILTERS ( Account ), Account[Category] = "Revenue" )
-		formatString: #,0,
-		displayFolder: P&L
-		lineageTag: e362dea0-cd30-4ce2-88f7-871aac90bfc9
-
+	/// Actual minus budgeted revenue. Positive is favourable.
 	measure 'Revenue Variance' = [Revenue] - [Revenue Budget]
-		formatString: #,0,;(#,0,);0
-		displayFolder: P&L
-		lineageTag: 0442a4c8-a6da-4ff3-95fd-ce910aa2daad
+		formatString: #,0,;(#,0,);-
+		displayFolder: Revenue
 
-	/// Actual direct costs (negative).
-	measure 'Direct Costs' = CALCULATE ( [Actual], REMOVEFILTERS ( Account ), Account[Category] = "Direct costs" )
-		formatString: #,0,;(#,0,);0
-		displayFolder: P&L
-		lineageTag: 738e3a6c-1974-4dbe-8db5-420aa450dfcc
+	/// Revenue variance as a share of budget.
+	measure 'Revenue Variance %' = DIVIDE ( [Revenue Variance], [Revenue Budget] )
+		formatString: 0.0%;(0.0%);-
+		displayFolder: Revenue
 
-	measure 'Direct Costs Budget' = CALCULATE ( [Budget], REMOVEFILTERS ( Account ), Account[Category] = "Direct costs" )
-		formatString: #,0,;(#,0,);0
-		displayFolder: P&L
-		lineageTag: 29426c26-c66e-4230-ae12-e3e7072315c9
+	/// Direct costs, signed negative.
+	measure 'Direct Costs' = CALCULATE ( [Actual], Account[Category] = "Direct costs" )
+		formatString: #,0,;(#,0,);-
+		displayFolder: Costs
 
-	/// Actual overheads (negative).
-	measure Overheads = CALCULATE ( [Actual], REMOVEFILTERS ( Account ), Account[Category] = "Overheads" )
-		formatString: #,0,;(#,0,);0
-		displayFolder: P&L
-		lineageTag: 076103fb-f96b-4fbd-b188-c670eac24784
+	/// Budgeted direct costs, signed negative.
+	measure 'Direct Costs Budget' = CALCULATE ( [Budget], Account[Category] = "Direct costs" )
+		formatString: #,0,;(#,0,);-
+		displayFolder: Costs
 
-	measure 'Overheads Budget' = CALCULATE ( [Budget], REMOVEFILTERS ( Account ), Account[Category] = "Overheads" )
-		formatString: #,0,;(#,0,);0
-		displayFolder: P&L
-		lineageTag: ef2d52d5-14e1-405a-b273-2c8eb9327d2c
+	/// Positive when direct costs came in under budget.
+	measure 'Direct Costs Variance' = [Direct Costs] - [Direct Costs Budget]
+		formatString: #,0,;(#,0,);-
+		displayFolder: Costs
 
-	/// Revenue plus direct costs.
-	measure 'Gross Profit' = [Revenue] + [Direct Costs]
-		formatString: #,0,
-		displayFolder: P&L
-		lineageTag: 3e55fe41-ba1c-4512-948f-a128b2b95b21
+	/// Overheads, signed negative.
+	measure Overheads = CALCULATE ( [Actual], Account[Category] = "Overheads" )
+		formatString: #,0,;(#,0,);-
+		displayFolder: Costs
 
-	measure 'Gross Profit Budget' = [Revenue Budget] + [Direct Costs Budget]
-		formatString: #,0,
-		displayFolder: P&L
-		lineageTag: c26f5fc5-e62f-449e-94d2-d8224a94067d
+	/// Budgeted overheads, signed negative.
+	measure 'Overheads Budget' = CALCULATE ( [Budget], Account[Category] = "Overheads" )
+		formatString: #,0,;(#,0,);-
+		displayFolder: Costs
 
-	/// Gross profit plus overheads. The bottom line.
-	measure 'Operating Profit' = [Gross Profit] + [Overheads]
-		formatString: #,0,
-		displayFolder: P&L
-		lineageTag: b37c9e1e-471d-42aa-97ad-b6890e545c7e
+	/// Positive when overheads came in under budget.
+	measure 'Overheads Variance' = [Overheads] - [Overheads Budget]
+		formatString: #,0,;(#,0,);-
+		displayFolder: Costs
 
-	measure 'Operating Profit Budget' = [Gross Profit Budget] + [Overheads Budget]
-		formatString: #,0,
-		displayFolder: P&L
-		lineageTag: 56e5f5bf-e283-499a-9338-09957161cfd7
+	/// Actual spent on accounts that have no budget at all, such as Depreciation. Shows where a budget line is missing rather than a real overspend.
+	measure 'Actual Without Budget' = SUMX ( VALUES ( Account[Account Code] ), IF ( ISBLANK ( [Budget] ), [Actual] ) )
+		formatString: #,0,;(#,0,);-
+		displayFolder: Costs
 
-	measure 'Operating Profit Variance' = [Operating Profit] - [Operating Profit Budget]
-		formatString: #,0,;(#,0,);0
-		displayFolder: P&L
-		lineageTag: e83d30d8-c02a-4fe4-abb6-7dab29e112ca
+	/// Revenue less direct costs.
+	measure 'Gross Profit' = CALCULATE ( [Actual], Account[Category] IN { "Revenue", "Direct costs" } )
+		formatString: #,0,;(#,0,);-
+		displayFolder: Profit
 
+	/// Budgeted revenue less budgeted direct costs.
+	measure 'Gross Profit Budget' = CALCULATE ( [Budget], Account[Category] IN { "Revenue", "Direct costs" } )
+		formatString: #,0,;(#,0,);-
+		displayFolder: Profit
+
+	/// Actual minus budgeted gross profit. Positive is favourable.
+	measure 'Gross Profit Variance' = [Gross Profit] - [Gross Profit Budget]
+		formatString: #,0,;(#,0,);-
+		displayFolder: Profit
+
+	/// Gross profit as a share of revenue.
 	measure 'Gross Margin %' = DIVIDE ( [Gross Profit], [Revenue] )
 		formatString: 0.0%
-		displayFolder: P&L
-		lineageTag: 2d5dbd02-e8f4-4890-bc2a-2883febd39d8
+		displayFolder: Profit
 
-	measure 'Operating Margin %' = DIVIDE ( [Operating Profit], [Revenue] )
-		formatString: 0.0%
-		displayFolder: P&L
-		lineageTag: c21e6559-6fe3-4e83-b5d1-62baa03b6f27
-
-	measure 'Operating Margin % Budget' = DIVIDE ( [Operating Profit Budget], [Revenue Budget] )
-		formatString: 0.0%
-		displayFolder: P&L
-		lineageTag: 8b7a9a26-2e21-46b5-8544-4575070c52ec
-
-	/// The service line with the most negative revenue variance, for the alarm card.
-	measure 'Largest Adverse Variance' =
-			VAR t = ADDCOLUMNS ( FILTER ( VALUES ( 'Service Line'[Service Line] ), 'Service Line'[Service Line] <> "Central" ), "@v", [Revenue Variance] )
-			RETURN
-			    CONCATENATEX ( TOPN ( 1, t, [@v], ASC ), 'Service Line'[Service Line] )
-		displayFolder: KPI
-		lineageTag: 79470c1e-0dc6-47e7-a982-debac8fd8bae
-
-	/// Gross margin at client grain (direct costs carry a client).
-	measure 'Client Margin %' = DIVIDE ( [Gross Profit], [Revenue] )
-		formatString: 0.0%
-		displayFolder: Client
-		lineageTag: d5139d9e-cbed-4868-85ec-93e38a613038
-
-	/// Reads the current P&L Line row and returns its signed amount for the scenario in context. The engine behind the P&L matrix.
-	measure 'PL Amount' =
-			VAR lt = SELECTEDVALUE ( 'P&L Line'[Line Type] )
-			VAR cf = SELECTEDVALUE ( 'P&L Line'[Category Filter] )
-			RETURN
-			    SWITCH ( lt,
-			        "detail", CALCULATE ( SUM ( Ledger[Amount] ), REMOVEFILTERS ( Account ), Account[AccountCode] = cf ),
-			        "group", CALCULATE ( SUM ( Ledger[Amount] ), REMOVEFILTERS ( Account ), Account[Category] = cf ),
-			        "subtotal", SWITCH ( cf,
-			            "GrossProfit", CALCULATE ( SUM ( Ledger[Amount] ), REMOVEFILTERS ( Account ), Account[Category] IN { "Revenue", "Direct costs" } ),
-			            "OperatingProfit", CALCULATE ( SUM ( Ledger[Amount] ), REMOVEFILTERS ( Account ) ) )
-			    )
-		formatString: #,0,
-		isHidden
-		displayFolder: P&L matrix
-		lineageTag: c5075a92-449c-4eb6-b034-241f7f65ce1b
-
-	measure 'Month Actual' = CALCULATE ( [PL Amount], REMOVEFILTERS ( Scenario ), Scenario[Scenario] = "Actual" )
-		formatString: #,0,;(#,0,);0
-		displayFolder: P&L matrix
-		lineageTag: 679c10a3-9bbf-4dd1-b8c5-7815944de615
-
-	measure 'Month Budget' = CALCULATE ( [PL Amount], REMOVEFILTERS ( Scenario ), Scenario[Scenario] = "Budget" )
-		formatString: #,0,;(#,0,);0
-		displayFolder: P&L matrix
-		lineageTag: cd1a38a4-a69e-4beb-81fa-c6509318db1d
-
-	measure 'Month Var' = [Month Actual] - [Month Budget]
-		formatString: #,0,;(#,0,);0
-		displayFolder: P&L matrix
-		lineageTag: 76e3be61-db8f-4a86-a71c-4c797b09c5aa
-
-	measure 'Var %' = DIVIDE ( [Month Var], ABS ( [Month Budget] ) )
-		formatString: 0.0%
-		displayFolder: P&L matrix
-		lineageTag: c7c0f9b2-a96d-4979-adc3-b274ff291eba
-
-	measure 'YTD Act' =
-			VAR mk = MAX ( 'Calendar'[MonthKey] )
-			VAR yr = INT ( mk / 100 )
-			RETURN
-			    CALCULATE ( [Month Actual], REMOVEFILTERS ( 'Calendar' ), 'Calendar'[Year] = yr, 'Calendar'[MonthKey] <= mk )
-		formatString: #,0,;(#,0,);0
-		displayFolder: P&L matrix
-		lineageTag: 680cdfd3-bb43-4abf-929b-9833aef9e1e4
-
-	measure 'YTD Bud' =
-			VAR mk = MAX ( 'Calendar'[MonthKey] )
-			VAR yr = INT ( mk / 100 )
-			RETURN
-			    CALCULATE ( [Month Budget], REMOVEFILTERS ( 'Calendar' ), 'Calendar'[Year] = yr, 'Calendar'[MonthKey] <= mk )
-		formatString: #,0,;(#,0,);0
-		displayFolder: P&L matrix
-		lineageTag: 285c7412-f31d-42bb-99f3-f9f353f5029f
-
-	measure 'YTD Var' = [YTD Act] - [YTD Bud]
-		formatString: #,0,;(#,0,);0
-		displayFolder: P&L matrix
-		lineageTag: 68e35a97-49ca-40a9-b0ff-353df665816c
-
-	/// Account and service-line combinations with actuals but no budget (wrinkle W1, expected 1: Depreciation).
-	measure 'Missing Budget Lines' =
-			VAR combos = SUMMARIZE ( Ledger, Account[Account], 'Service Line'[Service Line] )
-			RETURN
-			    COUNTROWS ( FILTER ( combos, NOT ISBLANK ( [Actual] ) && ISBLANK ( [Budget] ) ) )
-		formatString: #,0
-		displayFolder: Data quality
-		lineageTag: a1a6b2ef-59a2-41e0-8f4c-625a6ccebb85
-
-	/// Revenue whose source client did not match the master before cleaning (wrinkle W3). Expected 0 once names are resolved.
-	measure 'Unmapped Client Amount' = CALCULATE ( [Revenue], Client[Client] = "Unmapped" ) + 0
-		formatString: #,0,
-		displayFolder: Data quality
-		lineageTag: fafe1612-7557-4284-9211-e28129f2db64
-
+	/// Budgeted gross profit as a share of budgeted revenue.
 	measure 'Gross Margin % Budget' = DIVIDE ( [Gross Profit Budget], [Revenue Budget] )
 		formatString: 0.0%
-		displayFolder: P&L
-		lineageTag: 1f6593d1-b2fe-4ae6-b8b3-e9c9c75c1328
+		displayFolder: Profit
 
-	/// Value of the most negative service-line revenue variance, for the alarm card.
-	measure 'Largest Adverse Variance Value' = MINX ( ADDCOLUMNS ( FILTER ( VALUES ( 'Service Line'[Service Line] ), 'Service Line'[Service Line] <> "Central" ), "@v", [Revenue Variance] ), [@v] )
-		formatString: #,0,;(#,0,);0
-		displayFolder: KPI
-		lineageTag: f84cad0f-bf53-40df-afbd-c901b49af2b5
+	/// Gross margin against budget, in percentage points.
+	measure 'Gross Margin Variance (pts)' = ( [Gross Margin %] - [Gross Margin % Budget] ) * 100
+		formatString: 0.0;(0.0);-
+		displayFolder: Profit
 
-	/// Waterfall step value: the budget anchor, each service line's revenue variance, and the direct-cost and overhead variances. Sums to actual operating profit.
-	measure 'Bridge Value' =
-			VAR t = SELECTEDVALUE ( Bridge[Bridge Type] )
-			VAR a = SELECTEDVALUE ( Bridge[Arg] )
+	/// All accounts together: revenue less direct costs less overheads.
+	measure 'Operating Profit' = [Actual]
+		formatString: #,0,;(#,0,);-
+		displayFolder: Profit
+
+	/// Budgeted operating profit: every account in the budget.
+	measure 'Operating Profit Budget' = [Budget]
+		formatString: #,0,;(#,0,);-
+		displayFolder: Profit
+
+	/// Actual minus budgeted operating profit. Positive is favourable.
+	measure 'Operating Profit Variance' = [Operating Profit] - [Operating Profit Budget]
+		formatString: #,0,;(#,0,);-
+		displayFolder: Profit
+
+	/// Operating profit variance as a share of budget.
+	measure 'Operating Profit Variance %' = DIVIDE ( [Operating Profit Variance], ABS ( [Operating Profit Budget] ) )
+		formatString: 0.0%;(0.0%);-
+		displayFolder: Profit
+
+	/// Operating profit as a share of revenue.
+	measure 'Operating Margin %' = DIVIDE ( [Operating Profit], [Revenue] )
+		formatString: 0.0%
+		displayFolder: Profit
+
+	/// Budgeted operating profit as a share of budgeted revenue.
+	measure 'Operating Margin % Budget' = DIVIDE ( [Operating Profit Budget], [Revenue Budget] )
+		formatString: 0.0%
+		displayFolder: Profit
+
+	/// Revenue from 1 January to the month selected.
+	measure 'Revenue YTD' =
+			VAR lastMonth = MAX ( 'Calendar'[Month Key] )
+			VAR thisYear = MAX ( 'Calendar'[Year] )
 			RETURN
-			    SWITCH ( t,
-			        "anchor", [Operating Profit Budget],
-			        "rev", CALCULATE ( [Revenue Variance], REMOVEFILTERS ( 'Service Line' ), 'Service Line'[Service Line] = a ),
-			        "direct", [Direct Costs] - [Direct Costs Budget],
-			        "overhead", [Overheads] - [Overheads Budget]
-			    )
-		formatString: #,0,;(#,0,);0
-		displayFolder: P&L
-		lineageTag: 64e7c29c-cf89-4b1a-b354-027652437a23
+			    CALCULATE ( [Revenue], REMOVEFILTERS ( 'Calendar' ), 'Calendar'[Year] = thisYear, 'Calendar'[Month Key] <= lastMonth )
+		formatString: #,0,;(#,0,);-
+		displayFolder: Year to date
 
-	measure 'KPI Revenue Context' = "vs budget " & FORMAT ( [Revenue Budget], "#,0," ) & "  ·  " & FORMAT ( [Revenue Variance], "+#,0,;-#,0,;0" ) & " (" & FORMAT ( DIVIDE ( [Revenue Variance], ABS ( [Revenue Budget] ) ), "0.0%" ) & ") " & IF ( [Revenue Variance] >= 0, "F", "U" )
+	/// Budgeted revenue from 1 January to the month selected.
+	measure 'Revenue Budget YTD' =
+			VAR lastMonth = MAX ( 'Calendar'[Month Key] )
+			VAR thisYear = MAX ( 'Calendar'[Year] )
+			RETURN
+			    CALCULATE ( [Revenue Budget], REMOVEFILTERS ( 'Calendar' ), 'Calendar'[Year] = thisYear, 'Calendar'[Month Key] <= lastMonth )
+		formatString: #,0,;(#,0,);-
+		displayFolder: Year to date
+
+	/// Year-to-date revenue against budget. Positive is favourable.
+	measure 'Revenue Variance YTD' = [Revenue YTD] - [Revenue Budget YTD]
+		formatString: #,0,;(#,0,);-
+		displayFolder: Year to date
+
+	/// Gross profit from 1 January to the month selected.
+	measure 'Gross Profit YTD' =
+			VAR lastMonth = MAX ( 'Calendar'[Month Key] )
+			VAR thisYear = MAX ( 'Calendar'[Year] )
+			RETURN
+			    CALCULATE ( [Gross Profit], REMOVEFILTERS ( 'Calendar' ), 'Calendar'[Year] = thisYear, 'Calendar'[Month Key] <= lastMonth )
+		formatString: #,0,;(#,0,);-
+		displayFolder: Year to date
+
+	/// Budgeted gross profit from 1 January to the month selected.
+	measure 'Gross Profit Budget YTD' =
+			VAR lastMonth = MAX ( 'Calendar'[Month Key] )
+			VAR thisYear = MAX ( 'Calendar'[Year] )
+			RETURN
+			    CALCULATE ( [Gross Profit Budget], REMOVEFILTERS ( 'Calendar' ), 'Calendar'[Year] = thisYear, 'Calendar'[Month Key] <= lastMonth )
+		formatString: #,0,;(#,0,);-
+		displayFolder: Year to date
+
+	/// Year-to-date gross profit against budget. Positive is favourable.
+	measure 'Gross Profit Variance YTD' = [Gross Profit YTD] - [Gross Profit Budget YTD]
+		formatString: #,0,;(#,0,);-
+		displayFolder: Year to date
+
+	/// Gross margin from 1 January to the month selected.
+	measure 'Gross Margin % YTD' = DIVIDE ( [Gross Profit YTD], [Revenue YTD] )
+		formatString: 0.0%
+		displayFolder: Year to date
+
+	/// Operating profit from 1 January to the month selected.
+	measure 'Operating Profit YTD' =
+			VAR lastMonth = MAX ( 'Calendar'[Month Key] )
+			VAR thisYear = MAX ( 'Calendar'[Year] )
+			RETURN
+			    CALCULATE ( [Operating Profit], REMOVEFILTERS ( 'Calendar' ), 'Calendar'[Year] = thisYear, 'Calendar'[Month Key] <= lastMonth )
+		formatString: #,0,;(#,0,);-
+		displayFolder: Year to date
+
+	/// Budgeted operating profit from 1 January to the month selected.
+	measure 'Operating Profit Budget YTD' =
+			VAR lastMonth = MAX ( 'Calendar'[Month Key] )
+			VAR thisYear = MAX ( 'Calendar'[Year] )
+			RETURN
+			    CALCULATE ( [Operating Profit Budget], REMOVEFILTERS ( 'Calendar' ), 'Calendar'[Year] = thisYear, 'Calendar'[Month Key] <= lastMonth )
+		formatString: #,0,;(#,0,);-
+		displayFolder: Year to date
+
+	/// Year-to-date operating profit against budget. Positive is favourable.
+	measure 'Operating Profit Variance YTD' = [Operating Profit YTD] - [Operating Profit Budget YTD]
+		formatString: #,0,;(#,0,);-
+		displayFolder: Year to date
+
+	/// Months in the year-to-date figures, for the context lines.
+	measure 'Months YTD' = MAX ( 'Calendar'[Month Number] )
+		formatString: 0
 		isHidden
-		displayFolder: Presentation
-		lineageTag: ca4eaa87-7320-423c-8997-d1ab1bda37f1
+		displayFolder: Year to date
 
-	measure 'KPI Margin Context' = "budget " & FORMAT ( [Gross Margin % Budget], "0.0%" ) & "  ·  " & FORMAT ( ( [Gross Margin %] - [Gross Margin % Budget] ) * 100, "+0.0;-0.0;0" ) & " pts"
-		isHidden
-		displayFolder: Presentation
-		lineageTag: 36ccc4b1-0bfb-429c-8822-07b345b3af7c
+	/// Subtitle of every page header: the month and the unit.
+	measure 'Header Subtitle' = SELECTEDVALUE ( 'Calendar'[Month Name] ) & " · £000 unless stated"
+		displayFolder: Report text
 
-	measure 'KPI Operating Profit Context' = "budget " & FORMAT ( [Operating Profit Budget], "#,0," ) & "  ·  " & FORMAT ( [Operating Profit Variance], "+#,0,;-#,0,;0" ) & " " & IF ( [Operating Profit Variance] >= 0, "F", "U" )
-		isHidden
-		displayFolder: Presentation
-		lineageTag: 534148e2-8149-45d8-89bf-f93af59af92c
+	/// First line of the Variance page.
+	measure 'Headline Variance' =
+			VAR profit = [Operating Profit]
+			VAR gap = [Operating Profit Variance]
+			RETURN
+			    "Operating profit was £" & FORMAT ( profit / 1000, "#,0" ) & "k in " & SELECTEDVALUE ( 'Calendar'[Month Name] ) & ", £"
+			        & FORMAT ( ABS ( gap ) / 1000, "#,0" ) & "k (" & FORMAT ( ABS ( [Operating Profit Variance %] ), "0.0%" ) & ") "
+			        & IF ( gap < 0, "below", "above" ) & " budget."
+		displayFolder: Report text
 
-	measure 'KPI Utilisation Context' = "target " & FORMAT ( [Utilisation Target %], "0.0%" ) & "  ·  " & FORMAT ( ( [Utilisation %] - [Utilisation Target %] ) * 100, "+0.0;-0.0;0" ) & " pts"
-		isHidden
-		displayFolder: Presentation
-		lineageTag: d562d079-6d19-49af-982e-f5100a49889f
+	/// Context line under revenue.
+	measure 'Context Revenue' = FORMAT ( [Revenue Variance] / 1000, "#,0;(#,0)" ) & " against budget · " & FORMAT ( [Revenue Variance %], "0.0%;(0.0%)" )
+		displayFolder: Report text
 
-	measure 'KPI Alarm Context' = "revenue " & FORMAT ( [Largest Adverse Variance Value], "#,0," ) & " vs budget"
-		isHidden
-		displayFolder: Presentation
-		lineageTag: a6453073-d4bc-4246-9be7-87d852450751
+	/// Context line under operating profit.
+	measure 'Context Operating Profit' = FORMAT ( [Operating Profit Variance] / 1000, "#,0;(#,0)" ) & " against budget · " & FORMAT ( [Operating Margin %], "0.0%" ) & " margin vs " & FORMAT ( [Operating Margin % Budget], "0.0%" )
+		displayFolder: Report text
 
-	column MonthKey
+	/// Context line under operating profit for the year to date.
+	measure 'Context Operating Profit YTD' = FORMAT ( [Operating Profit Variance YTD] / 1000, "#,0;(#,0)" ) & " against budget · " & [Months YTD] & IF ( [Months YTD] = 1, " month", " months" )
+		displayFolder: Report text
+
+	/// Red for an adverse revenue variance, grey otherwise.
+	measure 'Colour Revenue Context' = IF ( [Revenue Variance] < 0, "#B23A2E", "#5D6B79" )
+		displayFolder: Colours
+
+	/// Colour of the context line under operating profit: red when behind budget, grey otherwise.
+	measure 'Colour Operating Profit Context' = IF ( [Operating Profit Variance] < 0, "#B23A2E", "#5D6B79" )
+		displayFolder: Colours
+
+	/// Colour of the context line under year-to-date operating profit: red when behind budget, grey otherwise.
+	measure 'Colour Operating Profit YTD Context' = IF ( [Operating Profit Variance YTD] < 0, "#B23A2E", "#5D6B79" )
+		displayFolder: Colours
+
+	/// Red for adverse variances in tables, ink otherwise.
+	measure 'Colour Revenue Variance' = IF ( [Revenue Variance] < 0, "#B23A2E", "#1D2A36" )
+		displayFolder: Colours
+
+	/// Font colour for a gross margin variance: red when behind budget.
+	measure 'Colour Gross Margin Variance' = IF ( [Gross Margin Variance (pts)] < 0, "#B23A2E", "#1D2A36" )
+		displayFolder: Colours
+
+	/// Font colour for the year-to-date revenue variance: red when behind budget.
+	measure 'Colour Revenue Variance YTD' = IF ( [Revenue Variance YTD] < 0, "#B23A2E", "#1D2A36" )
+		displayFolder: Colours
+
+	/// Font colour for the year-to-date gross profit variance: red when behind budget.
+	measure 'Colour Gross Profit Variance YTD' = IF ( [Gross Profit Variance YTD] < 0, "#B23A2E", "#1D2A36" )
+		displayFolder: Colours
+
+	/// Account variance for the largest-variances chart: actual minus budget on any line, favourable when positive.
+	measure 'Account Variance' = [Actual] - [Budget]
+		formatString: #,0,;(#,0,);-
+		displayFolder: Costs
+
+	/// Bar colour for account variances: red adverse, green favourable.
+	measure 'Colour Account Variance' = IF ( [Account Variance] < 0, "#B23A2E", "#2E7D57" )
+		displayFolder: Colours
+
+	/// Visual title for the largest-variances chart: the account most against budget.
+	measure 'Title Account Variances' =
+			VAR accounts = ADDCOLUMNS ( VALUES ( Account[Account] ), "@Variance", [Account Variance] )
+			VAR worst = TOPN ( 1, accounts, [@Variance], ASC )
+			VAR gap = MAXX ( worst, [@Variance] )
+			RETURN
+			    IF ( gap < 0, "Furthest behind: " & MAXX ( worst, Account[Account] ) & ", £" & FORMAT ( - gap / 1000, "#,0" ) & "k", "Every line is at or better than budget" )
+		displayFolder: Report text
+
+	column 'Month Key'
 		dataType: int64
 		isHidden
-		lineageTag: 75206e2a-cc3d-4b9c-8c9f-f91def4f5aa8
+		formatString: 0
 		summarizeBy: none
-		sourceColumn: MonthKey
+		sourceColumn: Month Key
 
+	/// Actual or Budget. Hidden: the measures pick the scenario.
 	column Scenario
 		dataType: string
 		isHidden
-		lineageTag: f250b8d7-e1b9-4799-a84e-928a270f2d43
 		summarizeBy: none
 		sourceColumn: Scenario
 
-	column EntityShort
+	column 'Entity Code'
 		dataType: string
 		isHidden
-		lineageTag: 499f8050-05d6-439f-803d-6475b16e0884
 		summarizeBy: none
-		sourceColumn: EntityShort
+		sourceColumn: Entity Code
 
 	column 'Service Line'
 		dataType: string
 		isHidden
-		lineageTag: 8058ae88-827f-49c0-9c11-c209f81ef191
 		summarizeBy: none
 		sourceColumn: Service Line
 
-	column AccountCode
+	column 'Account Code'
 		dataType: string
 		isHidden
-		lineageTag: 916aaa6c-9181-46cb-8230-ccc455991e92
 		summarizeBy: none
-		sourceColumn: AccountCode
+		sourceColumn: Account Code
 
 	column Client
 		dataType: string
 		isHidden
-		lineageTag: 8067fc0b-c1ec-45c6-a3e3-d1831657d8e1
 		summarizeBy: none
 		sourceColumn: Client
 
-	/// Signed profit contribution in GBP. Use the P&L measures, not this column.
+	/// Signed amount in pounds. Hidden: use the measures.
 	column Amount
-		dataType: double
+		dataType: decimal
 		isHidden
-		lineageTag: 39f47b68-15c2-4ce3-a311-a911970197b5
-		summarizeBy: sum
+		formatString: #,0
+		summarizeBy: none
 		sourceColumn: Amount
-
-		annotation PBI_FormatHint = {"isGeneralNumber":true}
 
 	partition Ledger = m
 		mode: import
 		source =
 				let
 				    Source = Csv.Document(File.Contents(#"Data Folder" & "\ledger.csv"), [Delimiter = ",", Columns = 7, Encoding = 65001, QuoteStyle = QuoteStyle.Csv]),
-				    Headers = Table.PromoteHeaders(Source, [PromoteAllScalars = true]),
-				    Typed = Table.TransformColumnTypes(Headers, {{"month_key", Int64.Type}, {"amount", type number}}),
-				    TrimClient = Table.TransformColumns(Typed, {{"client", each Text.Trim(Text.Replace(_, "  ", " ")), type text}}),
-				    BlankToUnallocated = Table.ReplaceValue(TrimClient, "", "Unallocated", Replacer.ReplaceValue, {"client"}),
-				    AddKey = Table.AddColumn(BlankToUnallocated, "ckey", each Text.Lower([client]), type text),
-				    MasterLookup = Table.AddColumn(Table.SelectColumns(#"Clients Raw", {"client_name"}), "ckey", each Text.Lower([client_name]), type text),
-				    Resolve = Table.NestedJoin(AddKey, {"ckey"}, MasterLookup, {"ckey"}, "m", JoinKind.LeftOuter),
-				    Expand = Table.ExpandTableColumn(Resolve, "m", {"client_name"}, {"ClientResolved"}),
-				    Canonical = Table.AddColumn(Expand, "Client", each if [client] = "Unallocated" then "Unallocated" else (if [ClientResolved] = null then "Unmapped" else [ClientResolved]), type text),
-				    Dedupe = Table.Distinct(Canonical, {"month_key", "scenario", "entity", "service_line", "account_code", "Client"}),
-				    SignedAmount = Table.AddColumn(Dedupe, "Amount", each if Text.StartsWith([account_code], "REV") then Number.Abs([amount]) else -Number.Abs([amount]), type number),
-				    Selected = Table.SelectColumns(SignedAmount, {"month_key", "scenario", "entity", "service_line", "account_code", "Client", "Amount"}),
-				    Renamed = Table.RenameColumns(Selected, {{"month_key", "MonthKey"}, {"scenario", "Scenario"}, {"entity", "EntityShort"}, {"service_line", "Service Line"}, {"account_code", "AccountCode"}})
+				    #"Promoted Headers" = Table.PromoteHeaders(Source, [PromoteAllScalars = true]),
+				    #"Removed Duplicate Rows" = Table.Distinct(#"Promoted Headers"),
+				    #"Changed Types" = Table.TransformColumnTypes(#"Removed Duplicate Rows", {{"month_key", Int64.Type}, {"scenario", type text}, {"entity_code", type text}, {"service_line", type text}, {"account_code", type text}, {"client", type text}, {"amount", Currency.Type}}),
+				    #"Cleaned Client Names" = Table.TransformColumns(#"Changed Types", {{"client", each if _ = "" then "Unallocated" else Text.Proper(Text.Replace(Text.Trim(_), "  ", " ")), type text}}),
+				    #"Costs Negative" = Table.ReplaceValue(#"Cleaned Client Names", each [amount], each if Text.StartsWith([account_code], "REV") then [amount] else - Number.Abs([amount]), Replacer.ReplaceValue, {"amount"}),
+				    #"Renamed Columns" = Table.RenameColumns(#"Costs Negative", {{"month_key", "Month Key"}, {"scenario", "Scenario"}, {"entity_code", "Entity Code"}, {"service_line", "Service Line"}, {"account_code", "Account Code"}, {"client", "Client"}, {"amount", "Amount"}}),
+				    #"Amount Type" = Table.TransformColumnTypes(#"Renamed Columns", {{"Amount", Currency.Type}})
 				in
-				    Renamed
+				    #"Amount Type"
 

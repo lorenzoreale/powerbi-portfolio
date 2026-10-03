@@ -1,4 +1,4 @@
-date,feed_code,source_rows,warehouse_rows,source_amount,warehouse_amount,files_expected,files_received,arrival_time_raw
+date,feed_code,source_rows,warehouse_rows,source_value,warehouse_value,files_expected,files_received,arrival_time
 2026-04-01,POS,2210226,2210226,16789072,16789072,4,4,03:42
 2026-04-01,ECOM,140064,140064,987073,987073,1,1,04:14
 2026-04-01,GL,91773,91773,40934184,40934184,1,1,02:41
@@ -673,7 +673,7 @@ date,feed_code,source_rows,warehouse_rows,source_amount,warehouse_amount,files_e
 2026-06-28,PRD,84310,84310,,,1,1,03:01
 2026-06-28,STO,642,642,,,1,1,02:52
 2026-06-29,POS,2412384,2412384,18424913,18424913,4,4,03:49
-2026-06-29,ECOM,148062,148059,1048650,1048238,1,1,05:07
+2026-06-29,ECOM,148062,148059,1048650,1048238,1,1,04:48
 2026-06-29,GL,96410,96410,42806114,42806114,1,1,02:41
 2026-06-29,EDI,8940,7736,1594208,1379600,3,2,05:41
 2026-06-29,LOG,31254,31254,,,2,2,4:46

@@ -1,0 +1,122 @@
+{
+  "name": "Ashcombe.json",
+  "dataColors": [
+    "#0F6B6B",
+    "#4A6FA5",
+    "#C98A1B",
+    "#7D5BA6",
+    "#9AA5B1",
+    "#B23A2E",
+    "#2E7D57",
+    "#9CCBC8"
+  ],
+  "good": "#2E7D57",
+  "neutral": "#9AA5B1",
+  "bad": "#B23A2E",
+  "maximum": "#0F6B6B",
+  "center": "#9CCBC8",
+  "minimum": "#EAF2F1",
+  "foreground": "#1D2A36",
+  "foregroundNeutralSecondary": "#5D6B79",
+  "foregroundNeutralTertiary": "#8A96A3",
+  "background": "#FFFFFF",
+  "backgroundLight": "#EAF2F1",
+  "backgroundNeutral": "#DDE3E8",
+  "tableAccent": "#0F6B6B",
+  "textClasses": {
+    "callout": {
+      "fontFace": "Segoe UI Semibold",
+      "fontSize": 22,
+      "color": "#1D2A36"
+    },
+    "title": {
+      "fontFace": "Segoe UI Semibold",
+      "fontSize": 12,
+      "color": "#1D2A36"
+    },
+    "header": {
+      "fontFace": "Segoe UI Semibold",
+      "fontSize": 12,
+      "color": "#1D2A36"
+    },
+    "label": {
+      "fontFace": "Segoe UI",
+      "fontSize": 9,
+      "color": "#1D2A36"
+    }
+  },
+  "visualStyles": {
+    "*": {
+      "*": {
+        "background": [
+          {
+            "show": false
+          }
+        ],
+        "border": [
+          {
+            "show": false
+          }
+        ],
+        "dropShadow": [
+          {
+            "show": false
+          }
+        ],
+        "padding": [
+          {
+            "top": 12,
+            "bottom": 12,
+            "left": 12,
+            "right": 12
+          }
+        ],
+        "title": [
+          {
+            "fontFamily": "Segoe UI Semibold",
+            "fontSize": 12,
+            "fontColor": {
+              "solid": {
+                "color": "#1D2A36"
+              }
+            }
+          }
+        ],
+        "subTitle": [
+          {
+            "fontFamily": "Segoe UI",
+            "fontSize": 9,
+            "fontColor": {
+              "solid": {
+                "color": "#5D6B79"
+              }
+            }
+          }
+        ]
+      }
+    },
+    "page": {
+      "*": {
+        "background": [
+          {
+            "color": {
+              "solid": {
+                "color": "#EEF1F4"
+              }
+            },
+            "transparency": 0
+          }
+        ],
+        "outspace": [
+          {
+            "color": {
+              "solid": {
+                "color": "#EEF1F4"
+              }
+            }
+          }
+        ]
+      }
+    }
+  }
+}

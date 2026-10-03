@@ -6,16 +6,16 @@
       "reportVersionAtImport": {
         "report": "3.3.0",
         "page": "2.1.0",
-        "visual": "2.9.0"
+        "visual": "2.10.0"
       },
       "type": "SharedResources"
     },
     "customTheme": {
-      "name": "MeasuredClose-7c1e94a2.json",
+      "name": "Ashcombe.json",
       "reportVersionAtImport": {
         "report": "3.3.0",
         "page": "2.1.0",
-        "visual": "2.9.0"
+        "visual": "2.10.0"
       },
       "type": "RegisteredResources"
     }
@@ -26,14 +26,39 @@
       "type": "RegisteredResources",
       "items": [
         {
-          "name": "MeasuredClose-7c1e94a2.json",
-          "path": "MeasuredClose-7c1e94a2.json",
+          "name": "Ashcombe.json",
+          "path": "Ashcombe.json",
           "type": "CustomTheme"
         }
       ]
     }
   ],
+  "objects": {
+    "outspacePane": [
+      {
+        "properties": {
+          "expanded": {
+            "expr": {
+              "Literal": {
+                "Value": "false"
+              }
+            }
+          },
+          "visible": {
+            "expr": {
+              "Literal": {
+                "Value": "false"
+              }
+            }
+          }
+        }
+      }
+    ]
+  },
   "settings": {
-    "useEnhancedTooltips": false
+    "useStylableVisualContainerHeader": true,
+    "useEnhancedTooltips": true,
+    "allowChangeFilterTypes": true,
+    "defaultDrillFilterOtherVisuals": true
   }
 }

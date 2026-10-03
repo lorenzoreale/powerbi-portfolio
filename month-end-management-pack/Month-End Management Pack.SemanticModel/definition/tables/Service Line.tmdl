@@ -1,28 +1,35 @@
-/// Client-facing service lines plus Central for overheads.
+/// The four client-facing service lines, plus Central for the overheads.
 table 'Service Line'
-	lineageTag: 47b34a85-dbb9-4dbc-a2e4-868d3e8ed9f0
 
 	column 'Service Line'
 		dataType: string
-		lineageTag: a886aec6-0397-4bf1-8cc1-6084540d0092
 		summarizeBy: none
 		sourceColumn: Service Line
+		sortByColumn: 'Line Order'
 
-	column 'Is Client Facing'
-		dataType: boolean
+	column 'Line Order'
+		dataType: int64
 		isHidden
-		lineageTag: b4d6735b-b36c-4f6b-bfbd-8086287a8221
+		formatString: 0
 		summarizeBy: none
-		sourceColumn: Is Client Facing
+		sourceColumn: Line Order
+
+	/// False for Central, which carries the overheads and earns no revenue.
+	column 'Client Facing'
+		dataType: boolean
+		summarizeBy: none
+		sourceColumn: Client Facing
 
 	partition 'Service Line' = m
 		mode: import
 		source =
 				let
-				    Source = Csv.Document(File.Contents(#"Data Folder" & "\service_line.csv"), [Delimiter = ",", Columns = 2, Encoding = 65001, QuoteStyle = QuoteStyle.Csv]),
-				    Headers = Table.PromoteHeaders(Source, [PromoteAllScalars = true]),
-				    Renamed = Table.RenameColumns(Headers, {{"service_line", "Service Line"}, {"is_client_facing", "Is Client Facing"}}),
-				    Typed = Table.TransformColumnTypes(Renamed, {{"Service Line", type text}, {"Is Client Facing", type logical}})
+				    Source = Csv.Document(File.Contents(#"Data Folder" & "\service_line.csv"), [Delimiter = ",", Columns = 3, Encoding = 65001, QuoteStyle = QuoteStyle.Csv]),
+				    #"Promoted Headers" = Table.PromoteHeaders(Source, [PromoteAllScalars = true]),
+				    #"Removed Entity" = Table.RemoveColumns(#"Promoted Headers", {"entity_code"}),
+				    #"Renamed Columns" = Table.RenameColumns(#"Removed Entity", {{"service_line", "Service Line"}, {"client_facing", "Client Facing"}}),
+				    #"Changed Types" = Table.TransformColumnTypes(#"Renamed Columns", {{"Service Line", type text}, {"Client Facing", type logical}}),
+				    #"Added Index" = Table.AddIndexColumn(#"Changed Types", "Line Order", 1, 1, Int64.Type)
 				in
-				    Typed
+				    #"Added Index"
 

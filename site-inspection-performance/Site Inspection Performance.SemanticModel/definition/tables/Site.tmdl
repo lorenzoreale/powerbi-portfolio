@@ -1,90 +1,162 @@
-/// One row per site in the Meridian estate (42 sites across six UK regions).
+/// One row per site in the estate: 42 sites in six UK regions.
 table Site
-	lineageTag: 817d2607-ec6e-4d3e-8cd5-a7a6773e3c4d
+	lineageTag: be00ea71-fb20-442d-9e64-9db136906383
 
-	/// Sites in the estate within the current filter context (42 in total).
-	measure 'Active Sites' = COUNTROWS ( 'Site' )
+	/// Days since the site's last inspection. For a single site that is its own gap; for a region or the estate it is the longest gap. Ignores the period filter.
+	measure 'Days Since Last Visit' = MAX ( 'Site'[Visit Gap Days] )
 		formatString: #,0
 		displayFolder: Coverage
-		lineageTag: 5868dd67-427b-43aa-8819-127a8e51c8ca
+		lineageTag: fa5b16d3-e1c6-4f58-8c0e-fac4e523589e
 
-	/// Days between a site's most recent inspection (any period, the date slicer is ignored) and the as-at date. Blank if never inspected.
-	measure 'Days Since Last Inspection' =
-			VAR lastVisit = CALCULATE ( MAX ( 'Inspection'[Inspection Date] ), REMOVEFILTERS ( 'Date' ) )
+	/// Sites whose last inspection was more than 60 days before the as-at date.
+	measure 'Sites Not Visited 60 Days' = CALCULATE ( COUNTROWS ( 'Site' ), 'Site'[Visit Gap Days] > 60 ) + 0
+		formatString: #,0
+		displayFolder: Coverage
+		lineageTag: 08586c7d-3151-4b64-8e1a-04ff15f47e2b
+
+	/// The site with the longest gap since a visit, with the number of days.
+	measure 'Longest Gap Label' =
+			VAR longest = MAX ( 'Site'[Visit Gap Days] )
+			VAR siteName = MAXX ( FILTER ( VALUES ( 'Site'[Site Name] ), CALCULATE ( MAX ( 'Site'[Visit Gap Days] ) ) = longest ), 'Site'[Site Name] )
 			RETURN
-			    IF ( NOT ISBLANK ( lastVisit ), INT ( [As-at Date] - lastVisit ) )
-		formatString: #,0
+			    IF ( NOT ISBLANK ( longest ), siteName & ", " & longest & " days" )
 		displayFolder: Coverage
-		lineageTag: 828fe6b8-3402-4a69-9980-c4cac0f5ab7d
+		lineageTag: 72831301-5bee-4c08-9825-088f3882e1f5
 
-	/// Sites whose last inspection is more than 60 days before the as-at date.
-	measure 'Sites Not Visited 60d' = SUMX ( VALUES ( 'Site'[SiteKey] ), IF ( [Days Since Last Inspection] > 60, 1 ) )
-		formatString: #,0
-		displayFolder: Coverage
-		lineageTag: cf65c17b-ce0e-4943-bb80-061d896bffe8
-
-	/// Compliance % of the site's most recent inspection, ignoring the date slicer.
-	measure 'Latest Compliance %' =
-			VAR lastVisit = CALCULATE ( MAX ( 'Inspection'[Inspection Date] ), REMOVEFILTERS ( 'Date' ) )
+	/// Score of the site's most recent inspection, whatever the period selected.
+	measure 'Latest Score' =
+			VAR lastVisit = MAX ( 'Site'[Last Visit] )
 			RETURN
 			    CALCULATE ( [Compliance %], REMOVEFILTERS ( 'Date' ), 'Inspection'[Inspection Date] = lastVisit )
 		formatString: 0.0%
 		displayFolder: Coverage
-		lineageTag: 50369e91-ded7-467f-b67a-95d889f0bebf
+		lineageTag: 77b5393b-537c-42fe-8587-164d2b85cbf8
 
-	/// Context line for the Sites Covered KPI card.
-	measure 'KPI Coverage Context' = FORMAT ( COALESCE ( [Sites Not Visited 60d], 0 ), "#,0" ) & " sites not visited in 60 days"
-		isHidden
-		displayFolder: Presentation
-		lineageTag: 651e34f2-5f11-46b6-b5c3-ff1386274342
+	/// Context line under the visit-gap figure.
+	measure 'Context Visit Gaps' = IF ( NOT ISBLANK ( [Longest Gap Label] ), "Longest: " & [Longest Gap Label] )
+		displayFolder: Report text
+		lineageTag: c736eaf4-7758-4248-ab61-9e4874ad63fd
+
+	/// Context line under the last inspection score on the site detail page.
+	measure 'Context Last Inspection' = "on " & FORMAT ( MAX ( 'Site'[Last Visit] ), "d mmm yyyy" )
+		displayFolder: Report text
+		lineageTag: 7401d3db-982f-4e53-a069-7f9ce7ea840f
+
+	/// Context line under days since last visit on the site detail page.
+	measure 'Context Visit Rule' = "Rule: a visit at least every 60 days"
+		displayFolder: Report text
+		lineageTag: a4111a94-8c7c-4332-8c07-ebe2317385db
+
+	/// Name of the site in context, for the site detail page.
+	measure 'Selected Site' = SELECTEDVALUE ( 'Site'[Site Name], "Choose a site" )
+		displayFolder: Report text
+		lineageTag: cefdb007-b05d-49ed-95f5-72cb840d89ce
+
+	/// Region and type of the site in context.
+	measure 'Selected Site Description' =
+			IF (
+			    HASONEVALUE ( 'Site'[Site Name] ),
+			    SELECTEDVALUE ( 'Site'[Region] ) & " · " & SELECTEDVALUE ( 'Site'[Site Type] ) & " · " & [Inspections] & " inspections in the data"
+			)
+		displayFolder: Report text
+		lineageTag: 73a6fa5d-606a-41fb-abab-f8aad0c58439
+
+	/// Visual title for the visit-gap chart. Ignores the chart's own site filter.
+	measure 'Title Visit Gaps' =
+			VAR sites = CALCULATE ( [Sites Not Visited 60 Days], REMOVEFILTERS ( 'Site'[Site Name] ) )
+			RETURN
+			    SWITCH (
+			        TRUE (),
+			        sites = 0, "Every site has been visited in the last 60 days",
+			        sites = 1, "1 site is past the 60-day visit rule",
+			        sites & " sites are past the 60-day visit rule"
+			    )
+		displayFolder: Report text
+		lineageTag: 8206e900-995a-407a-997e-ece241310f9a
+
+	/// Bar colour for visit gaps: red past the 60-day rule, amber when a visit is due within 7 days, light blue otherwise.
+	measure 'Colour Gap Bar' =
+			VAR gap = [Days Since Last Visit]
+			RETURN
+			    SWITCH ( TRUE (), gap > 60, "#C2453A", gap >= 54, "#D9922F", "#A9C1E0" )
+		displayFolder: Colours
+		lineageTag: e8d58243-0c0d-49f2-8e84-57858e96c0b0
+
+	/// Text colour for the latest inspection score: red below target.
+	measure 'Colour Latest Score Text' = IF ( [Latest Score] < [Compliance Target], "#C2453A", "#16324F" )
+		displayFolder: Colours
+		lineageTag: 691f265c-8502-497f-add1-5b4605bc3ce3
+
+	/// Text colour for visit gaps: red past the 60-day rule, dark amber when a visit is due within 7 days.
+	measure 'Colour Gap Text' =
+			VAR gap = [Days Since Last Visit]
+			RETURN
+			    SWITCH ( TRUE (), gap > 60, "#C2453A", gap >= 54, "#9A6216", "#2A3A4D" )
+		displayFolder: Colours
+		lineageTag: f9b99b56-5614-4d9f-885d-1810ecf06d9e
+
+	/// Text colour for the count of sites past the visit rule: red when there are any.
+	measure 'Colour Sites Not Visited Text' = IF ( [Sites Not Visited 60 Days] > 0, "#C2453A", "#16324F" )
+		displayFolder: Colours
 
 	column SiteKey
 		dataType: int64
 		isHidden
-		lineageTag: 0157764e-e7ec-44b0-9b8b-8712eab9b89c
+		formatString: 0
+		lineageTag: 9ac4668b-3f77-4c11-9014-6653f73d6924
 		summarizeBy: none
 		sourceColumn: SiteKey
 
 	column 'Site Name'
 		dataType: string
-		lineageTag: f90e6fc8-3da6-4fb2-b175-eac78d2d877a
+		lineageTag: 2f39ad67-1e0a-4a54-a907-60aecfbc3db7
 		summarizeBy: none
 		sourceColumn: Site Name
 
 	column Region
 		dataType: string
-		lineageTag: 2fa8d2e6-700d-4845-aeff-584542ef5ae0
+		lineageTag: 3678f1a9-cd2a-4ab3-9b39-d79c1ce704b7
 		summarizeBy: none
 		sourceColumn: Region
 
 	/// Logistics or Facilities.
 	column 'Site Type'
 		dataType: string
-		lineageTag: 73ad5478-58b8-4ae9-bb56-41b7a4b50b18
+		lineageTag: ecb467d6-3b42-43d3-9cd0-e7ff6146f8cd
 		summarizeBy: none
 		sourceColumn: Site Type
 
-	column Latitude
-		dataType: decimal
-		lineageTag: a503e0b8-2b34-4e4e-a011-cc25f807fe9c
-		dataCategory: Latitude
+	/// Date of the site's most recent inspection in the data.
+	column 'Last Visit' = CALCULATE ( MAX ( 'Inspection'[Inspection Date] ) )
+		dataType: dateTime
+		formatString: dd mmm yyyy
+		lineageTag: 6ac7e758-c0a3-44e2-bb85-482558629c7a
 		summarizeBy: none
-		sourceColumn: Latitude
 
-	column Longitude
-		dataType: decimal
-		lineageTag: dcb744b7-614e-42fa-a49d-d6ca4eeb3f0a
-		dataCategory: Longitude
+		annotation UnderlyingDateTimeDataType = Date
+
+	/// Days between the last visit and the as-at date (the latest inspection in the data). Used through the Days Since Last Visit measure.
+	column 'Visit Gap Days' =
+			VAR asAt = MAX ( 'Inspection'[Inspection Date] )
+			RETURN
+			    IF ( NOT ISBLANK ( 'Site'[Last Visit] ), INT ( asAt - 'Site'[Last Visit] ) )
+		dataType: int64
+		isHidden
+		formatString: #,0
+		lineageTag: 9aee8189-c2f9-49ab-b863-29fa2d1c1d43
 		summarizeBy: none
-		sourceColumn: Longitude
 
 	partition Site = m
 		mode: import
 		source =
 				let
-				    Source = #"Sites Raw",
-				    #"Renamed Columns" = Table.RenameColumns(Source, {{"site_id", "SiteKey"}, {"site_name", "Site Name"}, {"region", "Region"}, {"site_type", "Site Type"}, {"latitude", "Latitude"}, {"longitude", "Longitude"}}),
-				    #"Changed Types" = Table.TransformColumnTypes(#"Renamed Columns", {{"SiteKey", Int64.Type}, {"Site Name", type text}, {"Region", type text}, {"Site Type", type text}, {"Latitude", Currency.Type}, {"Longitude", Currency.Type}})
+				    Source = Csv.Document(File.Contents(#"Data Folder" & "\sites.csv"), [Delimiter = ",", Columns = 6, Encoding = 65001, QuoteStyle = QuoteStyle.Csv]),
+				    #"Promoted Headers" = Table.PromoteHeaders(Source, [PromoteAllScalars = true]),
+				    #"Removed Coordinates" = Table.RemoveColumns(#"Promoted Headers", {"latitude", "longitude"}),
+				    #"Renamed Columns" = Table.RenameColumns(#"Removed Coordinates", {{"site_id", "SiteKey"}, {"site_name", "Site Name"}, {"region", "Region"}, {"site_type", "Site Type"}}),
+				    #"Changed Types" = Table.TransformColumnTypes(#"Renamed Columns", {{"SiteKey", Int64.Type}, {"Site Name", type text}, {"Region", type text}, {"Site Type", type text}})
 				in
 				    #"Changed Types"
+
+	annotation PBI_ResultType = Table
 

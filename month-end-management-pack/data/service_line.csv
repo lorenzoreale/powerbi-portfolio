@@ -1,6 +1,6 @@
-service_line,is_client_facing
-Advisory,true
-Managed Services,true
-Projects,true
-Support,true
-Central,false
+service_line,entity_code,client_facing
+Advisory,LLP,true
+Managed Services,MSL,true
+Projects,PRJ,true
+Support,LLP,true
+Central,,false

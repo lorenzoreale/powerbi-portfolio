@@ -1,59 +1,65 @@
-/// Month-grain calendar, Jan 2025 to Jun 2026. No daily date table: YTD is computed at month grain.
+/// One row per month, January 2025 to June 2026. The pack reports one month at a time, so the calendar is kept at month grain.
 table Calendar
-	lineageTag: 1e8b7450-7bf3-49e2-b2e1-843c33efd7d6
 
-	column MonthKey
+	column 'Month Key'
 		dataType: int64
 		isHidden
-		lineageTag: 4dd58e46-f7b3-40e2-807a-97e355943c0a
+		formatString: 0
 		summarizeBy: none
-		sourceColumn: MonthKey
+		sourceColumn: Month Key
 
-	/// Month label, e.g. Jun 2026. Sorted chronologically.
+	/// Short label, for example Jun 2026. Sorted by Month Key.
 	column Month
 		dataType: string
-		lineageTag: 5e99a2fb-5775-47b4-8da4-530f0afc24f2
 		summarizeBy: none
 		sourceColumn: Month
-		sortByColumn: MonthKey
+		sortByColumn: 'Month Key'
 
+	/// Long label used in titles, for example June 2026.
+	column 'Month Name'
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Month Name
+		sortByColumn: 'Month Key'
+
+	/// First day of the month. The axis of the trend charts.
 	column 'Month Start'
 		dataType: dateTime
 		formatString: mmm yyyy
-		lineageTag: d7ebf9c3-ceee-438d-bc69-4f8ca52e0440
 		summarizeBy: none
 		sourceColumn: Month Start
 
 		annotation UnderlyingDateTimeDataType = Date
 
-	column Quarter
-		dataType: string
-		lineageTag: 104fed4b-c72c-4549-b325-df672756dfda
-		summarizeBy: none
-		sourceColumn: Quarter
-
 	column Year
 		dataType: int64
-		lineageTag: 371e6e6a-2a9b-420e-83d9-e7514f65f390
+		formatString: 0
 		summarizeBy: none
 		sourceColumn: Year
 
-		annotation SummarizationSetBy = User
-
-	column 'Financial Period'
-		dataType: string
-		lineageTag: eae44de8-96a2-43d7-8f47-f0ac28e992ef
+	column 'Month Number'
+		dataType: int64
+		isHidden
+		formatString: 0
 		summarizeBy: none
-		sourceColumn: Financial Period
+		sourceColumn: Month Number
+
+	/// Weekdays less bank holidays in England and Wales.
+	column 'Working Days'
+		dataType: int64
+		formatString: 0
+		summarizeBy: none
+		sourceColumn: Working Days
 
 	partition Calendar = m
 		mode: import
 		source =
 				let
 				    Source = Csv.Document(File.Contents(#"Data Folder" & "\calendar.csv"), [Delimiter = ",", Columns = 6, Encoding = 65001, QuoteStyle = QuoteStyle.Csv]),
-				    Headers = Table.PromoteHeaders(Source, [PromoteAllScalars = true]),
-				    Renamed = Table.RenameColumns(Headers, {{"month_key", "MonthKey"}, {"month", "Month"}, {"month_start", "Month Start"}, {"quarter", "Quarter"}, {"year", "Year"}, {"financial_period", "Financial Period"}}),
-				    Typed = Table.TransformColumnTypes(Renamed, {{"MonthKey", Int64.Type}, {"Month", type text}, {"Month Start", type date}, {"Quarter", type text}, {"Year", Int64.Type}, {"Financial Period", type text}})
+				    #"Promoted Headers" = Table.PromoteHeaders(Source, [PromoteAllScalars = true]),
+				    #"Renamed Columns" = Table.RenameColumns(#"Promoted Headers", {{"month_key", "Month Key"}, {"month", "Month"}, {"month_start", "Month Start"}, {"year", "Year"}, {"month_number", "Month Number"}, {"working_days", "Working Days"}}),
+				    #"Changed Types" = Table.TransformColumnTypes(#"Renamed Columns", {{"Month Key", Int64.Type}, {"Month", type text}, {"Month Start", type date}, {"Year", Int64.Type}, {"Month Number", Int64.Type}, {"Working Days", Int64.Type}}),
+				    #"Added Month Name" = Table.AddColumn(#"Changed Types", "Month Name", each Date.ToText([Month Start], "MMMM yyyy", "en-GB"), type text)
 				in
-				    Typed
+				    #"Added Month Name"
 

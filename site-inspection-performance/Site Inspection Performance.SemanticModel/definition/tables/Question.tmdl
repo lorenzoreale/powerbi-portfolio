@@ -1,31 +1,42 @@
-/// One row per checklist question (24 questions in six sections).
+/// The 24-question inspection checklist, four questions in each of six sections.
 table Question
-	lineageTag: 30d93397-dd32-411c-8e86-d0dba1c838cc
+	lineageTag: 18877acb-e3ef-44ce-b4ae-45b173ea2300
 
 	column QuestionKey
 		dataType: int64
 		isHidden
-		lineageTag: 5116042a-ffa3-4058-9951-3ad21552861e
+		formatString: 0
+		lineageTag: ffa8de21-5102-42f0-bb27-0c030b96ab3d
 		summarizeBy: none
 		sourceColumn: QuestionKey
 
 	column 'Question Code'
 		dataType: string
-		lineageTag: 635bc2fe-61e6-4b01-9119-832108041152
+		lineageTag: 08dcd307-4c82-4b2d-8d7f-afc466115fb9
 		summarizeBy: none
 		sourceColumn: Question Code
 
+	/// Checklist section, sorted in checklist order.
 	column Section
 		dataType: string
-		lineageTag: 48a30965-3932-4916-aa82-5ac554acc6db
+		lineageTag: f4a1b634-d3ee-4f63-9342-9e668973539a
 		summarizeBy: none
 		sourceColumn: Section
+		sortByColumn: 'Section Order'
 
-	column 'Question Text'
-		dataType: string
-		lineageTag: d15ae9d3-5b5c-42f8-84e3-163e07628616
+	column 'Section Order'
+		dataType: int64
+		isHidden
+		formatString: 0
+		lineageTag: 2510b5a0-10ab-4b7f-939b-b260f3d41281
 		summarizeBy: none
-		sourceColumn: Question Text
+		sourceColumn: Section Order
+
+	column Question
+		dataType: string
+		lineageTag: c301f5de-2b9c-4aa5-98e0-d2b341832262
+		summarizeBy: none
+		sourceColumn: Question
 
 	partition Question = m
 		mode: import
@@ -33,8 +44,9 @@ table Question
 				let
 				    Source = Csv.Document(File.Contents(#"Data Folder" & "\questions.csv"), [Delimiter = ",", Columns = 4, Encoding = 65001, QuoteStyle = QuoteStyle.Csv]),
 				    #"Promoted Headers" = Table.PromoteHeaders(Source, [PromoteAllScalars = true]),
-				    #"Renamed Columns" = Table.RenameColumns(#"Promoted Headers", {{"question_id", "QuestionKey"}, {"question_code", "Question Code"}, {"section", "Section"}, {"question_text", "Question Text"}}),
-				    #"Changed Types" = Table.TransformColumnTypes(#"Renamed Columns", {{"QuestionKey", Int64.Type}, {"Question Code", type text}, {"Section", type text}, {"Question Text", type text}})
+				    #"Renamed Columns" = Table.RenameColumns(#"Promoted Headers", {{"question_id", "QuestionKey"}, {"question_code", "Question Code"}, {"section", "Section"}, {"question_text", "Question"}}),
+				    #"Changed Types" = Table.TransformColumnTypes(#"Renamed Columns", {{"QuestionKey", Int64.Type}, {"Question Code", type text}, {"Section", type text}, {"Question", type text}}),
+				    #"Added Section Order" = Table.AddColumn(#"Changed Types", "Section Order", each Number.IntegerDivide([QuestionKey] - 1, 4) + 1, Int64.Type)
 				in
-				    #"Changed Types"
+				    #"Added Section Order"
 

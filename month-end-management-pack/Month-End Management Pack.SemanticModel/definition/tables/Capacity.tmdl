@@ -1,62 +1,187 @@
-/// Fact: billable and available hours per Month x Scenario x Service Line. Supports Utilisation %.
+/// One row per month, scenario and service line: hours available and hours billed. The budget is flexed: budget utilisation (82%) applied to the actual available hours.
 table Capacity
-	isHidden
-	lineageTag: 0558b941-28a7-4be7-91d6-492ebac6a0d7
 
-	/// Billable over available hours, actual scenario.
-	measure 'Utilisation %' = DIVIDE ( CALCULATE ( SUM ( Capacity[Billable Hours] ), Scenario[Scenario] = "Actual" ), CALCULATE ( SUM ( Capacity[Available Hours] ), Scenario[Scenario] = "Actual" ) )
+	/// Hours billed to clients.
+	measure 'Billable Hours' = CALCULATE ( SUM ( Capacity[Billable] ), Capacity[Scenario] = "Actual" )
+		formatString: #,0
+		displayFolder: Hours
+
+	/// Budgeted billable hours: 82% of the hours actually available.
+	measure 'Billable Hours Budget' = CALCULATE ( SUM ( Capacity[Billable] ), Capacity[Scenario] = "Budget" )
+		formatString: #,0
+		displayFolder: Hours
+
+	/// Actual minus budgeted billable hours.
+	measure 'Billable Hours Variance' = [Billable Hours] - [Billable Hours Budget]
+		formatString: #,0;(#,0);-
+		displayFolder: Hours
+
+	/// Hours the delivery teams could have worked, after leave and bank holidays.
+	measure 'Available Hours' = CALCULATE ( SUM ( Capacity[Available] ), Capacity[Scenario] = "Actual" )
+		formatString: #,0
+		displayFolder: Hours
+
+	/// Billable hours as a share of available hours.
+	measure 'Utilisation %' = DIVIDE ( [Billable Hours], [Available Hours] )
 		formatString: 0.0%
-		displayFolder: Operations
-		lineageTag: a1816bed-f296-4a7e-a378-1aa7bb5b8a2b
+		displayFolder: Hours
 
-	measure 'Utilisation Target %' = DIVIDE ( CALCULATE ( SUM ( Capacity[Billable Hours] ), Scenario[Scenario] = "Budget" ), CALCULATE ( SUM ( Capacity[Available Hours] ), Scenario[Scenario] = "Budget" ) )
+	/// Budgeted billable hours as a share of available hours: 82% for every line.
+	measure 'Utilisation % Budget' = DIVIDE ( [Billable Hours Budget], CALCULATE ( SUM ( Capacity[Available] ), Capacity[Scenario] = "Budget" ) )
 		formatString: 0.0%
-		displayFolder: Operations
-		lineageTag: 96b4f4e6-c46c-4038-9cc5-32a8311584de
+		displayFolder: Hours
 
-	column MonthKey
+	/// Utilisation against budget, in percentage points.
+	measure 'Utilisation Variance (pts)' = ( [Utilisation %] - [Utilisation % Budget] ) * 100
+		formatString: 0.0;(0.0);-
+		displayFolder: Hours
+
+	/// Average revenue per billable hour, in pounds.
+	measure 'Billing Rate' = DIVIDE ( [Revenue], [Billable Hours] )
+		formatString: £#,0
+		displayFolder: Rates
+
+	/// The budgeted rate per billable hour: the rate card.
+	measure 'Billing Rate Budget' = DIVIDE ( [Revenue Budget], [Billable Hours Budget] )
+		formatString: £#,0
+		displayFolder: Rates
+
+	/// The part of the revenue variance that comes from billing more or fewer hours than budget, valued at the budget rate: (actual hours - budget hours) x budget rate. Worked out for each service line and month, then added up.
+	measure 'Hours Effect' =
+			SUMX (
+			    CROSSJOIN ( VALUES ( 'Calendar'[Month Key] ), VALUES ( 'Service Line'[Service Line] ) ),
+			    ( [Billable Hours] - [Billable Hours Budget] ) * [Billing Rate Budget]
+			)
+		formatString: #,0,;(#,0,);-
+		displayFolder: Revenue bridge
+
+	/// The part of the revenue variance that comes from billing at a different average rate: actual revenue - actual hours x budget rate. Hours effect and rate effect always add up to the revenue variance.
+	measure 'Rate Effect' =
+			SUMX (
+			    CROSSJOIN ( VALUES ( 'Calendar'[Month Key] ), VALUES ( 'Service Line'[Service Line] ) ),
+			    [Revenue] - [Billable Hours] * [Billing Rate Budget]
+			)
+		formatString: #,0,;(#,0,);-
+		displayFolder: Revenue bridge
+
+	/// Second line of the Variance page: the revenue variance split into hours and rate.
+	measure 'Headline Variance Follow-up' =
+			VAR gap = [Revenue Variance]
+			VAR hoursPart = [Hours Effect]
+			VAR ratePart = [Rate Effect]
+			RETURN
+			    "Revenue was £" & FORMAT ( ABS ( gap ) / 1000, "#,0" ) & "k " & IF ( gap < 0, "short", "ahead" ) & " of budget: "
+			        & IF ( hoursPart < 0, "fewer billable hours cost £", "more billable hours added £" ) & FORMAT ( ABS ( hoursPart ) / 1000, "#,0" ) & "k, "
+			        & IF ( ratePart < 0, "lower billing rates cost £", "higher billing rates added £" ) & FORMAT ( ABS ( ratePart ) / 1000, "#,0" ) & "k."
+		displayFolder: Report text
+
+	/// Context line under utilisation.
+	measure 'Context Utilisation' =
+			VAR hours = [Billable Hours Variance]
+			RETURN
+			    "Budget " & FORMAT ( [Utilisation % Budget], "0.0%" ) & " · " & FORMAT ( ABS ( hours ), "#,0" ) & IF ( hours < 0, " fewer", " more" ) & " billable hours"
+		displayFolder: Report text
+
+	/// Colour of the context line under utilisation: red when behind budget, grey otherwise.
+	measure 'Colour Utilisation Context' = IF ( [Utilisation Variance (pts)] < 0, "#B23A2E", "#5D6B79" )
+		displayFolder: Colours
+
+	/// Visual title for the service line table: the line whose hours cost the most.
+	measure 'Title Service Line Effects' =
+			VAR lines = ADDCOLUMNS ( FILTER ( VALUES ( 'Service Line'[Service Line] ), NOT ISBLANK ( [Billable Hours] ) ), "@Effect", [Hours Effect], "@Hours", [Billable Hours Variance] )
+			VAR worst = TOPN ( 1, lines, [@Effect], ASC )
+			VAR effect = MAXX ( worst, [@Effect] )
+			RETURN
+			    IF (
+			        effect > -5000,
+			        "Every service line billed within £5k of its budgeted hours",
+			        MAXX ( worst, 'Service Line'[Service Line] ) & " lost " & FORMAT ( ABS ( MAXX ( worst, [@Hours] ) ), "#,0" ) & " billable hours, worth £" & FORMAT ( - effect / 1000, "#,0" ) & "k"
+			    )
+		displayFolder: Report text
+
+	/// Visual title for the hours chart.
+	measure 'Title Hours by Line' =
+			VAR hours = [Billable Hours Variance]
+			RETURN
+			    FORMAT ( ABS ( hours ), "#,0" ) & IF ( hours < 0, " fewer", " more" ) & " billable hours than budget"
+		displayFolder: Report text
+
+	/// First line of the Service lines page.
+	measure 'Headline Service Lines' =
+			VAR lines = ADDCOLUMNS ( FILTER ( VALUES ( 'Service Line'[Service Line] ), NOT ISBLANK ( [Billable Hours] ) ), "@Gap", [Utilisation Variance (pts)] )
+			VAR worst = TOPN ( 1, lines, [@Gap], ASC )
+			VAR worstLine = MAXX ( worst, 'Service Line'[Service Line] )
+			RETURN
+			    "Utilisation was " & FORMAT ( [Utilisation %], "0.0%" ) & " against " & FORMAT ( [Utilisation % Budget], "0.0%" ) & ". "
+			        & IF (
+			            MAXX ( worst, [@Gap] ) >= -0.5,
+			            "No service line is more than half a point behind budget.",
+			            worstLine & " is furthest behind at " & FORMAT ( CALCULATE ( [Utilisation %], 'Service Line'[Service Line] = worstLine ), "0.0%" ) & "."
+			        )
+		displayFolder: Report text
+
+	/// Bar colour for hours against budget: red short, green ahead.
+	measure 'Colour Hours Variance Bar' = IF ( [Billable Hours Variance] < 0, "#B23A2E", "#2E7D57" )
+		displayFolder: Colours
+
+	/// Font colour for the hours effect: red when it cost revenue.
+	measure 'Colour Hours Effect' = IF ( [Hours Effect] < 0, "#B23A2E", "#1D2A36" )
+		displayFolder: Colours
+
+	/// Font colour for the rate effect: red when it cost revenue.
+	measure 'Colour Rate Effect' = IF ( [Rate Effect] < 0, "#B23A2E", "#1D2A36" )
+		displayFolder: Colours
+
+	/// Font colour for a utilisation variance: red when behind budget.
+	measure 'Colour Utilisation Variance' = IF ( [Utilisation Variance (pts)] < 0, "#B23A2E", "#1D2A36" )
+		displayFolder: Colours
+
+	/// The budget utilisation, drawn as a dashed line on the trend chart.
+	measure 'Utilisation Target' = 0.82
+		formatString: 0%
+		displayFolder: Hours
+
+	column 'Month Key'
 		dataType: int64
 		isHidden
-		lineageTag: 3eb017b7-f1f8-4dc7-bd50-4bb49b96fa2f
+		formatString: 0
 		summarizeBy: none
-		sourceColumn: MonthKey
+		sourceColumn: Month Key
 
 	column Scenario
 		dataType: string
 		isHidden
-		lineageTag: 084a5b74-a04c-487b-a785-f7e4685674dc
 		summarizeBy: none
 		sourceColumn: Scenario
 
 	column 'Service Line'
 		dataType: string
 		isHidden
-		lineageTag: 91c6b73f-f407-4cd6-ade7-9220760b03f4
 		summarizeBy: none
 		sourceColumn: Service Line
 
-	column 'Billable Hours'
+	column Billable
 		dataType: int64
 		isHidden
-		lineageTag: b36b81a5-5074-4d64-8056-ae1133cfcd3c
-		summarizeBy: sum
-		sourceColumn: Billable Hours
+		formatString: #,0
+		summarizeBy: none
+		sourceColumn: Billable
 
-	column 'Available Hours'
+	column Available
 		dataType: int64
 		isHidden
-		lineageTag: f03acc17-ceb2-4c8c-ab40-59dab32919fe
-		summarizeBy: sum
-		sourceColumn: Available Hours
+		formatString: #,0
+		summarizeBy: none
+		sourceColumn: Available
 
 	partition Capacity = m
 		mode: import
 		source =
 				let
 				    Source = Csv.Document(File.Contents(#"Data Folder" & "\capacity.csv"), [Delimiter = ",", Columns = 5, Encoding = 65001, QuoteStyle = QuoteStyle.Csv]),
-				    Headers = Table.PromoteHeaders(Source, [PromoteAllScalars = true]),
-				    Renamed = Table.RenameColumns(Headers, {{"month_key", "MonthKey"}, {"scenario", "Scenario"}, {"service_line", "Service Line"}, {"billable_hours", "Billable Hours"}, {"available_hours", "Available Hours"}}),
-				    Typed = Table.TransformColumnTypes(Renamed, {{"MonthKey", Int64.Type}, {"Scenario", type text}, {"Service Line", type text}, {"Billable Hours", Int64.Type}, {"Available Hours", Int64.Type}})
+				    #"Promoted Headers" = Table.PromoteHeaders(Source, [PromoteAllScalars = true]),
+				    #"Renamed Columns" = Table.RenameColumns(#"Promoted Headers", {{"month_key", "Month Key"}, {"scenario", "Scenario"}, {"service_line", "Service Line"}, {"billable_hours", "Billable"}, {"available_hours", "Available"}}),
+				    #"Changed Types" = Table.TransformColumnTypes(#"Renamed Columns", {{"Month Key", Int64.Type}, {"Scenario", type text}, {"Service Line", type text}, {"Billable", Int64.Type}, {"Available", Int64.Type}})
 				in
-				    Typed
+				    #"Changed Types"
 

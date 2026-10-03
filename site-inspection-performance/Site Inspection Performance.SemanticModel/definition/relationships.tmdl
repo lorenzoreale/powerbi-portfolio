@@ -1,41 +1,41 @@
-relationship 'Inspection_Inspection Date_Date_Date'
+relationship 'Inspection to Date'
 	fromColumn: Inspection.'Inspection Date'
 	toColumn: Date.Date
 
-relationship Inspection_SiteKey_Site_SiteKey
+relationship 'Inspection to Site'
 	fromColumn: Inspection.SiteKey
 	toColumn: Site.SiteKey
 
-relationship Inspection_InspectorKey_Person_PersonKey
+relationship 'Inspection to Inspector'
 	fromColumn: Inspection.InspectorKey
 	toColumn: Person.PersonKey
 
-relationship Response_InspectionKey_Inspection_InspectionKey
-	fromColumn: Response.InspectionKey
-	toColumn: Inspection.InspectionKey
+relationship 'Response to Inspection'
+	fromColumn: Response.InspectionID
+	toColumn: Inspection.InspectionID
 
-relationship Response_QuestionKey_Question_QuestionKey
+relationship 'Response to Question'
 	fromColumn: Response.QuestionKey
 	toColumn: Question.QuestionKey
 
-relationship 'Action_Raised Date_Date_Date'
+relationship 'Action to Date (raised)'
 	fromColumn: Action.'Raised Date'
 	toColumn: Date.Date
 
-relationship Action_SiteKey_Site_SiteKey
+relationship 'Action to Date (due)'
+	isActive: false
+	fromColumn: Action.'Due Date'
+	toColumn: Date.Date
+
+relationship 'Action to Site'
 	fromColumn: Action.SiteKey
 	toColumn: Site.SiteKey
 
-relationship Action_OwnerKey_Person_PersonKey
+relationship 'Action to Owner'
 	fromColumn: Action.OwnerKey
 	toColumn: Person.PersonKey
 
-relationship Action_InspectionID_Inspection_InspectionID
-	isActive: false
-	fromColumn: Action.InspectionID
-	toColumn: Inspection.InspectionID
-
-relationship 'MonthlyTarget_Month Start_Date_Date'
-	fromColumn: MonthlyTarget.'Month Start'
+relationship 'Monthly Target to Date'
+	fromColumn: 'Monthly Target'.'Month Start'
 	toColumn: Date.Date
 

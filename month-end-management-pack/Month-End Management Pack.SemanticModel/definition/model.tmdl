@@ -1,5 +1,5 @@
-model 'Month-End Management Pack'
-	culture: en-US
+model Model
+	culture: en-GB
 	defaultPowerBIDataSourceVersion: powerBI_V3
 	discourageImplicitMeasures
 	sourceQueryCulture: en-GB
@@ -7,20 +7,17 @@ model 'Month-End Management Pack'
 		legacyRedirects
 		returnErrorValuesAsNull
 
-annotation PBI_ProTooling = ["MCP-PBIModeling","DevMode"]
-
-annotation PBI_QueryOrder = ["Calendar","Scenario","Entity","Service Line","Account","Client","P&L Line","Ledger","Capacity","Bridge","Data Folder","Clients Raw"]
-
 annotation __PBI_TimeIntelligenceEnabled = 0
 
+annotation PBI_QueryOrder = ["Data Folder","Calendar","Entity","Service Line","Account","Client","Ledger","Capacity","P&L Line","Bridge Step","Close Point"]
+
 ref table Calendar
-ref table Scenario
 ref table Entity
 ref table 'Service Line'
 ref table Account
 ref table Client
-ref table 'P&L Line'
 ref table Ledger
 ref table Capacity
-ref table Bridge
-
+ref table 'P&L Line'
+ref table 'Bridge Step'
+ref table 'Close Point'

@@ -1,0 +1,61 @@
+/// The nights on the axis of the trend visuals. Not related to the facts on purpose: the Load dropdown filters the Date table, and a trend measure reads both the night on its axis and the load selected, so it can show the nights leading up to that load.
+table Night
+
+	/// 1 for the 14 nights up to and including the load selected, blank otherwise.
+	measure 'In Last 14 Nights' =
+			VAR lastLoad = MAX ( 'Date'[Date] )
+			VAR night = MAX ( Night[Night] )
+			RETURN
+			    IF ( night > lastLoad - 14 && night <= lastLoad, 1 )
+		formatString: 0
+		isHidden
+		displayFolder: Windows
+
+	/// 1 for the 30 nights up to and including the load selected, blank otherwise.
+	measure 'In Last 30 Nights' =
+			VAR lastLoad = MAX ( 'Date'[Date] )
+			VAR night = MAX ( Night[Night] )
+			RETURN
+			    IF ( night > lastLoad - 30 && night <= lastLoad, 1 )
+		formatString: 0
+		isHidden
+		displayFolder: Windows
+
+	/// Subtitle of the 14-night grid: the nights it covers and what the colours mean.
+	measure 'Subtitle Status Grid' =
+			VAR lastLoad = MAX ( 'Date'[Date] )
+			RETURN
+			    "One square per night, " & FORMAT ( lastLoad - 13, "d mmm" ) & " to " & FORMAT ( lastLoad, "d mmm" ) & ": green ready, amber use with care, red not ready, grey no load."
+		displayFolder: Report text
+
+	column Night
+		dataType: dateTime
+		isKey
+		formatString: d mmm
+		summarizeBy: none
+		sourceColumn: Night
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	/// The same night as a date shown as the day of the month, for the narrow headers of the 14-night grid.
+	column Day
+		dataType: dateTime
+		formatString: d
+		summarizeBy: none
+		sourceColumn: Day
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	partition Night = m
+		mode: import
+		source =
+				let
+				    Source = Csv.Document(File.Contents(#"Data Folder" & "\date.csv"), [Delimiter = ",", Columns = 3, Encoding = 65001, QuoteStyle = QuoteStyle.Csv]),
+				    #"Promoted Headers" = Table.PromoteHeaders(Source, [PromoteAllScalars = true]),
+				    #"Kept Date" = Table.SelectColumns(#"Promoted Headers", {"date"}),
+				    #"Renamed Columns" = Table.RenameColumns(#"Kept Date", {{"date", "Night"}}),
+				    #"Changed Types" = Table.TransformColumnTypes(#"Renamed Columns", {{"Night", type date}}),
+				    #"Added Day" = Table.DuplicateColumn(#"Changed Types", "Night", "Day", type date)
+				in
+				    #"Added Day"
+

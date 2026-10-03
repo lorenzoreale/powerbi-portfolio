@@ -1,0 +1,73 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/page/2.1.0/schema.json",
+  "name": "4f4b3b5a9e66df21bef8",
+  "displayName": "Briefing",
+  "displayOption": "FitToPage",
+  "height": 720,
+  "width": 1280,
+  "objects": {
+    "background": [
+      {
+        "properties": {
+          "color": {
+            "solid": {
+              "color": {
+                "expr": {
+                  "Literal": {
+                    "Value": "'#FFFFFF'"
+                  }
+                }
+              }
+            }
+          },
+          "transparency": {
+            "expr": {
+              "Literal": {
+                "Value": "0D"
+              }
+            }
+          }
+        }
+      }
+    ],
+    "outspace": [
+      {
+        "properties": {
+          "color": {
+            "solid": {
+              "color": {
+                "expr": {
+                  "Literal": {
+                    "Value": "'#FFFFFF'"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    ]
+  },
+  "visualInteractions": [
+    {
+      "source": "bf8d0b2e5b9636dc68f8",
+      "target": "c0c95c7bc54e282807b7",
+      "type": "NoFilter"
+    },
+    {
+      "source": "bf8d0b2e5b9636dc68f8",
+      "target": "bea046045d14bccfd40c",
+      "type": "NoFilter"
+    },
+    {
+      "source": "bf8d0b2e5b9636dc68f8",
+      "target": "258da338b82dbd2370ee",
+      "type": "NoFilter"
+    },
+    {
+      "source": "c56bfa202680ab56b31d",
+      "target": "65f4a04c3ab0950eda8a",
+      "type": "NoFilter"
+    }
+  ]
+}
