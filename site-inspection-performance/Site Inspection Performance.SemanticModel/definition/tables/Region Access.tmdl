@@ -1,0 +1,27 @@
+/// Which regions each manager may see. Read by the Regional manager role.
+table 'Region Access'
+	isHidden
+
+	column 'User Email'
+		dataType: string
+		isHidden
+		summarizeBy: none
+		sourceColumn: User Email
+
+	column Region
+		dataType: string
+		isHidden
+		summarizeBy: none
+		sourceColumn: Region
+
+	partition 'Region Access' = m
+		mode: import
+		source =
+				let
+				    Source = Csv.Document(File.Contents(#"Data Folder" & "\region_access.csv"), [Delimiter = ",", Encoding = 65001, QuoteStyle = QuoteStyle.Csv]),
+				    #"Promoted Headers" = Table.PromoteHeaders(Source, [PromoteAllScalars = true]),
+				    #"Renamed Columns" = Table.RenameColumns(#"Promoted Headers", {{"user_email", "User Email"}, {"region", "Region"}})
+				in
+				    #"Renamed Columns"
+
+	annotation PBI_ResultType = Table

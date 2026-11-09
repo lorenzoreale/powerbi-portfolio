@@ -1,0 +1,57 @@
+/// Planned inspections per month and region, set by operations.
+table 'Inspection Plan'
+
+	/// Planned inspections for the regions and months in view. Blank for a single site: the plan is set by region.
+	measure 'Planned Inspections' = IF ( NOT ISFILTERED ( 'Site' ), SUM ( 'Inspection Plan'[Planned] ) )
+		formatString: #,0
+		displayFolder: Activity
+
+	/// Inspections as a share of the plan.
+	measure '% of Plan' = DIVIDE ( [Inspections], [Planned Inspections] )
+		formatString: 0%
+		displayFolder: Activity
+
+	/// Inspections minus planned inspections. Positive is ahead of plan.
+	measure 'Inspections vs Plan' = IF ( NOT ISBLANK ( [Planned Inspections] ), [Inspections] + 0 - [Planned Inspections] )
+		formatString: +#,0;-#,0;0
+		displayFolder: Activity
+
+	measure 'Colour vs Plan' = IF ( [Inspections vs Plan] < 0, "#D9922F", "#24589E" )
+		displayFolder: Colours
+
+	measure 'Context Inspections' = "Plan " & FORMAT ( [Planned Inspections], "#,0" ) & " · " & FORMAT ( [% of Plan], "0%" ) & " of plan"
+		displayFolder: Labels
+
+	column 'Month Start'
+		dataType: dateTime
+		formatString: mmm yyyy
+		summarizeBy: none
+		sourceColumn: Month Start
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	column Region
+		dataType: string
+		isHidden
+		summarizeBy: none
+		sourceColumn: Region
+
+	column Planned
+		dataType: int64
+		isHidden
+		formatString: #,0
+		summarizeBy: sum
+		sourceColumn: Planned
+
+	partition 'Inspection Plan' = m
+		mode: import
+		source =
+				let
+				    Source = Csv.Document(File.Contents(#"Data Folder" & "\inspection_plan.csv"), [Delimiter = ",", Encoding = 65001, QuoteStyle = QuoteStyle.Csv]),
+				    #"Promoted Headers" = Table.PromoteHeaders(Source, [PromoteAllScalars = true]),
+				    #"Changed Type" = Table.TransformColumnTypes(#"Promoted Headers", {{"month_start", type date}, {"planned_inspections", Int64.Type}}),
+				    #"Renamed Columns" = Table.RenameColumns(#"Changed Type", {{"month_start", "Month Start"}, {"region", "Region"}, {"planned_inspections", "Planned"}})
+				in
+				    #"Renamed Columns"
+
+	annotation PBI_ResultType = Table

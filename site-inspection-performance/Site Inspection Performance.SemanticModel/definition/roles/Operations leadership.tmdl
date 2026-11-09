@@ -1,0 +1,3 @@
+/// The head of operations and the leadership team see every region.
+role 'Operations leadership'
+	modelPermission: read

@@ -1,0 +1,7 @@
+/// Regional managers see their own region: sites, inspections, actions and plan.
+role 'Regional manager'
+	modelPermission: read
+
+	tablePermission Region = 'Region'[Region] IN CALCULATETABLE ( VALUES ( 'Region Access'[Region] ), 'Region Access'[User Email] = USERPRINCIPALNAME () )
+
+	tablePermission 'Region Access' = 'Region Access'[User Email] = USERPRINCIPALNAME ()

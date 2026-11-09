@@ -1,225 +1,173 @@
-/// One row per corrective action raised from a finding. Site names arrive with stray spaces and mixed case and are cleaned before matching to Site; actions with no owner go to the Unassigned person.
+/// One row per corrective action, from the actions list.
 table Action
-	lineageTag: b15d9ac8-c426-4daf-b592-d9e354f19d2f
 
-	/// Actions raised in the selected period (by raised date).
-	measure 'Actions Raised' = COUNTROWS ( 'Action' )
-		formatString: #,0
-		displayFolder: Actions
-		lineageTag: a00cd917-ebfc-4720-9592-3ad96d0ba909
-
-	/// Actions whose due date falls in the selected period, up to the as-at date. Uses the due-date relationship.
+	/// Actions due in the period, up to the as-at date, each judged in the month it fell due.
 	measure 'Actions Due' =
 			VAR asAt = [As-at Date]
 			RETURN
-			    CALCULATE ( COUNTROWS ( 'Action' ), USERELATIONSHIP ( 'Action'[Due Date], 'Date'[Date] ), 'Action'[Due Date] <= asAt )
+			    CALCULATE ( COUNTROWS ( 'Action' ), 'Action'[Due Date] <= asAt )
 		formatString: #,0
 		displayFolder: Actions
-		lineageTag: 69d24ad7-34d4-44ba-9844-51e490e23973
 
 	/// Actions due in the period that were closed on or before their due date.
 	measure 'Actions Closed On Time' = CALCULATE ( [Actions Due], 'Action'[Closed On Time] = TRUE () )
 		formatString: #,0
 		displayFolder: Actions
-		lineageTag: 24e17005-16f2-4f61-898c-54e9a34c35ba
 
-	/// Share of the actions due in the period that were closed on time. An action still open after its due date counts as late.
-	measure 'On-time %' = DIVIDE ( [Actions Closed On Time], [Actions Due] )
-		formatString: 0%
+	/// Actions closed on time / actions due.
+	measure 'On-time Closure %' = DIVIDE ( [Actions Closed On Time], [Actions Due] )
+		formatString: 0.0%
 		displayFolder: Actions
-		lineageTag: 678c3696-43a8-4003-aaf3-90c002c014ff
 
-	/// On-time closure for the same period one year earlier, stopping at the same day (26 Jun 2025).
-	measure 'On-time % Last Year' =
+	/// On-time closure over the same days a year earlier.
+	measure 'On-time Closure % Last Year' =
 			VAR sameDayLastYear = EDATE ( [As-at Date], -12 )
 			RETURN
-			    CALCULATE ( [On-time %], SAMEPERIODLASTYEAR ( 'Date'[Date] ), 'Date'[Date] <= sameDayLastYear )
-		formatString: 0%
+			    CALCULATE ( [On-time Closure %], SAMEPERIODLASTYEAR ( 'Date'[Date] ), 'Date'[Date] <= sameDayLastYear )
+		formatString: 0.0%
 		displayFolder: Actions
-		lineageTag: 5c5eb7d9-97b4-49ff-ae40-f81191897e93
 
-	/// The agreed target for on-time closure.
+	/// The on-time closure target.
 	measure 'On-time Target' = 0.9
 		formatString: 0%
 		displayFolder: Actions
-		lineageTag: da4983bf-2099-4557-b80e-1c6f8865f9e1
 
-	/// Actions not yet closed, as at the as-at date. Ignores the period filter.
-	measure 'Open Actions' = CALCULATE ( COUNTROWS ( 'Action' ), 'Action'[Action Status] <> "Closed", REMOVEFILTERS ( 'Date' ) ) + 0
+	/// Actions not closed, as at the as-at date, whatever the period selected.
+	measure 'Open Actions' = CALCULATE ( COUNTROWS ( 'Action' ), ISBLANK ( 'Action'[Closed Date] ), REMOVEFILTERS ( 'Date' ) ) + 0
 		formatString: #,0
 		displayFolder: Actions
-		lineageTag: 6cef7a70-cf0f-498f-a103-5e818565ec0b
 
-	/// Open actions past their due date, as at the as-at date. Ignores the period filter.
-	measure 'Overdue Actions' = CALCULATE ( COUNTROWS ( 'Action' ), 'Action'[Action Status] = "Overdue", REMOVEFILTERS ( 'Date' ) ) + 0
+	/// Open actions past their due date, as at the as-at date.
+	measure 'Overdue Actions' =
+			VAR asAt = [As-at Date]
+			RETURN
+			    CALCULATE ( [Open Actions], 'Action'[Due Date] < asAt )
 		formatString: #,0
 		displayFolder: Actions
-		lineageTag: 7167624f-5168-40ea-94e9-c364d288bbe9
 
-	/// Overdue actions recorded without an owner (the Unassigned person).
-	measure 'Overdue Without Owner' = CALCULATE ( [Overdue Actions], 'Person'[Person Name] = "Unassigned" )
+	/// Overdue actions with no owner recorded.
+	measure 'Overdue Unassigned' = CALCULATE ( [Overdue Actions], 'Action'[Owner] = "Unassigned" )
 		formatString: #,0
 		displayFolder: Actions
-		lineageTag: aee92cc2-9a5a-468b-8b71-ba88bcbb771a
 
-	/// Days past due of the oldest overdue action in the selection.
-	measure 'Oldest Overdue' = CALCULATE ( MAX ( 'Action'[Days Overdue] ), REMOVEFILTERS ( 'Date' ) )
+	/// Days past due of the oldest overdue action.
+	measure 'Oldest Overdue Days' = CALCULATE ( MAX ( 'Action'[Days Overdue] ), REMOVEFILTERS ( 'Date' ) )
 		formatString: #,0
 		displayFolder: Actions
-		lineageTag: d3a24789-a86c-4d46-a7e7-aee69598bc06
 
-	/// Actions pointing at an inspection that is not in the data, usually a keying error in the source system.
-	measure 'Orphan Actions' = COUNTROWS ( EXCEPT ( ALL ( 'Action'[InspectionID] ), ALL ( 'Inspection'[InspectionID] ) ) )
+	/// Actions whose site name, as typed, did not match the site register.
+	measure 'Site Names Corrected' = CALCULATE ( COUNTROWS ( 'Action' ), 'Action'[Site Name Corrected] = TRUE (), REMOVEFILTERS ( 'Date' ) ) + 0
 		formatString: #,0
 		displayFolder: Data quality
-		lineageTag: 8179faf6-ec3c-4560-aee5-f8dc05fd8a07
 
-	/// Second line of the briefing page.
-	measure 'Headline Follow-up' =
-			VAR onTime = [On-time %]
-			VAR lastYear = [On-time % Last Year]
-			VAR verdict =
-			    SWITCH (
-			        TRUE (),
-			        onTime >= [On-time Target], "Follow-up is on track: ",
-			        NOT ISBLANK ( lastYear ) && onTime < lastYear, "Follow-up is slipping: ",
-			        "Follow-up is behind target: "
+	/// Actions whose site still matches no site after cleaning.
+	measure 'Unmatched Site Names' = CALCULATE ( COUNTROWS ( 'Action' ), ISBLANK ( 'Action'[Site ID] ), REMOVEFILTERS ( 'Date' ) ) + 0
+		formatString: #,0
+		displayFolder: Data quality
+
+	/// Actions with no owner recorded.
+	measure 'Actions Without Owner' = CALCULATE ( COUNTROWS ( 'Action' ), 'Action'[Owner] = "Unassigned", REMOVEFILTERS ( 'Date' ) ) + 0
+		formatString: #,0
+		displayFolder: Data quality
+
+	/// Actions that point at an inspection missing from the exports.
+	measure 'Actions Without Inspection' = CALCULATE ( COUNTROWS ( 'Action' ), 'Action'[Inspection Found] = FALSE (), REMOVEFILTERS ( 'Date' ) ) + 0
+		formatString: #,0
+		displayFolder: Data quality
+
+	measure 'Overdue Rank' =
+			VAR days = MAX ( 'Action'[Days Overdue] )
+			VAR ref = MAX ( 'Action'[Action Ref] )
+			RETURN
+			    IF (
+			        NOT ISBLANK ( days ),
+			        COUNTROWS (
+			            FILTER (
+			                ALLSELECTED ( 'Action'[Action Ref], 'Action'[Days Overdue] ),
+			                'Action'[Days Overdue] > days || ( 'Action'[Days Overdue] = days && 'Action'[Action Ref] < ref )
+			            )
+			        ) + 1
 			    )
-			VAR versusLastYear = IF ( ISBLANK ( lastYear ), "", ", against " & FORMAT ( lastYear, "0%" ) & " a year earlier" )
-			RETURN
-			    IF ( NOT ISBLANK ( onTime ), verdict & FORMAT ( onTime, "0%" ) & " of the actions due were closed on time" & versusLastYear & "." )
-		displayFolder: Report text
-		lineageTag: 94fb166e-076d-43be-89f9-c7e996c09a6b
+		formatString: 0
+		displayFolder: Helpers
 
-	/// Visual title for the overdue list. Ignores the list's top-four filter on Action Ref, so it counts every overdue action in the selection (region and site filters still apply).
-	measure 'Title Overdue' =
-			VAR overdue = CALCULATE ( [Overdue Actions], REMOVEFILTERS ( 'Action'[Action Ref] ) )
-			VAR noOwner = CALCULATE ( [Overdue Without Owner], REMOVEFILTERS ( 'Action'[Action Ref] ) ) + 0
-			RETURN
-			    SWITCH ( TRUE (), overdue = 0, "No actions are overdue", overdue = 1, "1 action is overdue", overdue & " actions are overdue" )
-			        & IF ( noOwner > 0, ", " & noOwner & " with no owner", "" )
-		displayFolder: Report text
-		lineageTag: dc2b5fe9-83d2-485c-8dff-a66ea04b56b6
+	measure 'Context On-time' = "Target " & FORMAT ( [On-time Target], "0%" ) & " · last year " & FORMAT ( [On-time Closure % Last Year], "0%" )
+		displayFolder: Labels
 
-	/// Context line under on-time closure.
-	measure 'Context On-time' =
-			VAR lastYear = [On-time % Last Year]
-			RETURN
-			    "Target 90%" & IF ( NOT ISBLANK ( lastYear ), " · a year earlier " & FORMAT ( lastYear, "0%" ) )
-		displayFolder: Report text
-		lineageTag: b7233f0a-0766-4050-bbf5-16730e2e9214
-
-	/// Context line under actions due.
 	measure 'Context Actions Due' = FORMAT ( [Actions Closed On Time] + 0, "#,0" ) & " closed by the due date"
-		displayFolder: Report text
-		lineageTag: c41d8e0b-7421-4d59-a2fe-3adce98a190b
+		displayFolder: Labels
 
-	/// Context line under overdue actions.
-	measure 'Context Overdue' = IF ( [Overdue Actions] > 0, "Oldest " & [Oldest Overdue] & " days past due", "Nothing overdue" )
-		displayFolder: Report text
-		lineageTag: 1f7b0e8a-a3d1-41e5-8fea-39511fb78ed2
+	measure 'Context Overdue' = IF ( [Overdue Actions] > 0, "Oldest " & [Oldest Overdue Days] & " days past due", "Nothing overdue" )
+		displayFolder: Labels
 
-	/// Context line under overdue actions with no owner.
-	measure 'Context No Owner' = IF ( [Overdue Without Owner] > 0, "Nobody is responsible for these", "Every overdue action has an owner" )
-		displayFolder: Report text
-		lineageTag: 4cee267d-650d-480e-a8ef-9d7fa219cd74
-
-	/// Context line under open actions on the site detail page.
 	measure 'Context Site Open' = IF ( [Overdue Actions] > 0, [Overdue Actions] & " overdue", "None overdue" )
-		displayFolder: Report text
-		lineageTag: 85a58520-c611-4940-948a-34049799c835
+		displayFolder: Labels
 
-	/// Text colour for on-time closure: red below target.
-	measure 'Colour On-time Text' = IF ( [On-time %] < [On-time Target], "#C2453A", "#16324F" )
-		displayFolder: Colours
-		lineageTag: a747be80-a3f6-438d-9418-04a4e0b566b1
+	measure 'Context Unassigned' = "Owner not recorded in the actions list"
+		displayFolder: Labels
 
-	/// Text colour for the owner column: red when nobody owns the action.
-	measure 'Colour Owner Text' = IF ( SELECTEDVALUE ( 'Person'[Person Name] ) = "Unassigned", "#C2453A", "#2A3A4D" )
-		displayFolder: Colours
-		lineageTag: 46aaa8a9-ecdd-4a01-9ff5-d256615b9fef
+	measure 'Context Names Corrected' = FORMAT ( [Unmatched Site Names], "#,0" ) & " still unmatched"
+		displayFolder: Labels
 
-	/// Text colour for the status column: red when overdue, amber when due within 7 days.
-	measure 'Colour Status Text' =
-			SWITCH (
-			    SELECTEDVALUE ( 'Action'[Action Status] ),
-			    "Overdue", "#C2453A",
-			    "Due within 7 days", "#9A6216",
-			    "#2A3A4D"
-			)
-		displayFolder: Colours
-		lineageTag: 28332796-955f-49a9-a7f4-2838ab57168b
+	measure 'Context Without Owner' = "Shown as Unassigned"
+		displayFolder: Labels
 
-	/// Text colour for overdue age: red when the oldest action is more than 30 days late.
-	measure 'Colour Overdue Age Text' = IF ( [Oldest Overdue] > 30, "#C2453A", "#2A3A4D" )
-		displayFolder: Colours
-		lineageTag: ca94116e-b6ce-4df7-a6b4-bce2be070142
+	measure 'Context Without Inspection' = "Kept, counted and listed below"
+		displayFolder: Labels
 
-	/// Text colour for open actions on the site detail page: red when any of them is overdue.
-	measure 'Colour Open Actions Text' = IF ( [Overdue Actions] > 0, "#C2453A", "#16324F" )
+	measure 'Colour On-time Value' = IF ( [On-time Closure %] < [On-time Target], "#C2453A", "#16324F" )
 		displayFolder: Colours
 
-	/// Visual title for the on-time chart: how many of the months shown missed the target.
-	measure 'Title On-time by Month' =
-			VAR months =
-			    FILTER (
-			        ADDCOLUMNS ( VALUES ( 'Date'[Month Start] ), "@OnTime", [On-time %] ),
-			        NOT ISBLANK ( [@OnTime] )
-			    )
-			VAR total = COUNTROWS ( months )
-			VAR below = COUNTROWS ( FILTER ( months, [@OnTime] < [On-time Target] ) ) + 0
-			VAR target = FORMAT ( [On-time Target], "0%" )
-			RETURN
-			    SWITCH (
-			        TRUE (),
-			        below = 0, "On-time closure has met the " & target & " target every month",
-			        below = total, "On-time closure has been below " & target & " every month",
-			        "On-time closure has been below " & target & " in " & below & " of the last " & total & " months"
-			    )
-		displayFolder: Report text
+	measure 'Colour Overdue Unassigned' = IF ( [Overdue Unassigned] > 0, "#C2453A", "#16324F" )
+		displayFolder: Colours
 
-	/// Business key, for example AC-091.
+	measure 'Colour Owner' = IF ( SELECTEDVALUE ( 'Action'[Owner] ) = "Unassigned", "#C2453A", "#1C2B3A" )
+		displayFolder: Colours
+
 	column 'Action Ref'
 		dataType: string
-		lineageTag: 4c69994c-cb54-4982-ac87-6ca9e42320d3
 		summarizeBy: none
 		sourceColumn: Action Ref
 
-	/// The inspection the action was raised from.
-	column InspectionID
+	column 'Inspection ID'
 		dataType: string
 		isHidden
-		lineageTag: f80c028c-1b0e-4910-9e18-c9fcc4a12619
 		summarizeBy: none
-		sourceColumn: InspectionID
+		sourceColumn: Inspection ID
 
-	column SiteKey
+	column 'Site Name As Typed'
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Site Name As Typed
+
+	column 'Site Name'
+		dataType: string
+		isHidden
+		summarizeBy: none
+		sourceColumn: Site Name
+
+	column 'Site Name Corrected'
+		dataType: boolean
+		isHidden
+		formatString: """TRUE"";""TRUE"";""FALSE"""
+		summarizeBy: none
+		sourceColumn: Site Name Corrected
+
+	column 'Site ID'
 		dataType: int64
 		isHidden
 		formatString: 0
-		lineageTag: 390e5d6c-794c-4c69-a788-7d8c8ea76f58
 		summarizeBy: none
-		sourceColumn: SiteKey
+		sourceColumn: Site ID
 
-	column OwnerKey
-		dataType: int64
-		isHidden
-		formatString: 0
-		lineageTag: 9d06660c-7c87-4cae-9f11-743a106179c7
-		summarizeBy: none
-		sourceColumn: OwnerKey
-
-	/// The checklist section of the finding the action came from.
-	column Category
+	column Section
 		dataType: string
-		lineageTag: ba1c400c-39da-4bca-bf49-abfc05d5f1de
 		summarizeBy: none
-		sourceColumn: Category
+		sourceColumn: Section
 
 	column 'Raised Date'
 		dataType: dateTime
 		formatString: dd mmm yyyy
-		lineageTag: 6dbec974-13e6-4bba-bcf7-3968f7bfef48
 		summarizeBy: none
 		sourceColumn: Raised Date
 
@@ -228,94 +176,112 @@ table Action
 	column 'Due Date'
 		dataType: dateTime
 		formatString: dd mmm yyyy
-		lineageTag: e2aca6f6-0e74-47f8-9619-2425a51cc31a
 		summarizeBy: none
 		sourceColumn: Due Date
 
 		annotation UnderlyingDateTimeDataType = Date
 
-	/// Blank while the action is open.
 	column 'Closed Date'
 		dataType: dateTime
 		formatString: dd mmm yyyy
-		lineageTag: 45bc2946-ec1c-4dc4-8a6c-8c249d86f689
 		summarizeBy: none
 		sourceColumn: Closed Date
 
 		annotation UnderlyingDateTimeDataType = Date
 
-	/// What has to be done.
-	column 'Action Description'
+	column Owner
 		dataType: string
-		lineageTag: 5210f1d4-581a-4586-8d7f-36d3fb51f7b0
 		summarizeBy: none
-		sourceColumn: Action Description
+		sourceColumn: Owner
 
-	/// True when the action was closed on or before its due date.
+	column Description
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Description
+
+	column 'Inspection Found'
+		dataType: boolean
+		isHidden
+		formatString: """TRUE"";""TRUE"";""FALSE"""
+		summarizeBy: none
+		sourceColumn: Inspection Found
+
 	column 'Closed On Time'
 		dataType: boolean
 		isHidden
-		lineageTag: 6f2fc420-a044-4e1a-8cb9-f6ac5092ec38
+		formatString: """TRUE"";""TRUE"";""FALSE"""
 		summarizeBy: none
 		sourceColumn: Closed On Time
 
-	/// Status as at the as-at date: Open, Due within 7 days, Overdue or Closed.
+	/// Days past due, as at the as-at date. Blank unless the action is open and overdue.
+	column 'Days Overdue' =
+			VAR asAt = [As-at Date]
+			RETURN
+			    IF ( ISBLANK ( 'Action'[Closed Date] ) && 'Action'[Due Date] < asAt, DATEDIFF ( 'Action'[Due Date], asAt, DAY ) )
+		dataType: int64
+		formatString: #,0
+		summarizeBy: none
+
+	/// Where the action stands on the as-at date.
 	column 'Action Status' =
-			VAR asAt = MAX ( 'Inspection'[Inspection Date] )
+			VAR asAt = [As-at Date]
+			VAR due = 'Action'[Due Date]
 			RETURN
 			    SWITCH (
 			        TRUE (),
 			        NOT ISBLANK ( 'Action'[Closed Date] ), "Closed",
-			        'Action'[Due Date] < asAt, "Overdue",
-			        'Action'[Due Date] <= asAt + 7, "Due within 7 days",
-			        "Open"
+			        due < asAt - 30, "Overdue over 30 days",
+			        due < asAt, "Overdue up to 30 days",
+			        "Not yet due"
 			    )
 		dataType: string
-		lineageTag: 20308b61-db3c-405f-b02c-bc4d952c9df7
 		summarizeBy: none
 		sortByColumn: 'Action Status Order'
 
-	column 'Action Status Order' =
-			VAR asAt = MAX ( 'Inspection'[Inspection Date] )
+	/// What was wrong with the record as it came in, and was handled at load.
+	column 'Data Issue' =
+			VAR nameTyped = IF ( 'Action'[Site Name Corrected], "Site name typed differently" )
+			VAR noOwner = IF ( 'Action'[Owner] = "Unassigned", "No owner recorded" )
+			VAR noInspection = IF ( NOT 'Action'[Inspection Found], "Inspection not in the exports" )
+			VAR issues = CONCATENATEX ( FILTER ( { nameTyped, noOwner, noInspection }, [Value] <> "" ), [Value], " · " )
 			RETURN
-			    SWITCH (
-			        TRUE (),
-			        NOT ISBLANK ( 'Action'[Closed Date] ), 4,
-			        'Action'[Due Date] < asAt, 1,
-			        'Action'[Due Date] <= asAt + 7, 2,
-			        3
-			    )
+			    IF ( issues = "", BLANK (), issues )
+		dataType: string
+		summarizeBy: none
+
+	column 'Has Data Issue' = NOT ISBLANK ( 'Action'[Data Issue] )
+		dataType: boolean
+		isHidden
+		formatString: """TRUE"";""TRUE"";""FALSE"""
+		summarizeBy: none
+
+	column 'Action Status Order' =
+			VAR asAt = [As-at Date]
+			VAR due = 'Action'[Due Date]
+			RETURN
+			    SWITCH ( TRUE (), NOT ISBLANK ( 'Action'[Closed Date] ), 4, due < asAt - 30, 1, due < asAt, 2, 3 )
 		dataType: int64
 		isHidden
 		formatString: 0
-		lineageTag: 7cf3d6c5-fd54-4452-bb00-04ed5802006c
-		summarizeBy: none
-
-	/// Days past the due date for overdue actions, blank otherwise.
-	column 'Days Overdue' =
-			VAR asAt = MAX ( 'Inspection'[Inspection Date] )
-			RETURN
-			    IF ( 'Action'[Action Status] = "Overdue", INT ( asAt - 'Action'[Due Date] ) )
-		dataType: int64
-		formatString: #,0
-		lineageTag: a173f537-ef98-445e-b9a9-9bf7677d2d48
 		summarizeBy: none
 
 	partition Action = m
 		mode: import
 		source =
 				let
-				    Source = Csv.Document(File.Contents(#"Data Folder" & "\actions.csv"), [Delimiter = ",", Columns = 9, Encoding = 65001, QuoteStyle = QuoteStyle.Csv]),
+				    Source = Csv.Document(File.Contents(#"Data Folder" & "\actions.csv"), [Delimiter = ",", Encoding = 65001, QuoteStyle = QuoteStyle.Csv]),
 				    #"Promoted Headers" = Table.PromoteHeaders(Source, [PromoteAllScalars = true]),
-				    #"Cleaned Site Names" = Table.TransformColumns(#"Promoted Headers", {{"site_name", each Text.Proper(Text.Replace(Text.Trim(_), "  ", " ")), type text}}),
-				    #"Merged Site" = Table.NestedJoin(#"Cleaned Site Names", {"site_name"}, Site, {"Site Name"}, "Site", JoinKind.LeftOuter),
-				    #"Expanded Site" = Table.ExpandTableColumn(#"Merged Site", "Site", {"SiteKey"}),
-				    #"Unassigned Owners" = Table.ReplaceValue(#"Expanded Site", "", "0", Replacer.ReplaceValue, {"owner_id"}),
-				    #"Blank to Null" = Table.ReplaceValue(#"Unassigned Owners", "", null, Replacer.ReplaceValue, {"closed_date"}),
-				    #"Removed Site Name" = Table.RemoveColumns(#"Blank to Null", {"site_name"}),
-				    #"Renamed Columns" = Table.RenameColumns(#"Removed Site Name", {{"action_ref", "Action Ref"}, {"inspection_id", "InspectionID"}, {"category", "Category"}, {"raised_date", "Raised Date"}, {"due_date", "Due Date"}, {"closed_date", "Closed Date"}, {"owner_id", "OwnerKey"}, {"action_description", "Action Description"}}),
-				    #"Changed Types" = Table.TransformColumnTypes(#"Renamed Columns", {{"Action Ref", type text}, {"InspectionID", type text}, {"SiteKey", Int64.Type}, {"OwnerKey", Int64.Type}, {"Category", type text}, {"Raised Date", type date}, {"Due Date", type date}, {"Closed Date", type date}, {"Action Description", type text}}),
-				    #"Added Closed On Time" = Table.AddColumn(#"Changed Types", "Closed On Time", each [Closed Date] <> null and [Closed Date] <= [Due Date], type logical)
+				    #"Changed Type" = Table.TransformColumnTypes(#"Promoted Headers", {{"raised_date", type date}, {"due_date", type date}, {"closed_date", type date}}),
+				    #"Added Site Name" = Table.AddColumn(#"Changed Type", "Site Name", each Text.Proper(Text.Replace(Text.Trim([site_name]), "  ", " ")), type text),
+				    #"Added Name Corrected" = Table.AddColumn(#"Added Site Name", "Site Name Corrected", each [site_name] <> [Site Name], type logical),
+				    #"Merged Site" = Table.NestedJoin(#"Added Name Corrected", {"Site Name"}, Site, {"Site Name"}, "Site", JoinKind.LeftOuter),
+				    #"Expanded Site" = Table.ExpandTableColumn(#"Merged Site", "Site", {"Site ID"}),
+				    #"Replaced Blank Owner" = Table.ReplaceValue(#"Expanded Site", "", "Unassigned", Replacer.ReplaceValue, {"owner"}),
+				    InspectionIDs = List.Buffer(Inspection[Inspection ID]),
+				    #"Added Inspection Found" = Table.AddColumn(#"Replaced Blank Owner", "Inspection Found", each List.Contains(InspectionIDs, [inspection_id]), type logical),
+				    #"Added Closed On Time" = Table.AddColumn(#"Added Inspection Found", "Closed On Time", each [closed_date] <> null and [closed_date] <= [due_date], type logical),
+				    #"Renamed Columns" = Table.RenameColumns(#"Added Closed On Time", {{"action_ref", "Action Ref"}, {"inspection_id", "Inspection ID"}, {"site_name", "Site Name As Typed"}, {"category", "Section"}, {"raised_date", "Raised Date"}, {"due_date", "Due Date"}, {"closed_date", "Closed Date"}, {"owner", "Owner"}, {"description", "Description"}})
 				in
-				    #"Added Closed On Time"
+				    #"Renamed Columns"
 
+	annotation PBI_ResultType = Table

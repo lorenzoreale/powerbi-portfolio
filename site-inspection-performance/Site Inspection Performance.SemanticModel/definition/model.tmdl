@@ -9,20 +9,22 @@ model Model
 
 annotation __PBI_TimeIntelligenceEnabled = 0
 
-annotation PBI_QueryOrder = ["Data Folder","Date","Site","Person","Question","Inspection","Response","Action","Monthly Target"]
+annotation PBI_QueryOrder = ["Data Folder","Read Export","Export Rows","Latest Export Rows","Inspection","Response","Export File","Site","Region","Checklist","Action","Inspection Plan","Region Access","Date"]
 
 annotation PBI_ProTooling = ["DevMode"]
 
-ref table Date
-ref table Site
-ref table Person
-ref table Question
 ref table Inspection
 ref table Response
 ref table Action
-ref table 'Monthly Target'
+ref table Site
+ref table Region
+ref table Checklist
+ref table Date
+ref table 'Inspection Plan'
+ref table 'Export File'
+ref table 'Region Access'
 ref table 'Visit Rule'
-ref table 'Compare Regions By'
+ref table 'Compare By'
 
-ref cultureInfo en-GB
-
+ref role 'Regional manager'
+ref role 'Operations leadership'

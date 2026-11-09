@@ -1,0 +1,19 @@
+/// One row per region. Row-level security filters this table.
+table Region
+
+	column Region
+		dataType: string
+		isKey
+		summarizeBy: none
+		sourceColumn: Region
+
+	partition Region = m
+		mode: import
+		source =
+				let
+				    Source = Table.Distinct(Table.SelectColumns(Site, {"Region"})),
+				    #"Sorted Rows" = Table.Sort(Source, {{"Region", Order.Ascending}})
+				in
+				    #"Sorted Rows"
+
+	annotation PBI_ResultType = Table

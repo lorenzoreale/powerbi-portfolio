@@ -1,0 +1,72 @@
+/// Field parameter for the region chart on the Overview page.
+table 'Compare By'
+
+	measure 'Compare By Choice' = SELECTEDVALUE ( 'Compare By'[Compare By Order], 0 )
+		formatString: 0
+		isHidden
+		displayFolder: Helpers
+
+	measure 'Compare By Line' = SWITCH ( [Compare By Choice], 0, [Compliance Target], 2, [On-time Target], 3, 60 )
+		displayFolder: Helpers
+
+	measure 'Subtitle Compare By' =
+			SWITCH (
+			    [Compare By Choice],
+			    0, "Year selected · dashed line: 90% target · amber: within 2 points of it",
+			    1, "Failed answers per inspection · year selected",
+			    2, "Actions closed by their due date · year selected · dashed line: 90% target",
+			    3, "Longest gap at any site in the region, as at " & FORMAT ( [As-at Date], "d mmm yyyy" ) & " · dashed line: 60 days"
+			)
+		displayFolder: Labels
+
+	measure 'Colour Compare By' =
+			VAR bad = "#C2453A"
+			VAR data = "#24589E"
+			RETURN
+			    SWITCH (
+			        [Compare By Choice],
+			        0, [Colour Compliance],
+			        2, SWITCH ( TRUE (), [On-time Closure %] >= [On-time Target], data, [On-time Closure %] >= [On-time Target] - 0.02, "#D9922F", bad ),
+			        3, SWITCH ( TRUE (), [Days Since Last Visit] > 60, bad, [Days Since Last Visit] > 53, "#D9922F", data ),
+			        data
+			    )
+		displayFolder: Colours
+
+	column 'Compare By'
+		dataType: string
+		summarizeBy: none
+		sourceColumn: [Value1]
+		sortByColumn: 'Compare By Order'
+
+		relatedColumnDetails
+			groupByColumn: 'Compare By Fields'
+
+	column 'Compare By Fields'
+		dataType: string
+		isHidden
+		summarizeBy: none
+		sourceColumn: [Value2]
+		sortByColumn: 'Compare By Order'
+
+		extendedProperty ParameterMetadata =
+				{
+				  "version": 3,
+				  "kind": 2
+				}
+
+	column 'Compare By Order'
+		dataType: int64
+		isHidden
+		formatString: 0
+		summarizeBy: sum
+		sourceColumn: [Value3]
+
+	partition 'Compare By' = calculated
+		mode: import
+		source =
+				{
+				    ("Compliance", NAMEOF ( 'Response'[Compliance %] ), 0),
+				    ("Findings per inspection", NAMEOF ( 'Response'[Findings per Inspection] ), 1),
+				    ("On-time closure", NAMEOF ( 'Action'[On-time Closure %] ), 2),
+				    ("Days since a visit", NAMEOF ( 'Site'[Days Since Last Visit] ), 3)
+				}

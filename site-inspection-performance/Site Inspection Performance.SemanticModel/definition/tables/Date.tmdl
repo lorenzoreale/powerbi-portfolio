@@ -1,13 +1,11 @@
-/// Calendar, one row per day from 1 Jan 2025 to 30 Jun 2026.
+/// One row per day, from the first year of inspections to the year of the last due date.
 table Date
-	lineageTag: 969517a7-d0ca-4f69-938d-6e575ded76bf
 	dataCategory: Time
 
 	column Date
 		dataType: dateTime
 		isKey
 		formatString: dd mmm yyyy
-		lineageTag: 28a38d91-cf6b-4889-9030-98946eebc38b
 		summarizeBy: none
 		sourceColumn: Date
 
@@ -16,14 +14,11 @@ table Date
 	column Year
 		dataType: int64
 		formatString: 0
-		lineageTag: c4884956-6edf-423e-b86a-91d3d6fc3f20
 		summarizeBy: none
 		sourceColumn: Year
 
-	/// Month label, for example Jun 2026. Sorted by Month Key.
 	column Month
 		dataType: string
-		lineageTag: 49ac9e76-856e-4ecf-80fc-ae3ce4de00ba
 		summarizeBy: none
 		sourceColumn: Month
 		sortByColumn: 'Month Key'
@@ -32,21 +27,17 @@ table Date
 		dataType: int64
 		isHidden
 		formatString: 0
-		lineageTag: c7c25b9f-43ea-4695-9280-7eff6c9ec04a
 		summarizeBy: none
 		sourceColumn: Month Key
 
-	/// First day of the month. Used as a continuous axis on the trend charts.
 	column 'Month Start'
 		dataType: dateTime
 		formatString: mmm yyyy
-		lineageTag: 3ed06bf7-7aac-4281-b4ac-27cb69506468
 		summarizeBy: none
 		sourceColumn: Month Start
 
 		annotation UnderlyingDateTimeDataType = Date
 
-	/// Short month name, for example Jun. For charts that show one year at a time. Sorted by Month Number.
 	column 'Month Name'
 		dataType: string
 		summarizeBy: none
@@ -60,11 +51,22 @@ table Date
 		summarizeBy: none
 		sourceColumn: Month Number
 
+	/// True up to the as-at date. Keeps the trend charts from running into empty months.
+	column 'In Data'
+		dataType: boolean
+		isHidden
+		formatString: """TRUE"";""TRUE"";""FALSE"""
+		summarizeBy: none
+		sourceColumn: In Data
+
 	partition Date = m
 		mode: import
 		source =
 				let
-				    Dates = List.Dates(#date(2025, 1, 1), Duration.Days(#date(2026, 6, 30) - #date(2025, 1, 1)) + 1, #duration(1, 0, 0, 0)),
+				    AsAt = List.Max(Inspection[Inspection Date]),
+				    FirstDay = #date(Date.Year(List.Min(Inspection[Inspection Date])), 1, 1),
+				    LastDay = #date(Date.Year(List.Max(Action[Due Date])), 12, 31),
+				    Dates = List.Dates(FirstDay, Duration.Days(LastDay - FirstDay) + 1, #duration(1, 0, 0, 0)),
 				    #"Converted to Table" = Table.FromList(Dates, Splitter.SplitByNothing(), {"Date"}),
 				    #"Changed Type" = Table.TransformColumnTypes(#"Converted to Table", {{"Date", type date}}),
 				    #"Added Year" = Table.AddColumn(#"Changed Type", "Year", each Date.Year([Date]), Int64.Type),
@@ -72,7 +74,9 @@ table Date
 				    #"Added Month Key" = Table.AddColumn(#"Added Month", "Month Key", each Date.Year([Date]) * 100 + Date.Month([Date]), Int64.Type),
 				    #"Added Month Start" = Table.AddColumn(#"Added Month Key", "Month Start", each Date.StartOfMonth([Date]), type date),
 				    #"Added Month Name" = Table.AddColumn(#"Added Month Start", "Month Name", each Date.ToText([Date], "MMM", "en-GB"), type text),
-				    #"Added Month Number" = Table.AddColumn(#"Added Month Name", "Month Number", each Date.Month([Date]), Int64.Type)
+				    #"Added Month Number" = Table.AddColumn(#"Added Month Name", "Month Number", each Date.Month([Date]), Int64.Type),
+				    #"Added In Data" = Table.AddColumn(#"Added Month Number", "In Data", each [Date] <= AsAt, type logical)
 				in
-				    #"Added Month Number"
+				    #"Added In Data"
 
+	annotation PBI_ResultType = Table

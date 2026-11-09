@@ -3,39 +3,33 @@ relationship 'Inspection to Date'
 	toColumn: Date.Date
 
 relationship 'Inspection to Site'
-	fromColumn: Inspection.SiteKey
-	toColumn: Site.SiteKey
-
-relationship 'Inspection to Inspector'
-	fromColumn: Inspection.InspectorKey
-	toColumn: Person.PersonKey
+	fromColumn: Inspection.'Site ID'
+	toColumn: Site.'Site ID'
 
 relationship 'Response to Inspection'
-	fromColumn: Response.InspectionID
-	toColumn: Inspection.InspectionID
+	fromColumn: Response.'Inspection ID'
+	toColumn: Inspection.'Inspection ID'
 
-relationship 'Response to Question'
-	fromColumn: Response.QuestionKey
-	toColumn: Question.QuestionKey
+relationship 'Response to Checklist'
+	fromColumn: Response.'Question Code'
+	toColumn: Checklist.'Question Code'
 
-relationship 'Action to Date (raised)'
-	fromColumn: Action.'Raised Date'
-	toColumn: Date.Date
+relationship 'Site to Region'
+	fromColumn: Site.Region
+	toColumn: Region.Region
 
-relationship 'Action to Date (due)'
-	isActive: false
+relationship 'Action to Site'
+	fromColumn: Action.'Site ID'
+	toColumn: Site.'Site ID'
+
+relationship 'Action to Date'
 	fromColumn: Action.'Due Date'
 	toColumn: Date.Date
 
-relationship 'Action to Site'
-	fromColumn: Action.SiteKey
-	toColumn: Site.SiteKey
+relationship 'Plan to Region'
+	fromColumn: 'Inspection Plan'.Region
+	toColumn: Region.Region
 
-relationship 'Action to Owner'
-	fromColumn: Action.OwnerKey
-	toColumn: Person.PersonKey
-
-relationship 'Monthly Target to Date'
-	fromColumn: 'Monthly Target'.'Month Start'
+relationship 'Plan to Date'
+	fromColumn: 'Inspection Plan'.'Month Start'
 	toColumn: Date.Date
-

@@ -1,83 +1,63 @@
-/// One row per inspection visit. The raw export repeats five visits; Power Query keeps one row per InspectionID.
+/// One row per inspection: the latest version from the monthly exports.
 table Inspection
-	lineageTag: fb77e86f-3a00-4288-9cf7-01b41f014679
 
-	/// The reporting date: the latest inspection in the data (26 Jun 2026). Every "as at" figure uses it instead of today's date, so the numbers do not change over time.
-	measure 'As-at Date' = CALCULATE ( MAX ( 'Inspection'[Inspection Date] ), REMOVEFILTERS () )
-		formatString: dd mmm yyyy
-		isHidden
-		displayFolder: Inspections
-		lineageTag: cffe1e5f-3247-4f8d-980d-c372497a1bd2
-
-	/// Inspection visits in the selected period.
+	/// Inspection visits.
 	measure Inspections = COUNTROWS ( 'Inspection' )
 		formatString: #,0
-		displayFolder: Inspections
-		lineageTag: e8460a05-5249-4d72-a396-a5dc028c6113
+		displayFolder: Activity
 
-	/// Visits in the monthly inspection plan for the selected period. The plan is set for the whole estate, not per region or site, so it is blank when a region or site is selected.
-	measure 'Planned Inspections' = IF ( NOT ISFILTERED ( 'Site' ), SUM ( 'Monthly Target'[Planned Inspections] ) )
-		formatString: #,0
-		displayFolder: Inspections
-		lineageTag: bad0b87a-c55c-4d3d-9d1d-c4ebaf8aa739
+	/// Compliance at the most recent inspection in view.
+	measure 'Latest Score' =
+			VAR lastVisit = CALCULATE ( MAX ( 'Inspection'[Inspection Date] ), REMOVEFILTERS ( 'Date' ) )
+			RETURN
+			    CALCULATE ( [Compliance %], REMOVEFILTERS ( 'Date' ), 'Inspection'[Inspection Date] = lastVisit )
+		formatString: 0.0%
+		displayFolder: Compliance
 
-	/// Inspections carried out as a share of the plan.
-	measure 'Inspections vs Plan %' = DIVIDE ( [Inspections], [Planned Inspections] )
-		formatString: 0%
-		displayFolder: Inspections
-		lineageTag: c0850eb7-ebf2-48f6-858c-6a927ddd4447
+	measure 'Context Last Inspection' = "on " & FORMAT ( CALCULATE ( MAX ( 'Inspection'[Inspection Date] ), REMOVEFILTERS ( 'Date' ) ), "d mmm yyyy" )
+		displayFolder: Labels
 
-	/// Context line under the inspections figure. With a region or site selected there is no plan to compare against, and the line says so.
-	measure 'Context Inspections' =
-			IF (
-			    ISBLANK ( [Planned Inspections] ),
-			    "Plan is set for the whole estate",
-			    "of " & FORMAT ( [Planned Inspections], "#,0" ) & " planned · " & FORMAT ( [Inspections vs Plan %], "0%" ) & " of plan"
-			)
-		displayFolder: Report text
-		lineageTag: 6588750b-fb94-4b0e-9738-d3572b4ef57b
-
-	/// Business key, for example SI-2026-0341.
-	column InspectionID
+	column 'Inspection ID'
 		dataType: string
-		lineageTag: 8e7bca45-25f9-4f61-a246-06c1c74d123b
 		summarizeBy: none
-		sourceColumn: InspectionID
+		sourceColumn: Inspection ID
 
 	column 'Inspection Date'
 		dataType: dateTime
 		formatString: dd mmm yyyy
-		lineageTag: 7b6a4345-392c-4bd6-ab5a-654a0f22c0cb
 		summarizeBy: none
 		sourceColumn: Inspection Date
 
 		annotation UnderlyingDateTimeDataType = Date
 
-	column SiteKey
-		dataType: int64
+	column 'Submitted At'
+		dataType: dateTime
 		isHidden
-		formatString: 0
-		lineageTag: 96eaab9a-4a45-4878-a7ec-3e3eb657cb27
+		formatString: dd mmm yyyy hh:nn
 		summarizeBy: none
-		sourceColumn: SiteKey
+		sourceColumn: Submitted At
 
-	column InspectorKey
+	column 'Site ID'
 		dataType: int64
 		isHidden
 		formatString: 0
-		lineageTag: 41ba8a31-64dd-49ef-82b8-6405c5da3d64
 		summarizeBy: none
-		sourceColumn: InspectorKey
+		sourceColumn: Site ID
+
+	column Inspector
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Inspector
 
 	partition Inspection = m
 		mode: import
 		source =
 				let
-				    Source = Csv.Document(File.Contents(#"Data Folder" & "\inspections.csv"), [Delimiter = ",", Columns = 4, Encoding = 65001, QuoteStyle = QuoteStyle.Csv]),
-				    #"Promoted Headers" = Table.PromoteHeaders(Source, [PromoteAllScalars = true]),
-				    #"Removed Duplicate Exports" = Table.Distinct(#"Promoted Headers", {"inspection_id"}),
-				    #"Renamed Columns" = Table.RenameColumns(#"Removed Duplicate Exports", {{"inspection_id", "InspectionID"}, {"inspection_date", "Inspection Date"}, {"site_id", "SiteKey"}, {"inspector_id", "InspectorKey"}}),
-				    #"Changed Types" = Table.TransformColumnTypes(#"Renamed Columns", {{"InspectionID", type text}, {"Inspection Date", type date}, {"SiteKey", Int64.Type}, {"InspectorKey", Int64.Type}})
+				    Source = #"Latest Export Rows",
+				    #"Removed Other Columns" = Table.SelectColumns(Source, {"inspection_id", "submitted_at", "site_id", "inspector"}),
+				    #"Added Inspection Date" = Table.AddColumn(#"Removed Other Columns", "Inspection Date", each DateTime.Date([submitted_at]), type date),
+				    #"Renamed Columns" = Table.RenameColumns(#"Added Inspection Date", {{"inspection_id", "Inspection ID"}, {"submitted_at", "Submitted At"}, {"site_id", "Site ID"}, {"inspector", "Inspector"}})
 				in
-				    #"Changed Types"
+				    #"Renamed Columns"
 
+	annotation PBI_ResultType = Table

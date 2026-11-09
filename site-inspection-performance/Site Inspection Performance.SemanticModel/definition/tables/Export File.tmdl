@@ -1,0 +1,88 @@
+/// One row per monthly export file read from the exports folder.
+table 'Export File'
+
+	/// The last inspection in the exports. Every "as at" figure is measured to this day.
+	measure 'As-at Date' = CALCULATE ( MAX ( 'Export File'[Last Inspection Date] ), REMOVEFILTERS ( 'Export File' ) )
+		formatString: dd mmm yyyy
+		displayFolder: Reporting date
+
+	/// Export files read.
+	measure 'Export Files' = COUNTROWS ( 'Export File' )
+		formatString: #,0
+		displayFolder: Data quality
+
+	/// Rows read from the export files, before the re-exported versions are removed.
+	measure 'Rows Read' = SUM ( 'Export File'[Rows] )
+		formatString: #,0
+		displayFolder: Data quality
+
+	/// Earlier versions of inspections edited after submission, replaced by the latest version.
+	measure 'Re-exports Removed' = SUM ( 'Export File'[Superseded Rows] )
+		formatString: #,0
+		displayFolder: Data quality
+
+	measure 'Context Export Files' = FORMAT ( MIN ( 'Export File'[Export Month] ), "mmm yyyy" ) & " to " & FORMAT ( MAX ( 'Export File'[Export Month] ), "mmm yyyy" )
+		displayFolder: Labels
+
+	measure 'Context Rows Read' = FORMAT ( [Rows Read] - [Re-exports Removed], "#,0" ) & " inspections kept"
+		displayFolder: Labels
+
+	measure 'Context Re-exports' = "Latest version kept"
+		displayFolder: Labels
+
+	measure 'Header Subtitle' = "Meridian Facilities Group · data to " & FORMAT ( [As-at Date], "d mmm yyyy" )
+		displayFolder: Labels
+
+	column 'File Name'
+		dataType: string
+		summarizeBy: none
+		sourceColumn: File Name
+
+	column 'Export Month'
+		dataType: dateTime
+		formatString: mmm yyyy
+		summarizeBy: none
+		sourceColumn: Export Month
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	column Rows
+		dataType: int64
+		formatString: #,0
+		summarizeBy: sum
+		sourceColumn: Rows
+
+	column 'Superseded Rows'
+		dataType: int64
+		formatString: #,0
+		summarizeBy: sum
+		sourceColumn: Superseded Rows
+
+	column 'Date Format'
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Date Format
+
+	column 'Last Inspection Date'
+		dataType: dateTime
+		formatString: dd mmm yyyy
+		summarizeBy: none
+		sourceColumn: Last Inspection Date
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	partition 'Export File' = m
+		mode: import
+		source =
+				let
+				    Source = #"Export Rows",
+				    #"Merged Latest" = Table.NestedJoin(Source, {"inspection_id"}, #"Latest Export Rows", {"inspection_id"}, "Latest", JoinKind.LeftOuter),
+				    #"Expanded Latest" = Table.ExpandTableColumn(#"Merged Latest", "Latest", {"last_modified"}, {"Latest Modified"}),
+				    #"Added Superseded" = Table.AddColumn(#"Expanded Latest", "Superseded", each if [last_modified] < [Latest Modified] then 1 else 0, Int64.Type),
+				    #"Grouped Rows" = Table.Group(#"Added Superseded", {"Name"}, {{"Rows", each Table.RowCount(_), Int64.Type}, {"Superseded Rows", each List.Sum([Superseded]), Int64.Type}, {"Date Format", each List.First([Date Format]), type text}, {"Last Inspection Date", each Date.From(List.Max([submitted_at])), type date}}),
+				    #"Added Export Month" = Table.AddColumn(#"Grouped Rows", "Export Month", each Date.FromText(Text.Middle([Name], 12, 7) & "-01"), type date),
+				    #"Renamed Columns" = Table.RenameColumns(#"Added Export Month", {{"Name", "File Name"}})
+				in
+				    #"Renamed Columns"
+
+	annotation PBI_ResultType = Table
