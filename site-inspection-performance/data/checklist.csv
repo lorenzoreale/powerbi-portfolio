@@ -1,0 +1,25 @@
+question_code,section,question_text,checklist_order
+FS-01,Fire safety,Fire door closes fully unaided,1
+FS-02,Fire safety,Fire extinguishers in date and accessible,2
+FS-03,Fire safety,Fire alarm call points unobstructed,3
+FS-04,Fire safety,Emergency lighting operational,4
+EL-01,Electrical,Portable appliances tested in date,5
+EL-02,Electrical,Distribution boards closed and labelled,6
+EL-03,Electrical,No damaged cables or plugs in use,7
+EL-04,Electrical,Isolation switches accessible,8
+HK-01,Housekeeping,Walkways free of obstruction,9
+HK-02,Housekeeping,Waste segregated and bins not overflowing,10
+HK-03,Housekeeping,Work areas clean and tidy,11
+HK-04,Housekeeping,Spill kit stocked and accessible,12
+PW-01,PPE & welfare,Eye-wash station in date,13
+PW-02,PPE & welfare,First-aid kit stocked and in date,14
+PW-03,PPE & welfare,PPE worn as signed,15
+PW-04,PPE & welfare,Welfare facilities clean and stocked,16
+ST-01,Storage,Racking inspection tag current,17
+ST-02,Storage,Loads stored within rated limits,18
+ST-03,Storage,Ladders and steps tagged and serviceable,19
+ST-04,Storage,COSHH cabinet locked and register current,20
+SG-01,Signage,Escape route signage visible,21
+SG-02,Signage,Pedestrian walkways marked and visible,22
+SG-03,Signage,Statutory notices displayed and current,23
+SG-04,Signage,Hazard signage matches site risks,24
