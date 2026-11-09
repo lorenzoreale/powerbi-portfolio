@@ -1,6 +1,6 @@
 # Data generator
 
-Writes the CSVs in [`../data`](../data/) for the Site Inspection Performance report.
+Writes the files in [`../data`](../data/) for the Site Inspection Performance report.
 
 ```
 node generate-data.js
@@ -10,14 +10,15 @@ No dependencies. The random numbers are seeded, so every run writes the same fil
 
 | File | Rows |
 |---|---|
+| `exports/inspections_YYYY-MM.csv` | 22 files, 1,073 rows: 1,069 inspections, 4 of them exported twice |
+| `actions.csv` | 569, one pointing at an inspection that does not exist |
 | `sites.csv` | 42 |
-| `people.csv` | 10 |
-| `questions.csv` | 24 |
-| `inspections.csv` | 868, of which 5 are duplicates |
-| `responses.csv` | 20,712 |
-| `actions.csv` | 484, one pointing at a missing inspection |
-| `monthly_targets.csv` | 18 |
+| `checklist.csv` | 24 |
+| `inspection_plan.csv` | 132, one row per region and month |
+| `region_access.csv` | 6, one regional manager per region |
 
-Dates run to 26 June 2026, the last inspection, never the real clock. The constants at the top of the script set the story: compliance improving to just above target, South West the weakest region, three sites left unvisited past the 60-day rule, and actions closing later than a year earlier.
+Each export has one row per inspection and one column per checklist question, answered `Pass`, `Fail - High`, `Fail - Medium`, `Fail - Low` or `N/A`.
 
-Problems planted on purpose: five inspections exported twice, ten site names with stray spaces or capitals, two actions with no owner, one action pointing at an inspection that does not exist, about 4% of answers marked N/A, and months with no visit at some sites.
+Dates run from January 2025 to 30 October 2026, the last inspection, never the real clock. The constants at the top of the script set the story: compliance improving to just above target, South West the weakest region and Signage the weakest section, actions closing later than a year earlier, and three sites left past the 60-day visit rule while others are visited far more often than they need.
+
+Problems planted on purpose: four inspections edited after submission and exported again the next month, dates written as dd/mm/yyyy from the August 2026 export, ten site names in the actions list with stray spaces or capitals, two overdue actions with no owner, one action pointing at an inspection that does not exist, and about 4% of answers marked N/A.

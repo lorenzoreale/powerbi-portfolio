@@ -1,37 +1,50 @@
 # Site Inspection Performance
 
-A monthly briefing for the operations review of a facilities operator: 42 sites in six UK regions, 18 months of health, safety and compliance inspections. The review asks four questions. Is compliance on target, are we inspecting as planned, are corrective actions closed on time, and which sites need a visit? The first page answers them and the other pages hold the evidence.
+A monthly briefing that tells an operations team whether its inspection programme is on track, and where to act next.
 
 Synthetic data, fictional client (Meridian Facilities Group).
 
-![Briefing page](screenshots/1-briefing.png)
+![Overview page](screenshots/1-overview.png)
 
-## What it shows (data to 26 June 2026)
+## The problem
 
-- Compliance is 90.4% this year, above the 90% target and up from 86.6%. South West is the weakest region at 85.7%.
-- Follow-up is slipping. 65% of corrective actions were closed by their due date, against 77% a year earlier. Twelve are overdue and two of them have no owner.
-- Three sites are past the 60-day visit rule, Neath Yard by the widest margin at 94 days.
-- The visit gaps come from scheduling. The rule needs 22 visits a month and 52 are made, but Kingsway Depot had 12 visits this year while Ely Sidings and Taunton Priory Depot had two each.
+Meridian inspects 42 sites in six UK regions against a 24-question safety checklist. Every month the inspection app produced a new export, and the operations review spent its first hour putting the figures together instead of deciding what to do about them. Each regional manager also needed to see their own region, and only their own.
+
+## What it showed (data to 30 October 2026)
+
+- **Compliance is above target, but not everywhere.** 90.1% so far this year against 86.8% over the same months of 2025. Still, 18 of the 42 sites are below the 90% target, South West is the weakest region at 84.7% and Signage the weakest section at 85.9%, so that is where next quarter's visits and briefings go.
+- **Follow-up is slipping.** 66.8% of corrective actions were closed by their due date, against 84% a year earlier. Eleven are overdue and two of them have no owner, which the review can fix on the day.
+- **The visit gaps come from scheduling.** Inspectors make 52 visits a month where the 60-day rule needs 22, yet three sites are past the rule, Neath Yard at 94 days. Kingsway Depot has had 21 visits this year, four times what the rule needs. A fairer schedule closes the gaps without adding inspectors.
 
 ## Pages
 
-Briefing, Compliance, Actions, Sites, Planning and About, plus a Site detail page reached by drillthrough. Year and Region filter every page. The Planning page tests the visit rule from 15 to 90 days, and a dropdown on the Briefing switches the region chart between four measures.
+Overview answers the review's four questions. Compliance, Actions and Visits hold the evidence behind each answer, and Data quality shows what was found and corrected in the files. Right-click a site for its detail page. The Guide button opens a page on how to read the report.
 
-![Planning page](screenshots/5-planning.png)
+![Visits page](screenshots/4-visits.png)
 
 ## How it is built
 
-- Star schema: Inspection, Response and Action as facts, with Site, Person, Question and Date, the monthly inspection plan, and two parameter tables.
-- `Compliance %` (questions passed over questions applicable) is the one measure behind every compliance figure, so the pages always agree.
-- Every "as at" figure uses the `As-at Date` measure, the latest inspection, so the report shows the same numbers whenever it is opened.
-- On-time closure is judged against the month an action fell due, through an inactive relationship on the due date.
-- The export has five inspections exported twice, site names typed differently, two actions with no owner and one pointing at an inspection that does not exist. Power Query and the measures handle each one, and the report shows them where they matter.
+```mermaid
+flowchart LR
+  A[Monthly exports] --> C[Power Query]
+  B[Sites, checklist, plan, actions] --> C
+  C --> D[Star schema, security by region]
+  D --> E[Report]
+```
 
-The figures above were recalculated from the CSVs outside Power BI and match the report.
+- **The exports are read as the app writes them.** One file a month, one column per question. Power Query combines the folder, turns the checklist into rows and keeps the latest version of any inspection edited after it was submitted, so a new month needs no change.
+- **One compliance measure everywhere.** Questions passed over questions applicable, the same from the whole estate down to a single inspection, so the pages always agree.
+- **Security by region, with the plan to match.** Regional managers see only their region, and their inspections are measured against their region's plan.
+- **One data date.** Every "as at" figure is measured to the last inspection in the exports, so the report gives the same answers whenever it is opened.
+
+The files carry the problems real exports do: inspections exported twice after an edit, a change of date format in August 2026, site names typed differently in the actions list, actions with no owner and one pointing at an inspection that does not exist. The Data quality page counts each one.
+
+Every figure above was recalculated from the CSV files outside Power BI and matches the report.
 
 ## Opening it
 
 1. Open `Site Inspection Performance.pbip` in Power BI Desktop.
 2. In Transform data, set `Data Folder` to this project's [`data`](data/) folder and refresh.
+3. To check the security, use View as with the Regional manager role and another user from [`region_access.csv`](data/region_access.csv), for example `n.carter@meridian.example` for South West.
 
-`node generator/generate-data.js` rebuilds the CSVs. See [`generator/`](generator/).
+`node generator/generate-data.js` rebuilds the data. See [`generator/`](generator/).
