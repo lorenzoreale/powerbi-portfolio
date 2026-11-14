@@ -28,7 +28,7 @@
               },
               "queryRef": "P&L Line.Line",
               "nativeQueryRef": "Line",
-              "displayName": "Line",
+              "displayName": " ",
               "active": true
             }
           ]
@@ -48,6 +48,7 @@
               },
               "queryRef": "Period.Period",
               "nativeQueryRef": "Period",
+              "displayName": " ",
               "active": true
             }
           ]

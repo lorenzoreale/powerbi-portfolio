@@ -398,7 +398,7 @@
             "text": {
               "expr": {
                 "Literal": {
-                  "Value": "'Utilisation'"
+                  "Value": "'Utilisation ›'"
                 }
               }
             },

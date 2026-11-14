@@ -215,7 +215,7 @@
               {
                 "textRuns": [
                   {
-                    "value": "Right-click a line of the P&L for the journal lines behind it.",
+                    "value": "Select a line of the P&L and press Journal lines, or right-click it, for the journal lines behind it.",
                     "textStyle": {
                       "fontFamily": "Segoe UI",
                       "fontSize": "14pt",

@@ -10,7 +10,7 @@
     "tabOrder": 13000
   },
   "visual": {
-    "visualType": "lineChart",
+    "visualType": "clusteredColumnChart",
     "query": {
       "queryState": {
         "Category": {
@@ -43,27 +43,12 @@
                       "Entity": "Trend Month"
                     }
                   },
-                  "Property": "Gross Margin % Trend"
+                  "Property": "Gross Margin Variance Trend"
                 }
               },
-              "queryRef": "Trend Month.Gross Margin % Trend",
-              "nativeQueryRef": "Gross Margin % Trend",
-              "displayName": "Actual"
-            },
-            {
-              "field": {
-                "Measure": {
-                  "Expression": {
-                    "SourceRef": {
-                      "Entity": "Trend Month"
-                    }
-                  },
-                  "Property": "Gross Margin % Budget Trend"
-                }
-              },
-              "queryRef": "Trend Month.Gross Margin % Budget Trend",
-              "nativeQueryRef": "Gross Margin % Budget Trend",
-              "displayName": "Budget"
+              "queryRef": "Trend Month.Gross Margin Variance Trend",
+              "nativeQueryRef": "Gross Margin Variance Trend",
+              "displayName": "Against budget, points"
             }
           ]
         },
@@ -228,17 +213,10 @@
                 }
               }
             },
-            "start": {
+            "labelDisplayUnits": {
               "expr": {
                 "Literal": {
-                  "Value": "0.15D"
-                }
-              }
-            },
-            "end": {
-              "expr": {
-                "Literal": {
-                  "Value": "0.5D"
+                  "Value": "1D"
                 }
               }
             }
@@ -249,38 +227,6 @@
         {
           "properties": {
             "show": {
-              "expr": {
-                "Literal": {
-                  "Value": "true"
-                }
-              }
-            },
-            "position": {
-              "expr": {
-                "Literal": {
-                  "Value": "'Top'"
-                }
-              }
-            },
-            "fontSize": {
-              "expr": {
-                "Literal": {
-                  "Value": "13D"
-                }
-              }
-            },
-            "labelColor": {
-              "solid": {
-                "color": {
-                  "expr": {
-                    "Literal": {
-                      "Value": "'#5C6B70'"
-                    }
-                  }
-                }
-              }
-            },
-            "showTitle": {
               "expr": {
                 "Literal": {
                   "Value": "false"
@@ -297,8 +243,13 @@
               "solid": {
                 "color": {
                   "expr": {
-                    "Literal": {
-                      "Value": "'#146B60'"
+                    "Measure": {
+                      "Expression": {
+                        "SourceRef": {
+                          "Entity": "Trend Month"
+                        }
+                      },
+                      "Property": "Colour Margin Variance Trend"
                     }
                   }
                 }
@@ -306,80 +257,13 @@
             }
           },
           "selector": {
-            "metadata": "Trend Month.Gross Margin % Trend"
-          }
-        },
-        {
-          "properties": {
-            "fill": {
-              "solid": {
-                "color": {
-                  "expr": {
-                    "Literal": {
-                      "Value": "'#86B3AA'"
-                    }
-                  }
+            "data": [
+              {
+                "dataViewWildcard": {
+                  "matchingOption": 1
                 }
               }
-            }
-          },
-          "selector": {
-            "metadata": "Trend Month.Gross Margin % Budget Trend"
-          }
-        }
-      ],
-      "lineStyles": [
-        {
-          "properties": {
-            "strokeWidth": {
-              "expr": {
-                "Literal": {
-                  "Value": "3D"
-                }
-              }
-            },
-            "showMarker": {
-              "expr": {
-                "Literal": {
-                  "Value": "true"
-                }
-              }
-            },
-            "markerSize": {
-              "expr": {
-                "Literal": {
-                  "Value": "5D"
-                }
-              }
-            },
-            "lineChartType": {
-              "expr": {
-                "Literal": {
-                  "Value": "'linear'"
-                }
-              }
-            }
-          }
-        },
-        {
-          "properties": {
-            "strokeWidth": {
-              "expr": {
-                "Literal": {
-                  "Value": "2D"
-                }
-              }
-            },
-            "showMarker": {
-              "expr": {
-                "Literal": {
-                  "Value": "false"
-                }
-              }
-            }
-          },
-          "selector": {
-            "metadata": "Trend Month.Gross Margin % Budget Trend"
+            ]
           }
         }
       ],
@@ -556,7 +440,7 @@
             "text": {
               "expr": {
                 "Literal": {
-                  "Value": "'Gross margin by month'"
+                  "Value": "'Gross margin against budget'"
                 }
               }
             },
@@ -615,7 +499,7 @@
             "text": {
               "expr": {
                 "Literal": {
-                  "Value": "'Revenue less direct costs, over revenue'"
+                  "Value": "'Points, actual less budget, 12 months to the month selected · brick: more than a point under budget'"
                 }
               }
             },

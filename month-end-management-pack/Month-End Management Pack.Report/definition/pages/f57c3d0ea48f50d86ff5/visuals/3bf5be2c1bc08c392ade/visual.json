@@ -403,7 +403,7 @@
             "text": {
               "expr": {
                 "Literal": {
-                  "Value": "'Operating profit'"
+                  "Value": "'Operating profit ›'"
                 }
               }
             },

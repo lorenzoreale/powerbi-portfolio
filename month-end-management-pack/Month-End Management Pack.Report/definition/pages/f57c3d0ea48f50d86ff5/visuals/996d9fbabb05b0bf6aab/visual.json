@@ -398,7 +398,7 @@
             "text": {
               "expr": {
                 "Literal": {
-                  "Value": "'Operating profit, year to date'"
+                  "Value": "'Operating profit, year to date ›'"
                 }
               }
             },

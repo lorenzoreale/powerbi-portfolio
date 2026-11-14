@@ -294,8 +294,13 @@
               "solid": {
                 "color": {
                   "expr": {
-                    "Literal": {
-                      "Value": "'#146B60'"
+                    "Measure": {
+                      "Expression": {
+                        "SourceRef": {
+                          "Entity": "Client"
+                        }
+                      },
+                      "Property": "Colour Client Margin"
                     }
                   }
                 }
@@ -303,7 +308,13 @@
             }
           },
           "selector": {
-            "metadata": "Client.Revenue YTD"
+            "data": [
+              {
+                "dataViewWildcard": {
+                  "matchingOption": 1
+                }
+              }
+            ]
           }
         },
         {
@@ -512,7 +523,7 @@
             "text": {
               "expr": {
                 "Literal": {
-                  "Value": "'Year to date, largest first · line: cumulative share of client revenue (right axis)'"
+                  "Value": "'Year to date, largest first · brick: under the 30% margin floor · line: cumulative share (right axis)'"
                 }
               }
             },

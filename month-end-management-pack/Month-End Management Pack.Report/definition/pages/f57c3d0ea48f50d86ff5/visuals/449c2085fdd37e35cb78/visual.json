@@ -398,7 +398,7 @@
             "text": {
               "expr": {
                 "Literal": {
-                  "Value": "'Revenue'"
+                  "Value": "'Revenue ›'"
                 }
               }
             },

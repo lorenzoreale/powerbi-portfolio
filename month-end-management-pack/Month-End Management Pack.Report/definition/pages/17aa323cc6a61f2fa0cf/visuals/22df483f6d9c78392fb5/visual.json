@@ -27,7 +27,7 @@
                     }
                   },
                   {
-                    "value": "Amounts carry their effect on profit: costs and adverse variances are in brackets. Right-click any line for the journal lines behind it.",
+                    "value": "Amounts carry their effect on profit: costs and adverse variances are in brackets. Select a line and press Journal lines, or right-click it, for the journal lines behind it.",
                     "textStyle": {
                       "fontFamily": "Segoe UI",
                       "fontSize": "13pt",
