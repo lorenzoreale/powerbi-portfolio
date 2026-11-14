@@ -1,0 +1,289 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.13.0/schema.json",
+  "name": "e08960a2e476739ee6d7",
+  "position": {
+    "x": 656,
+    "y": 636,
+    "z": 13000,
+    "height": 420,
+    "width": 608,
+    "tabOrder": 13000
+  },
+  "visual": {
+    "visualType": "textbox",
+    "objects": {
+      "general": [
+        {
+          "properties": {
+            "paragraphs": [
+              {
+                "textRuns": [
+                  {
+                    "value": "Words used",
+                    "textStyle": {
+                      "fontFamily": "Segoe UI Semibold",
+                      "fontSize": "17pt",
+                      "color": "#123F39"
+                    }
+                  }
+                ],
+                "horizontalTextAlignment": "left"
+              },
+              {
+                "textRuns": [
+                  {
+                    "value": " ",
+                    "textStyle": {
+                      "fontFamily": "Segoe UI",
+                      "fontSize": "4pt",
+                      "color": "#232A2E"
+                    }
+                  }
+                ],
+                "horizontalTextAlignment": "left"
+              },
+              {
+                "textRuns": [
+                  {
+                    "value": "Utilisation: ",
+                    "textStyle": {
+                      "fontFamily": "Segoe UI Semibold",
+                      "fontSize": "14pt",
+                      "color": "#232A2E"
+                    }
+                  },
+                  {
+                    "value": "billable hours / available hours. The target is 82%.",
+                    "textStyle": {
+                      "fontFamily": "Segoe UI",
+                      "fontSize": "14pt",
+                      "color": "#232A2E"
+                    }
+                  }
+                ],
+                "horizontalTextAlignment": "left"
+              },
+              {
+                "textRuns": [
+                  {
+                    "value": " ",
+                    "textStyle": {
+                      "fontFamily": "Segoe UI",
+                      "fontSize": "4pt",
+                      "color": "#232A2E"
+                    }
+                  }
+                ],
+                "horizontalTextAlignment": "left"
+              },
+              {
+                "textRuns": [
+                  {
+                    "value": "Rate card: ",
+                    "textStyle": {
+                      "fontFamily": "Segoe UI Semibold",
+                      "fontSize": "14pt",
+                      "color": "#232A2E"
+                    }
+                  },
+                  {
+                    "value": "the standard hourly rate of a service line.",
+                    "textStyle": {
+                      "fontFamily": "Segoe UI",
+                      "fontSize": "14pt",
+                      "color": "#232A2E"
+                    }
+                  }
+                ],
+                "horizontalTextAlignment": "left"
+              },
+              {
+                "textRuns": [
+                  {
+                    "value": " ",
+                    "textStyle": {
+                      "fontFamily": "Segoe UI",
+                      "fontSize": "4pt",
+                      "color": "#232A2E"
+                    }
+                  }
+                ],
+                "horizontalTextAlignment": "left"
+              },
+              {
+                "textRuns": [
+                  {
+                    "value": "Gross margin: ",
+                    "textStyle": {
+                      "fontFamily": "Segoe UI Semibold",
+                      "fontSize": "14pt",
+                      "color": "#232A2E"
+                    }
+                  },
+                  {
+                    "value": "revenue less direct costs, over revenue. The partners set a floor of 30% per client.",
+                    "textStyle": {
+                      "fontFamily": "Segoe UI",
+                      "fontSize": "14pt",
+                      "color": "#232A2E"
+                    }
+                  }
+                ],
+                "horizontalTextAlignment": "left"
+              },
+              {
+                "textRuns": [
+                  {
+                    "value": " ",
+                    "textStyle": {
+                      "fontFamily": "Segoe UI",
+                      "fontSize": "4pt",
+                      "color": "#232A2E"
+                    }
+                  }
+                ],
+                "horizontalTextAlignment": "left"
+              },
+              {
+                "textRuns": [
+                  {
+                    "value": "Depreciation: ",
+                    "textStyle": {
+                      "fontFamily": "Segoe UI Semibold",
+                      "fontSize": "14pt",
+                      "color": "#232A2E"
+                    }
+                  },
+                  {
+                    "value": "has no budget line. Its budget sits in Other admin, so the two lines offset.",
+                    "textStyle": {
+                      "fontFamily": "Segoe UI",
+                      "fontSize": "14pt",
+                      "color": "#232A2E"
+                    }
+                  }
+                ],
+                "horizontalTextAlignment": "left"
+              },
+              {
+                "textRuns": [
+                  {
+                    "value": " ",
+                    "textStyle": {
+                      "fontFamily": "Segoe UI",
+                      "fontSize": "4pt",
+                      "color": "#232A2E"
+                    }
+                  }
+                ],
+                "horizontalTextAlignment": "left"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "visualContainerObjects": {
+      "background": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "false"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "border": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "false"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "dropShadow": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "false"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "padding": [
+        {
+          "properties": {
+            "top": {
+              "expr": {
+                "Literal": {
+                  "Value": "0D"
+                }
+              }
+            },
+            "bottom": {
+              "expr": {
+                "Literal": {
+                  "Value": "0D"
+                }
+              }
+            },
+            "left": {
+              "expr": {
+                "Literal": {
+                  "Value": "0D"
+                }
+              }
+            },
+            "right": {
+              "expr": {
+                "Literal": {
+                  "Value": "0D"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "title": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "false"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "subTitle": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "false"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "drillFilterOtherVisuals": true
+  }
+}
