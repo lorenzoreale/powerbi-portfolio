@@ -18,7 +18,7 @@ Ashcombe Partners runs four service lines across three companies. The monthly pa
 
 ## Pages
 
-Summary, P&L, Service lines, Clients and Checks, with Month, Company and Service line filters at the top of every page. Right-click any line of the P&L for the journal lines behind it. The Guide button explains how to read the pack.
+Summary, P&L, Service lines, Clients and Checks, with Month, Company and Service line filters at the top of every page. Select a line of the P&L and press Journal lines, or right-click it, for the journal lines behind it. The Guide button explains how to read the pack.
 
 ![Checks page](screenshots/5-checks.png)
 
