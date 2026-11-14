@@ -1,35 +1,39 @@
-/// The four client-facing service lines, plus Central for the overheads.
+/// The four service lines that bill clients, and Central for the overheads.
 table 'Service Line'
 
 	column 'Service Line'
 		dataType: string
 		summarizeBy: none
 		sourceColumn: Service Line
-		sortByColumn: 'Line Order'
+		sortByColumn: 'Sort Order'
 
-	column 'Line Order'
+	column 'Service Line Code'
+		dataType: string
+		isHidden
+		summarizeBy: none
+		sourceColumn: Service Line Code
+
+	column 'Client Facing'
+		dataType: boolean
+		isHidden
+		formatString: """TRUE"";""TRUE"";""FALSE"""
+		summarizeBy: none
+		sourceColumn: Client Facing
+
+	column 'Sort Order'
 		dataType: int64
 		isHidden
 		formatString: 0
 		summarizeBy: none
-		sourceColumn: Line Order
-
-	/// False for Central, which carries the overheads and earns no revenue.
-	column 'Client Facing'
-		dataType: boolean
-		summarizeBy: none
-		sourceColumn: Client Facing
+		sourceColumn: Sort Order
 
 	partition 'Service Line' = m
 		mode: import
 		source =
 				let
-				    Source = Csv.Document(File.Contents(#"Data Folder" & "\service_line.csv"), [Delimiter = ",", Columns = 3, Encoding = 65001, QuoteStyle = QuoteStyle.Csv]),
-				    #"Promoted Headers" = Table.PromoteHeaders(Source, [PromoteAllScalars = true]),
-				    #"Removed Entity" = Table.RemoveColumns(#"Promoted Headers", {"entity_code"}),
-				    #"Renamed Columns" = Table.RenameColumns(#"Removed Entity", {{"service_line", "Service Line"}, {"client_facing", "Client Facing"}}),
-				    #"Changed Types" = Table.TransformColumnTypes(#"Renamed Columns", {{"Service Line", type text}, {"Client Facing", type logical}}),
-				    #"Added Index" = Table.AddIndexColumn(#"Changed Types", "Line Order", 1, 1, Int64.Type)
+				    Source = Sql.Database(Server, Database),
+				    ServiceLine = Source{[Schema = "rpt", Item = "ServiceLine"]}[Data]
 				in
-				    #"Added Index"
+				    ServiceLine
 
+	annotation PBI_ResultType = Table

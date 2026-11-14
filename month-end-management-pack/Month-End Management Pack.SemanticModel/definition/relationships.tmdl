@@ -1,27 +1,87 @@
-relationship 'Ledger to Calendar'
-	fromColumn: Ledger.'Month Key'
-	toColumn: Calendar.'Month Key'
+relationship 'GL Line to Date'
+	fromColumn: 'GL Line'.'Posting Date'
+	toColumn: Date.Date
 
-relationship 'Ledger to Service Line'
-	fromColumn: Ledger.'Service Line'
-	toColumn: 'Service Line'.'Service Line'
-
-relationship 'Ledger to Account'
-	fromColumn: Ledger.'Account Code'
+relationship 'GL Line to Account'
+	fromColumn: 'GL Line'.'Account Code'
 	toColumn: Account.'Account Code'
 
-relationship 'Ledger to Client'
-	fromColumn: Ledger.Client
-	toColumn: Client.Client
+relationship 'GL Line to Client'
+	fromColumn: 'GL Line'.'Client Code'
+	toColumn: Client.'Client Code'
 
-relationship 'Ledger to Entity'
-	fromColumn: Ledger.'Entity Code'
+relationship 'GL Line to Entity'
+	fromColumn: 'GL Line'.'Entity Code'
 	toColumn: Entity.'Entity Code'
 
-relationship 'Capacity to Calendar'
-	fromColumn: Capacity.'Month Key'
-	toColumn: Calendar.'Month Key'
-
-relationship 'Capacity to Service Line'
-	fromColumn: Capacity.'Service Line'
+relationship 'GL Line to Service Line'
+	fromColumn: 'GL Line'.'Service Line'
 	toColumn: 'Service Line'.'Service Line'
+
+relationship 'Budget Line to Date'
+	fromColumn: 'Budget Line'.'Month Start'
+	toColumn: Date.Date
+
+relationship 'Budget Line to Account'
+	fromColumn: 'Budget Line'.'Account Code'
+	toColumn: Account.'Account Code'
+
+relationship 'Budget Line to Entity'
+	fromColumn: 'Budget Line'.'Entity Code'
+	toColumn: Entity.'Entity Code'
+
+relationship 'Budget Line to Service Line'
+	fromColumn: 'Budget Line'.'Service Line'
+	toColumn: 'Service Line'.'Service Line'
+
+relationship 'Hours to Date'
+	fromColumn: Hours.'Month Start'
+	toColumn: Date.Date
+
+relationship 'Hours to Service Line'
+	fromColumn: Hours.'Service Line'
+	toColumn: 'Service Line'.'Service Line'
+
+relationship 'Plan to Date'
+	fromColumn: Plan.'Month Start'
+	toColumn: Date.Date
+
+relationship 'Plan to Service Line'
+	fromColumn: Plan.'Service Line'
+	toColumn: 'Service Line'.'Service Line'
+
+relationship 'Trial Balance to Date'
+	fromColumn: 'Trial Balance'.'Month Start'
+	toColumn: Date.Date
+
+relationship 'Trial Balance to Account'
+	fromColumn: 'Trial Balance'.'Account Code'
+	toColumn: Account.'Account Code'
+
+relationship 'Trial Balance to Entity'
+	fromColumn: 'Trial Balance'.'Entity Code'
+	toColumn: Entity.'Entity Code'
+
+relationship 'Duplicate Line to Date'
+	fromColumn: 'Duplicate Line'.'Posting Date'
+	toColumn: Date.Date
+
+relationship 'Duplicate Line to Account'
+	fromColumn: 'Duplicate Line'.'Account Code'
+	toColumn: Account.'Account Code'
+
+relationship 'Commentary to Date'
+	fromColumn: Commentary.'Month Start'
+	toColumn: Date.Date
+
+relationship 'Hours to Entity'
+	fromColumn: Hours.'Entity Code'
+	toColumn: Entity.'Entity Code'
+
+relationship 'Plan to Entity'
+	fromColumn: Plan.'Entity Code'
+	toColumn: Entity.'Entity Code'
+
+relationship 'Duplicate Line to Entity'
+	fromColumn: 'Duplicate Line'.'Entity Code'
+	toColumn: Entity.'Entity Code'

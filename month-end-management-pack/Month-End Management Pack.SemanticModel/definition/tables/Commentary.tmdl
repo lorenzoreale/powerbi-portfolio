@@ -1,0 +1,46 @@
+/// The finance director's commentary, one row per month and topic, from the close commentary workbook.
+table Commentary
+
+	measure 'No Commentary' = IF ( ISEMPTY ( Commentary ), "No commentary recorded for this month.", "" )
+		displayFolder: Labels
+
+	column 'Month Start'
+		dataType: dateTime
+		isHidden
+		formatString: mmm yyyy
+		summarizeBy: none
+		sourceColumn: Month Start
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	column Topic
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Topic
+		sortByColumn: 'Topic Order'
+
+	column 'Topic Order'
+		dataType: int64
+		isHidden
+		formatString: 0
+		summarizeBy: none
+		sourceColumn: Topic Order
+
+	column Comment
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Comment
+
+	partition Commentary = m
+		mode: import
+		source =
+				let
+				    Source = Excel.Workbook(File.Contents(#"Finance Folder" & "\Close commentary.xlsx"), true),
+				    Commentary = Source{[Item = "Commentary", Kind = "Table"]}[Data],
+				    #"Changed Type" = Table.TransformColumnTypes(Commentary, {{"Month", type date}, {"Topic", type text}, {"Comment", type text}}),
+				    #"Renamed Columns" = Table.RenameColumns(#"Changed Type", {{"Month", "Month Start"}}),
+				    #"Added Topic Order" = Table.AddColumn(#"Renamed Columns", "Topic Order", each List.PositionOf({"Headline", "Revenue", "Margin", "Costs", "Actions"}, [Topic]) + 1, Int64.Type)
+				in
+				    #"Added Topic Order"
+
+	annotation PBI_ResultType = Table

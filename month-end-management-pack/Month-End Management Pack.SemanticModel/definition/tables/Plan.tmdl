@@ -1,0 +1,131 @@
+/// Planned available hours, target utilisation and rate card by month and service line, from the Assumptions sheet of the budget workbooks.
+table Plan
+
+	/// Available hours in the budget.
+	measure 'Planned Hours' = SUM ( Plan[Planned] )
+		formatString: #,0
+		displayFolder: Drivers
+
+	/// Billable hours / available hours the budget assumes: 82%.
+	measure 'Utilisation Target' = MAX ( Plan[Target Utilisation] )
+		formatString: 0.0%
+		displayFolder: Drivers
+
+	/// Standard hourly rate, weighted by the hours actually billed.
+	measure 'Rate Card' =
+			DIVIDE (
+			    SUMX (
+			        SUMMARIZE ( Plan, 'Date'[Month Start], 'Service Line'[Service Line] ),
+			        CALCULATE ( [Billable Hours] * MAX ( Plan[Card Rate] ) )
+			    ),
+			    [Billable Hours]
+			)
+		formatString: £#,0.00
+		displayFolder: Drivers
+
+	/// Available hours against plan, valued at target utilisation and the rate card. Leave and vacancies show here.
+	measure 'Capacity Effect' =
+			SUMX (
+			    SUMMARIZE ( Plan, 'Date'[Month Start], 'Service Line'[Service Line] ),
+			    CALCULATE (
+			        VAR available = [Available Hours]
+			        RETURN
+			            IF ( NOT ISBLANK ( available ), ( available - [Planned Hours] ) * MAX ( Plan[Target Utilisation] ) * MAX ( Plan[Card Rate] ) )
+			    )
+			)
+		formatString: #,0,.0;(#,0,.0);-
+		displayFolder: Drivers
+
+	/// Billable hours against target utilisation of the hours actually available, valued at the rate card.
+	measure 'Hours Effect' =
+			SUMX (
+			    SUMMARIZE ( Plan, 'Date'[Month Start], 'Service Line'[Service Line] ),
+			    CALCULATE (
+			        VAR available = [Available Hours]
+			        RETURN
+			            IF ( NOT ISBLANK ( available ), ( [Billable Hours] - available * MAX ( Plan[Target Utilisation] ) ) * MAX ( Plan[Card Rate] ) )
+			    )
+			)
+		formatString: #,0,.0;(#,0,.0);-
+		displayFolder: Drivers
+
+	/// Revenue against the rate card on the hours actually billed.
+	measure 'Rate Effect' =
+			SUMX (
+			    SUMMARIZE ( Plan, 'Date'[Month Start], 'Service Line'[Service Line] ),
+			    CALCULATE (
+			        IF ( NOT ISBLANK ( [Available Hours] ), [Revenue] - [Billable Hours] * MAX ( Plan[Card Rate] ) )
+			    )
+			)
+		formatString: #,0,.0;(#,0,.0);-
+		displayFolder: Drivers
+
+	measure 'Colour Capacity Effect' = IF ( [Capacity Effect] < 0, "#B0402F", "#232A2E" )
+		displayFolder: Colours
+
+	measure 'Colour Hours Effect' = IF ( [Hours Effect] < 0, "#B0402F", "#232A2E" )
+		displayFolder: Colours
+
+	measure 'Colour Rate Effect' = IF ( [Rate Effect] < 0, "#B0402F", "#232A2E" )
+		displayFolder: Colours
+
+	column 'Month Start'
+		dataType: dateTime
+		isHidden
+		formatString: mmm yyyy
+		summarizeBy: none
+		sourceColumn: Month Start
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	column 'Entity Code'
+		dataType: string
+		isHidden
+		summarizeBy: none
+		sourceColumn: Entity Code
+
+	column 'Service Line'
+		dataType: string
+		isHidden
+		summarizeBy: none
+		sourceColumn: Service Line
+
+	column Planned
+		dataType: int64
+		isHidden
+		formatString: #,0
+		summarizeBy: sum
+		sourceColumn: Planned
+
+	column 'Target Utilisation'
+		dataType: double
+		isHidden
+		formatString: 0%
+		summarizeBy: none
+		sourceColumn: Target Utilisation
+
+	column 'Card Rate'
+		dataType: decimal
+		isHidden
+		formatString: £#,0
+		summarizeBy: none
+		sourceColumn: Card Rate
+
+	partition Plan = m
+		mode: import
+		source =
+				let
+				    Months = {"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"},
+				    Source = #"Budget Workbooks",
+				    #"Added Assumptions Table" = Table.AddColumn(Source, "Assumptions", each [Tables]{[Item = "Assumptions", Kind = "Table"]}[Data]),
+				    #"Expanded Assumptions Table" = Table.ExpandTableColumn(#"Added Assumptions Table", "Assumptions", {"Company", "Service line", "Rate card", "Target utilisation"} & Months),
+				    #"Removed Tables" = Table.RemoveColumns(#"Expanded Assumptions Table", {"Tables"}),
+				    #"Unpivoted Months" = Table.Unpivot(#"Removed Tables", Months, "Month", "Planned"),
+				    #"Added Month Start" = Table.AddColumn(#"Unpivoted Months", "Month Start", each #date([Year], List.PositionOf(Months, [Month]) + 1, 1), type date),
+				    #"Removed Columns" = Table.RemoveColumns(#"Added Month Start", {"Year", "Month"}),
+				    #"Renamed Columns" = Table.RenameColumns(#"Removed Columns", {{"Company", "Entity Code"}, {"Service line", "Service Line"}, {"Rate card", "Card Rate"}, {"Target utilisation", "Target Utilisation"}}),
+				    #"Changed Type" = Table.TransformColumnTypes(#"Renamed Columns", {{"Entity Code", type text}, {"Service Line", type text}, {"Card Rate", Currency.Type}, {"Target Utilisation", Percentage.Type}, {"Planned", Int64.Type}})
+				in
+				    #"Changed Type"
+
+	annotation PBI_ResultType = Table

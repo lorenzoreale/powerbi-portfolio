@@ -1,0 +1,50 @@
+/// Axis for the trend charts. Not related to the date table, so the charts can show the 12 months to the pack month.
+table 'Trend Month'
+
+	/// Utilisation in each of the 12 months to the pack month.
+	measure 'Utilisation % Trend' =
+			VAR packMonth = [Pack Month]
+			VAR axisMonth = SELECTEDVALUE ( 'Trend Month'[Month Start] )
+			RETURN
+			    IF (
+			        axisMonth <= packMonth && axisMonth > EDATE ( packMonth, -12 ),
+			        CALCULATE ( [Utilisation %], REMOVEFILTERS ( 'Date' ), 'Date'[Month Start] = axisMonth )
+			    )
+		formatString: 0.0%
+		displayFolder: Trends
+
+	/// Gross margin in each of the 12 months to the pack month.
+	measure 'Gross Margin % Trend' =
+			VAR packMonth = [Pack Month]
+			VAR axisMonth = SELECTEDVALUE ( 'Trend Month'[Month Start] )
+			RETURN
+			    IF (
+			        axisMonth <= packMonth && axisMonth > EDATE ( packMonth, -12 ),
+			        CALCULATE ( [Gross Margin %], REMOVEFILTERS ( 'Date' ), 'Date'[Month Start] = axisMonth )
+			    )
+		formatString: 0.0%
+		displayFolder: Trends
+
+	/// Budgeted gross margin in each of the 12 months to the pack month.
+	measure 'Gross Margin % Budget Trend' =
+			VAR packMonth = [Pack Month]
+			VAR axisMonth = SELECTEDVALUE ( 'Trend Month'[Month Start] )
+			RETURN
+			    IF (
+			        axisMonth <= packMonth && axisMonth > EDATE ( packMonth, -12 ),
+			        CALCULATE ( [Gross Margin % Budget], REMOVEFILTERS ( 'Date' ), 'Date'[Month Start] = axisMonth )
+			    )
+		formatString: 0.0%
+		displayFolder: Trends
+
+	column 'Month Start'
+		dataType: dateTime
+		formatString: mmm yy
+		summarizeBy: none
+		sourceColumn: [Month Start]
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	partition 'Trend Month' = calculated
+		mode: import
+		source = DISTINCT ( SELECTCOLUMNS ( 'Date', "Month Start", 'Date'[Month Start] ) )

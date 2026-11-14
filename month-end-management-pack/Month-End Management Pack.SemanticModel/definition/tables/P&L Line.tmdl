@@ -1,156 +1,70 @@
-/// The layout of the profit and loss statement: one row per line, in the order a finance reader expects. Not related to the other tables: the P&L measures read the line in context and work out its figure.
+/// The profit and loss statement, one row per line in the order finance presents it. Not related: the statement measures read the line in context.
 table 'P&L Line'
-
-	/// The line's figure for whatever scenario is in the filter context: an account, a subtotal or a margin.
-	measure 'P&L Amount' =
-			VAR lineType = SELECTEDVALUE ( 'P&L Line'[Line Type] )
-			VAR lineKey = SELECTEDVALUE ( 'P&L Line'[Line Key] )
-			VAR revenue = CALCULATE ( SUM ( Ledger[Amount] ), Account[Category] = "Revenue" )
-			VAR grossProfit = CALCULATE ( SUM ( Ledger[Amount] ), Account[Category] IN { "Revenue", "Direct costs" } )
-			VAR operatingProfit = SUM ( Ledger[Amount] )
-			RETURN
-			    SWITCH (
-			        lineType,
-			        "Account", CALCULATE ( SUM ( Ledger[Amount] ), Account[Account Code] = lineKey ),
-			        "Total",
-			            SWITCH (
-			                lineKey,
-			                "Revenue", revenue,
-			                "Direct costs", CALCULATE ( SUM ( Ledger[Amount] ), Account[Category] = "Direct costs" ),
-			                "Gross profit", grossProfit,
-			                "Overheads", CALCULATE ( SUM ( Ledger[Amount] ), Account[Category] = "Overheads" ),
-			                "Operating profit", operatingProfit
-			            ),
-			        "Margin", DIVIDE ( IF ( lineKey = "Gross profit", grossProfit, operatingProfit ), revenue )
-			    )
-		isHidden
-		displayFolder: Statement
-
-	/// The statement line's actual figure.
-	measure 'P&L Actual' = CALCULATE ( [P&L Amount], Ledger[Scenario] = "Actual" )
-		displayFolder: Statement
-		formatStringDefinition = IF ( SELECTEDVALUE ( 'P&L Line'[Line Type] ) = "Margin", "0.0%", "#,0,;(#,0,);-" )
-
-	/// The statement line's budget figure.
-	measure 'P&L Budget' = CALCULATE ( [P&L Amount], Ledger[Scenario] = "Budget" )
-		displayFolder: Statement
-		formatStringDefinition = IF ( SELECTEDVALUE ( 'P&L Line'[Line Type] ) = "Margin", "0.0%", "#,0,;(#,0,);-" )
-
-	/// Actual minus budget. Positive is favourable on every line. Margin lines show the difference in percentage points.
-	measure 'P&L Variance' =
-			VAR gap = [P&L Actual] - [P&L Budget]
-			RETURN
-			    IF ( SELECTEDVALUE ( 'P&L Line'[Line Type] ) = "Margin", gap * 100, gap )
-		displayFolder: Statement
-		formatStringDefinition = IF ( SELECTEDVALUE ( 'P&L Line'[Line Type] ) = "Margin", "0.0;(0.0);-", "#,0,;(#,0,);-" )
-
-	/// Variance as a share of budget. Blank for margin lines, and for lines with no budget.
-	measure 'P&L Variance %' = IF ( SELECTEDVALUE ( 'P&L Line'[Line Type] ) <> "Margin", DIVIDE ( [P&L Actual] - [P&L Budget], ABS ( [P&L Budget] ) ) )
-		formatString: 0.0%;(0.0%);-
-		displayFolder: Statement
-
-	/// The statement line's actual figure from 1 January to the month selected.
-	measure 'P&L Actual YTD' =
-			VAR lastMonth = MAX ( 'Calendar'[Month Key] )
-			VAR thisYear = MAX ( 'Calendar'[Year] )
-			RETURN
-			    CALCULATE ( [P&L Actual], REMOVEFILTERS ( 'Calendar' ), 'Calendar'[Year] = thisYear, 'Calendar'[Month Key] <= lastMonth )
-		displayFolder: Statement
-		formatStringDefinition = IF ( SELECTEDVALUE ( 'P&L Line'[Line Type] ) = "Margin", "0.0%", "#,0,;(#,0,);-" )
-
-	/// The statement line's budget figure from 1 January to the month selected.
-	measure 'P&L Budget YTD' =
-			VAR lastMonth = MAX ( 'Calendar'[Month Key] )
-			VAR thisYear = MAX ( 'Calendar'[Year] )
-			RETURN
-			    CALCULATE ( [P&L Budget], REMOVEFILTERS ( 'Calendar' ), 'Calendar'[Year] = thisYear, 'Calendar'[Month Key] <= lastMonth )
-		displayFolder: Statement
-		formatStringDefinition = IF ( SELECTEDVALUE ( 'P&L Line'[Line Type] ) = "Margin", "0.0%", "#,0,;(#,0,);-" )
-
-	/// Year-to-date actual minus budget. Positive is favourable on every line. Margin lines show the difference in percentage points.
-	measure 'P&L Variance YTD' =
-			VAR gap = [P&L Actual YTD] - [P&L Budget YTD]
-			RETURN
-			    IF ( SELECTEDVALUE ( 'P&L Line'[Line Type] ) = "Margin", gap * 100, gap )
-		displayFolder: Statement
-		formatStringDefinition = IF ( SELECTEDVALUE ( 'P&L Line'[Line Type] ) = "Margin", "0.0;(0.0);-", "#,0,;(#,0,);-" )
-
-	/// Title of the statement.
-	measure 'Title P&L' = "Profit and loss, " & SELECTEDVALUE ( 'Calendar'[Month Name] ) & " and year to date"
-		displayFolder: Report text
-
-	/// Light shading on the subtotal rows.
-	measure 'Colour P&L Row' = IF ( SELECTEDVALUE ( 'P&L Line'[Line Type] ) = "Total", "#EAF2F1" )
-		displayFolder: Colours
-
-	/// Red for adverse variances, ink for the rest.
-	measure 'Colour P&L Variance' = IF ( [P&L Variance] < 0, "#B23A2E", "#1D2A36" )
-		displayFolder: Colours
-
-	/// Font colour for the year-to-date variance on the statement: red when behind budget.
-	measure 'Colour P&L Variance YTD' = IF ( [P&L Variance YTD] < 0, "#B23A2E", "#1D2A36" )
-		displayFolder: Colours
 
 	column 'Line Order'
 		dataType: int64
 		isHidden
 		formatString: 0
 		summarizeBy: none
-		sourceColumn: Line Order
+		sourceColumn: [Line Order]
 
-	/// The line as printed on the statement. Account lines are indented under their subtotal.
-	column 'Statement Line'
+	column Line
 		dataType: string
 		summarizeBy: none
-		sourceColumn: Statement Line
+		sourceColumn: [Line]
 		sortByColumn: 'Line Order'
 
-	/// Account, Total or Margin.
+	/// Account, Subtotal or Margin.
 	column 'Line Type'
 		dataType: string
 		isHidden
 		summarizeBy: none
-		sourceColumn: Line Type
+		sourceColumn: [Line Type]
 
-	/// The account code for account lines, or the subtotal the line stands for.
-	column 'Line Key'
+	/// The account behind an account line.
+	column 'Account Code'
 		dataType: string
 		isHidden
 		summarizeBy: none
-		sourceColumn: Line Key
+		sourceColumn: [Account Code]
 
-	partition 'P&L Line' = m
+	/// The account types a subtotal adds up. For a margin, the numerator; the denominator is always revenue.
+	column 'Account Types'
+		dataType: string
+		isHidden
+		summarizeBy: none
+		sourceColumn: [Account Types]
+
+	partition 'P&L Line' = calculated
 		mode: import
 		source =
-				let
-				    Source = #table(
-				        type table [Line Order = Int64.Type, Line = text, Line Type = text, Line Key = text],
-				        {
-				            {1, "Advisory fees", "Account", "REV-ADV"},
-				            {2, "Managed services fees", "Account", "REV-MAN"},
-				            {3, "Project fees", "Account", "REV-PRJ"},
-				            {4, "Support fees", "Account", "REV-SUP"},
-				            {5, "Revenue", "Total", "Revenue"},
-				            {6, "Delivery staff", "Account", "DC-STAFF"},
-				            {7, "Subcontractors", "Account", "DC-SUBS"},
-				            {8, "Recharged expenses", "Account", "DC-EXP"},
-				            {9, "Direct costs", "Total", "Direct costs"},
-				            {10, "Gross profit", "Total", "Gross profit"},
-				            {11, "Gross margin", "Margin", "Gross profit"},
-				            {12, "Admin staff", "Account", "OH-ADMIN"},
-				            {13, "Premises", "Account", "OH-PREM"},
-				            {14, "Technology", "Account", "OH-TECH"},
-				            {15, "Marketing", "Account", "OH-MKT"},
-				            {16, "Professional fees", "Account", "OH-PROF"},
-				            {17, "Depreciation", "Account", "OH-DEP"},
-				            {18, "Other admin", "Account", "OH-OTHER"},
-				            {19, "Overheads", "Total", "Overheads"},
-				            {20, "Operating profit", "Total", "Operating profit"},
-				            {21, "Operating margin", "Margin", "Operating profit"}
-				        }
-				    ),
-				    #"Added Statement Line" = Table.AddColumn(Source, "Statement Line", each if [Line Type] = "Account" then Text.Repeat(Character.FromNumber(160), 4) & [Line] else [Line], type text),
-				    #"Removed Line" = Table.RemoveColumns(#"Added Statement Line", {"Line"})
-				in
-				    #"Removed Line"
-
+				DATATABLE (
+				    "Line Order", INTEGER,
+				    "Line", STRING,
+				    "Line Type", STRING,
+				    "Account Code", STRING,
+				    "Account Types", STRING,
+				    {
+				        { 1, "Advisory fees", "Account", "4100", "" },
+				        { 2, "Managed services fees", "Account", "4200", "" },
+				        { 3, "Project fees", "Account", "4300", "" },
+				        { 4, "Support fees", "Account", "4400", "" },
+				        { 5, "Revenue", "Subtotal", "", "Revenue" },
+				        { 6, "Delivery staff", "Account", "5100", "" },
+				        { 7, "Subcontractors", "Account", "5200", "" },
+				        { 8, "Recharged expenses", "Account", "5300", "" },
+				        { 9, "Direct costs", "Subtotal", "", "Direct costs" },
+				        { 10, "Gross profit", "Subtotal", "", "Revenue|Direct costs" },
+				        { 11, "Gross margin", "Margin", "", "Revenue|Direct costs" },
+				        { 12, "Admin staff", "Account", "6100", "" },
+				        { 13, "Premises", "Account", "6200", "" },
+				        { 14, "Technology", "Account", "6300", "" },
+				        { 15, "Marketing", "Account", "6400", "" },
+				        { 16, "Professional fees", "Account", "6500", "" },
+				        { 17, "Depreciation", "Account", "6600", "" },
+				        { 18, "Other admin", "Account", "6900", "" },
+				        { 19, "Overheads", "Subtotal", "", "Overheads" },
+				        { 20, "Operating profit", "Subtotal", "", "Revenue|Direct costs|Overheads" },
+				        { 21, "Operating margin", "Margin", "", "Revenue|Direct costs|Overheads" }
+				    }
+				)

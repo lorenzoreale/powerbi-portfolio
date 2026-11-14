@@ -1,9 +1,8 @@
-/// The chart of accounts used by the pack: four fee accounts, three direct cost accounts and seven overhead accounts.
+/// The 14 profit and loss accounts of the chart of accounts.
 table Account
 
 	column 'Account Code'
 		dataType: string
-		isHidden
 		summarizeBy: none
 		sourceColumn: Account Code
 
@@ -13,11 +12,10 @@ table Account
 		sourceColumn: Account
 		sortByColumn: 'Sort Order'
 
-	/// Revenue, Direct costs or Overheads.
-	column Category
+	column 'Account Type'
 		dataType: string
 		summarizeBy: none
-		sourceColumn: Category
+		sourceColumn: Account Type
 
 	column 'Sort Order'
 		dataType: int64
@@ -26,14 +24,21 @@ table Account
 		summarizeBy: none
 		sourceColumn: Sort Order
 
+	/// 1 for revenue, -1 for costs. Turns the budget, typed with costs as positive amounts, into profit signs.
+	column Sign
+		dataType: int64
+		isHidden
+		formatString: 0
+		summarizeBy: none
+		sourceColumn: Sign
+
 	partition Account = m
 		mode: import
 		source =
 				let
-				    Source = Csv.Document(File.Contents(#"Data Folder" & "\account.csv"), [Delimiter = ",", Columns = 4, Encoding = 65001, QuoteStyle = QuoteStyle.Csv]),
-				    #"Promoted Headers" = Table.PromoteHeaders(Source, [PromoteAllScalars = true]),
-				    #"Renamed Columns" = Table.RenameColumns(#"Promoted Headers", {{"account_code", "Account Code"}, {"account", "Account"}, {"category", "Category"}, {"sort_order", "Sort Order"}}),
-				    #"Changed Types" = Table.TransformColumnTypes(#"Renamed Columns", {{"Account Code", type text}, {"Account", type text}, {"Category", type text}, {"Sort Order", Int64.Type}})
+				    Source = Sql.Database(Server, Database),
+				    Account = Source{[Schema = "rpt", Item = "Account"]}[Data]
 				in
-				    #"Changed Types"
+				    Account
 
+	annotation PBI_ResultType = Table

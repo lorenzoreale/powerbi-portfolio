@@ -1,0 +1,64 @@
+/// The checks the pack passes before it goes out.
+table Check
+
+	measure 'Check Result' =
+			VAR lines = [Unallocated Revenue Lines]
+			VAR credits = [Cost Lines in Credit]
+			VAR duplicates = [Duplicate Lines Removed]
+			VAR trimmed = [Budget Codes Trimmed]
+			RETURN
+			    SWITCH (
+			        SELECTEDVALUE ( Check[Check Order] ),
+			        1, "Difference £" & FORMAT ( [Difference to Trial Balance], "#,0.00;(#,0.00);0.00" ) & " on " & FORMAT ( [Ledger Lines], "#,0" ) & " ledger lines",
+			        2, IF ( duplicates = 0, "None found", FORMAT ( duplicates, "#,0" ) & IF ( duplicates = 1, " line", " lines" ) & " loaded twice, £" & FORMAT ( [Duplicate Amount], "#,0,.0" ) & "k, kept once" ),
+			        3, IF ( lines = 0, "None", "£" & FORMAT ( [Unallocated Revenue], "#,0,.0;(#,0,.0)" ) & "k on " & FORMAT ( lines, "#,0" ) & IF ( lines = 1, " line", " lines" ) & " with no client" ),
+			        4, IF ( credits = 0, "None", FORMAT ( credits, "#,0" ) & IF ( credits = 1, " line", " lines" ) & ", £" & FORMAT ( [Cost Credit Amount], "#,0,.0" ) & "k" ),
+			        5, IF ( [Budget Lines Not Matched] = 0, "All matched", FORMAT ( [Budget Lines Not Matched], "#,0" ) & " not matched" )
+			            & IF ( trimmed > 0, ", " & FORMAT ( trimmed, "#,0" ) & IF ( trimmed = 1, " code", " codes" ) & " trimmed first", "" )
+			    )
+		displayFolder: Checks
+
+	measure 'Check Status' =
+			VAR passed =
+			    SWITCH (
+			        SELECTEDVALUE ( Check[Check Order] ),
+			        1, [Difference to Trial Balance] = 0,
+			        2, TRUE (),
+			        3, [Unallocated Revenue Lines] = 0,
+			        4, [Cost Lines in Credit] = 0,
+			        5, [Budget Lines Not Matched] = 0
+			    )
+			RETURN
+			    IF ( passed, "✓ Passed", "✗ To review" )
+		displayFolder: Checks
+
+	measure 'Colour Check Status' = IF ( LEFT ( [Check Status], 1 ) = "✓", "#146B60", "#B0402F" )
+		displayFolder: Colours
+
+	column 'Check Order'
+		dataType: int64
+		isHidden
+		formatString: 0
+		summarizeBy: none
+		sourceColumn: [Check Order]
+
+	column Check
+		dataType: string
+		summarizeBy: none
+		sourceColumn: [Check]
+		sortByColumn: 'Check Order'
+
+	partition Check = calculated
+		mode: import
+		source =
+				DATATABLE (
+				    "Check Order", INTEGER,
+				    "Check", STRING,
+				    {
+				        { 1, "Ledger agrees with the trial balance" },
+				        { 2, "Lines loaded twice are counted once" },
+				        { 3, "Every revenue line has a client" },
+				        { 4, "Cost lines are posted as debits" },
+				        { 5, "Every budget line matches an account" }
+				    }
+				)

@@ -1,0 +1,72 @@
+/// Journal lines the extract loaded more than once. The view keeps the first load and lists the copies loaded again here.
+table 'Duplicate Line'
+
+	/// Copies of journal lines removed by the view.
+	measure 'Duplicate Lines Removed' = COUNTROWS ( 'Duplicate Line' ) + 0
+		formatString: #,0
+		displayFolder: Checks
+
+	measure 'Duplicate Amount' = -SUM ( 'Duplicate Line'[Amount] )
+		formatString: #,0,.0;(#,0,.0);-
+		displayFolder: Checks
+
+	column 'Journal No'
+		dataType: int64
+		formatString: 0
+		summarizeBy: none
+		sourceColumn: Journal No
+
+	column 'Line No'
+		dataType: int64
+		formatString: 0
+		summarizeBy: none
+		sourceColumn: Line No
+
+	column 'Posting Date'
+		dataType: dateTime
+		formatString: dd mmm yyyy
+		summarizeBy: none
+		sourceColumn: Posting Date
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	column 'Entity Code'
+		dataType: string
+		isHidden
+		summarizeBy: none
+		sourceColumn: Entity Code
+
+	column 'Account Code'
+		dataType: string
+		isHidden
+		summarizeBy: none
+		sourceColumn: Account Code
+
+	column Description
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Description
+
+	column Amount
+		dataType: decimal
+		formatString: #,0.00;(#,0.00);-
+		summarizeBy: sum
+		sourceColumn: Amount
+
+	column 'Extracted At'
+		dataType: dateTime
+		formatString: dd mmm yyyy hh:nn
+		summarizeBy: none
+		sourceColumn: Extracted At
+
+	partition 'Duplicate Line' = m
+		mode: import
+		source =
+				let
+				    Source = Sql.Database(Server, Database),
+				    DuplicateLine = Source{[Schema = "rpt", Item = "DuplicateLine"]}[Data],
+				    #"Changed Type" = Table.TransformColumnTypes(DuplicateLine, {{"Amount", Currency.Type}})
+				in
+				    #"Changed Type"
+
+	annotation PBI_ResultType = Table

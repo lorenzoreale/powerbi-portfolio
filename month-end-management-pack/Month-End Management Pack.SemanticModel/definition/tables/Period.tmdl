@@ -1,0 +1,25 @@
+/// The period of every figure: the month selected, the year to date, and the same two a year earlier.
+table Period
+
+	calculationGroup
+
+		calculationItem Month = SELECTEDMEASURE ()
+
+		calculationItem 'Year to date' = CALCULATE ( SELECTEDMEASURE (), DATESYTD ( 'Date'[Date] ) )
+
+		calculationItem 'Month last year' = CALCULATE ( SELECTEDMEASURE (), SAMEPERIODLASTYEAR ( 'Date'[Date] ) )
+
+		calculationItem 'Year to date last year' = CALCULATE ( SELECTEDMEASURE (), SAMEPERIODLASTYEAR ( DATESYTD ( 'Date'[Date] ) ) )
+
+	column Period
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Name
+		sortByColumn: Ordinal
+
+	column Ordinal
+		dataType: int64
+		isHidden
+		formatString: 0
+		summarizeBy: sum
+		sourceColumn: Ordinal

@@ -1,0 +1,317 @@
+/// One row per journal line in the ledger, after the view has removed lines loaded twice. Amounts carry their profit sign.
+table 'GL Line'
+
+	measure 'Scenario Amount' = IF ( SELECTEDVALUE ( Scenario[Scenario], "Actual" ) = "Budget", SUM ( 'Budget Line'[Amount] ), SUM ( 'GL Line'[Amount] ) )
+		formatString: #,0
+		isHidden
+		displayFolder: Helpers
+
+	measure 'P&L Value' =
+			VAR lineType = SELECTEDVALUE ( 'P&L Line'[Line Type] )
+			VAR lineAccount = SELECTEDVALUE ( 'P&L Line'[Account Code] )
+			VAR lineTypes = SELECTEDVALUE ( 'P&L Line'[Account Types] )
+			VAR inLine = CALCULATE ( [Scenario Amount], FILTER ( VALUES ( Account[Account Type] ), CONTAINSSTRING ( lineTypes, Account[Account Type] ) ) )
+			RETURN
+			    SWITCH (
+			        lineType,
+			        "Account", CALCULATE ( [Scenario Amount], Account[Account Code] = lineAccount ),
+			        "Subtotal", inLine,
+			        "Margin", DIVIDE ( inLine, CALCULATE ( [Scenario Amount], Account[Account Type] = "Revenue" ) ),
+			        [Scenario Amount]
+			    )
+		isHidden
+		displayFolder: Helpers
+
+	/// Actual from the ledger. On the statement it follows the line: an account, a subtotal or a margin.
+	measure Actual = CALCULATE ( [P&L Value], REMOVEFILTERS ( Scenario ), Scenario[Scenario] = "Actual" )
+		displayFolder: Statement
+		formatStringDefinition = IF ( SELECTEDVALUE ( 'P&L Line'[Line Type] ) = "Margin", "0.0%", "#,0,;(#,0,);-" )
+
+	/// Budget from the finance workbooks, line by line like Actual.
+	measure Budget = CALCULATE ( [P&L Value], REMOVEFILTERS ( Scenario ), Scenario[Scenario] = "Budget" )
+		displayFolder: Statement
+		formatStringDefinition = IF ( SELECTEDVALUE ( 'P&L Line'[Line Type] ) = "Margin", "0.0%", "#,0,;(#,0,);-" )
+
+	/// Actual minus budget. Positive is favourable on every line, costs included. Margins show the difference in points.
+	measure Variance =
+			VAR gap = [Actual] - [Budget]
+			RETURN
+			    IF ( SELECTEDVALUE ( 'P&L Line'[Line Type] ) = "Margin", gap * 100, gap )
+		displayFolder: Statement
+		formatStringDefinition = IF ( SELECTEDVALUE ( 'P&L Line'[Line Type] ) = "Margin", "0.0"" pts"";(0.0)"" pts"";-", "#,0,;(#,0,);-" )
+
+	/// Variance as a share of the budget. Blank for margins and for lines with no budget.
+	measure 'Variance %' = IF ( SELECTEDVALUE ( 'P&L Line'[Line Type] ) <> "Margin", DIVIDE ( [Actual] - [Budget], ABS ( [Budget] ) ) )
+		formatString: 0.0%;(0.0%);-
+		displayFolder: Statement
+
+	/// Fee revenue.
+	measure Revenue = CALCULATE ( [Actual], 'P&L Line'[Line] = "Revenue" )
+		formatString: #,0,;(#,0,);-
+		displayFolder: Statement
+
+	measure 'Revenue Budget' = CALCULATE ( [Budget], 'P&L Line'[Line] = "Revenue" )
+		formatString: #,0,;(#,0,);-
+		displayFolder: Statement
+
+	measure 'Revenue Variance' = [Revenue] - [Revenue Budget]
+		formatString: #,0,.0;(#,0,.0);-
+		displayFolder: Statement
+
+	/// Delivery staff, subcontractors and recharged expenses.
+	measure 'Direct Costs' = CALCULATE ( [Actual], 'P&L Line'[Line] = "Direct costs" )
+		formatString: #,0,;(#,0,);-
+		displayFolder: Statement
+
+	measure 'Direct Costs Budget' = CALCULATE ( [Budget], 'P&L Line'[Line] = "Direct costs" )
+		formatString: #,0,;(#,0,);-
+		displayFolder: Statement
+
+	measure 'Direct Costs Variance' = [Direct Costs] - [Direct Costs Budget]
+		formatString: #,0,.0;(#,0,.0);-
+		displayFolder: Statement
+
+	/// Gross profit / revenue.
+	measure 'Gross Margin %' = CALCULATE ( [Actual], 'P&L Line'[Line] = "Gross margin" )
+		formatString: 0.0%
+		displayFolder: Statement
+
+	measure 'Gross Margin % Budget' = CALCULATE ( [Budget], 'P&L Line'[Line] = "Gross margin" )
+		formatString: 0.0%
+		displayFolder: Statement
+
+	/// Admin staff, premises, technology, marketing, professional fees, depreciation and other admin.
+	measure Overheads = CALCULATE ( [Actual], 'P&L Line'[Line] = "Overheads" )
+		formatString: #,0,;(#,0,);-
+		displayFolder: Statement
+
+	measure 'Overheads Budget' = CALCULATE ( [Budget], 'P&L Line'[Line] = "Overheads" )
+		formatString: #,0,;(#,0,);-
+		displayFolder: Statement
+
+	measure 'Overheads Variance' = [Overheads] - [Overheads Budget]
+		formatString: #,0,.0;(#,0,.0);-
+		displayFolder: Statement
+
+	/// Revenue less direct costs and overheads.
+	measure 'Operating Profit' = CALCULATE ( [Actual], 'P&L Line'[Line] = "Operating profit" )
+		formatString: #,0,;(#,0,);-
+		displayFolder: Statement
+
+	measure 'Operating Profit Budget' = CALCULATE ( [Budget], 'P&L Line'[Line] = "Operating profit" )
+		formatString: #,0,;(#,0,);-
+		displayFolder: Statement
+
+	measure 'Operating Profit Variance' = [Operating Profit] - [Operating Profit Budget]
+		formatString: #,0,.0;(#,0,.0);-
+		displayFolder: Statement
+
+	/// Operating profit / revenue.
+	measure 'Operating Margin %' = CALCULATE ( [Actual], 'P&L Line'[Line] = "Operating margin" )
+		formatString: 0.0%
+		displayFolder: Statement
+
+	measure 'KPI Revenue' = [Revenue]
+		formatString: "£#,0,,.00""m"""
+		displayFolder: KPI
+
+	measure 'KPI Revenue Context' = "Budget " & FORMAT ( [Revenue Budget], "£#,0,,.00""m""" ) & " · " & FORMAT ( [Revenue Variance], "£#,0,""k"";(£#,0,""k"")" )
+		displayFolder: KPI
+
+	measure 'KPI Operating Profit' = [Operating Profit] / 1000
+		formatString: "£#,0""k"";(£#,0""k"")"
+		displayFolder: KPI
+
+	measure 'KPI Operating Profit Context' = "Budget " & FORMAT ( [Operating Profit Budget], "£#,0,""k""" ) & " · " & FORMAT ( [Operating Profit Variance], "£#,0,""k"";(£#,0,""k"")" ) & " · margin " & FORMAT ( [Operating Margin %], "0.0%" )
+		displayFolder: KPI
+
+	measure 'KPI Operating Profit YTD' = CALCULATE ( [Operating Profit], Period[Period] = "Year to date" )
+		formatString: "£#,0,,.00""m"""
+		displayFolder: KPI
+
+	measure 'KPI Operating Profit YTD Context' =
+			VAR budget = CALCULATE ( [Operating Profit Budget], Period[Period] = "Year to date" )
+			VAR gap = CALCULATE ( [Operating Profit Variance], Period[Period] = "Year to date" )
+			RETURN
+			    "Budget " & FORMAT ( budget, "£#,0,,.00""m""" ) & " · " & FORMAT ( gap, "£#,0,""k"";(£#,0,""k"")" ) & " · " & FORMAT ( MONTH ( [Pack Month] ), "0" ) & " months"
+		displayFolder: KPI
+
+	measure 'Colour Revenue Context' = IF ( [Revenue Variance] < 0, "#B0402F", "#5C6B70" )
+		displayFolder: Colours
+
+	measure 'Colour Operating Profit Context' = IF ( [Operating Profit Variance] < 0, "#B0402F", "#5C6B70" )
+		displayFolder: Colours
+
+	measure 'Colour Operating Profit Accent' = IF ( [Operating Profit Variance] < 0, "#B0402F", "#146B60" )
+		displayFolder: Colours
+
+	measure 'Colour Operating Profit YTD Context' = IF ( CALCULATE ( [Operating Profit Variance], Period[Period] = "Year to date" ) < 0, "#B0402F", "#5C6B70" )
+		displayFolder: Colours
+
+	measure 'Colour Variance' = IF ( [Variance] < 0, "#B0402F", "#232A2E" )
+		displayFolder: Colours
+
+	measure 'Colour Revenue Variance' = IF ( [Revenue Variance] < 0, "#B0402F", "#232A2E" )
+		displayFolder: Colours
+
+	measure 'Colour P&L Row' = IF ( SELECTEDVALUE ( 'P&L Line'[Line Type] ) IN { "Subtotal", "Margin" }, "#F1F5F4", "#FFFFFF" )
+		displayFolder: Colours
+
+	measure 'Colour Variance Bar' = IF ( [Variance] < 0, "#B0402F", "#146B60" )
+		displayFolder: Colours
+
+	measure 'Colour Gross Margin' = IF ( [Gross Margin %] < [Gross Margin % Budget] - 0.01, "#B0402F", "#232A2E" )
+		displayFolder: Colours
+
+	/// The month of the pack: the month chosen in the Month selector.
+	measure 'Pack Month' = CALCULATE ( MAX ( 'Date'[Month Start] ), KEEPFILTERS ( 'Date'[Has Actuals] = TRUE () ) )
+		formatString: mmm yyyy
+		displayFolder: Labels
+
+	measure 'Header Subtitle' = FORMAT ( [Pack Month], "mmmm yyyy" ) & " · £000"
+		displayFolder: Labels
+
+	/// Ledger lines in the month.
+	measure 'Ledger Lines' = COUNTROWS ( 'GL Line' )
+		formatString: #,0
+		displayFolder: Checks
+
+	measure 'Ledger Amount' = SUM ( 'GL Line'[Amount] )
+		formatString: #,0.00;(#,0.00);0.00
+		displayFolder: Checks
+
+	/// Revenue posted with no client.
+	measure 'Unallocated Revenue' = CALCULATE ( [Revenue], Client[Is Client] = FALSE () )
+		formatString: #,0,.0;(#,0,.0);-
+		displayFolder: Checks
+
+	measure 'Unallocated Revenue Lines' = CALCULATE ( COUNTROWS ( 'GL Line' ), 'GL Line'[Review Reason] = "Revenue with no client" )
+		formatString: #,0
+		displayFolder: Checks
+
+	/// Lines on cost accounts posted as credits: kept as posted, for finance to confirm.
+	measure 'Cost Lines in Credit' = CALCULATE ( COUNTROWS ( 'GL Line' ), 'GL Line'[Review Reason] = "Cost posted as a credit" )
+		formatString: #,0
+		displayFolder: Checks
+
+	measure 'Cost Credit Amount' = CALCULATE ( SUM ( 'GL Line'[Amount] ), 'GL Line'[Review Reason] = "Cost posted as a credit" )
+		formatString: #,0,.0;(#,0,.0);-
+		displayFolder: Checks
+
+	measure 'Line Amount' = SUM ( 'GL Line'[Amount] )
+		formatString: #,0.00;(#,0.00);-
+		displayFolder: Journal lines
+
+	measure 'Drill Lines' =
+			VAR lineType = SELECTEDVALUE ( 'P&L Line'[Line Type] )
+			VAR lineAccount = SELECTEDVALUE ( 'P&L Line'[Account Code] )
+			VAR lineTypes = SELECTEDVALUE ( 'P&L Line'[Account Types] )
+			RETURN
+			    COUNTROWS (
+			        FILTER (
+			            'GL Line',
+			            IF ( lineType = "Account", 'GL Line'[Account Code] = lineAccount, CONTAINSSTRING ( lineTypes, RELATED ( Account[Account Type] ) ) )
+			        )
+			    )
+		formatString: #,0
+		displayFolder: Journal lines
+
+	measure 'In Selected Line' = IF ( [Drill Lines] > 0, 1 )
+		formatString: 0
+		isHidden
+		displayFolder: Journal lines
+
+	measure 'Drill Title' = SELECTEDVALUE ( 'P&L Line'[Line], "Journal lines" )
+		displayFolder: Journal lines
+
+	measure 'Drill Subtitle' =
+			VAR isMargin = SELECTEDVALUE ( 'P&L Line'[Line Type] ) = "Margin"
+			RETURN
+			    FORMAT ( [Pack Month], "mmmm yyyy" ) & " · " & FORMAT ( [Drill Lines], "#,0" ) & " journal lines · "
+			        & IF ( isMargin, "margin " & FORMAT ( [Actual], "0.0%" ), "total £" & FORMAT ( [Actual], "#,0.00;(#,0.00)" ) )
+		displayFolder: Journal lines
+
+	column 'Journal No'
+		dataType: int64
+		formatString: 0
+		summarizeBy: none
+		sourceColumn: Journal No
+
+	column 'Line No'
+		dataType: int64
+		formatString: 0
+		summarizeBy: none
+		sourceColumn: Line No
+
+	column 'Journal Type'
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Journal Type
+
+	column 'Posting Date'
+		dataType: dateTime
+		formatString: dd mmm yyyy
+		summarizeBy: none
+		sourceColumn: Posting Date
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	column 'Entity Code'
+		dataType: string
+		isHidden
+		summarizeBy: none
+		sourceColumn: Entity Code
+
+	column 'Account Code'
+		dataType: string
+		isHidden
+		summarizeBy: none
+		sourceColumn: Account Code
+
+	column 'Service Line'
+		dataType: string
+		isHidden
+		summarizeBy: none
+		sourceColumn: Service Line
+
+	column 'Client Code'
+		dataType: string
+		isHidden
+		summarizeBy: none
+		sourceColumn: Client Code
+
+	column Description
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Description
+
+	column Amount
+		dataType: decimal
+		isHidden
+		formatString: #,0.00;(#,0.00);-
+		summarizeBy: sum
+		sourceColumn: Amount
+
+	/// Why the line is listed on the Checks page, if it is.
+	column 'Review Reason' =
+			VAR accountType = RELATED ( Account[Account Type] )
+			RETURN
+			    SWITCH (
+			        TRUE (),
+			        accountType = "Revenue" && 'GL Line'[Client Code] = "UNALLOC", "Revenue with no client",
+			        accountType <> "Revenue" && 'GL Line'[Amount] > 0, "Cost posted as a credit"
+			    )
+		dataType: string
+		summarizeBy: none
+
+	partition 'GL Line' = m
+		mode: import
+		source =
+				let
+				    Source = Sql.Database(Server, Database),
+				    JournalLine = Source{[Schema = "rpt", Item = "JournalLine"]}[Data],
+				    #"Changed Type" = Table.TransformColumnTypes(JournalLine, {{"Amount", Currency.Type}})
+				in
+				    #"Changed Type"
+
+	annotation PBI_ResultType = Table

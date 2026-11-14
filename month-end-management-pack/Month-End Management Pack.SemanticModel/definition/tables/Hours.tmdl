@@ -1,0 +1,84 @@
+/// Available and billable hours by month and service line, from the timesheet system.
+table Hours
+
+	/// Hours the delivery staff could work, after leave and vacancies.
+	measure 'Available Hours' = SUM ( Hours[Available] )
+		formatString: #,0
+		displayFolder: Drivers
+
+	/// Hours booked to clients.
+	measure 'Billable Hours' = SUM ( Hours[Billable] )
+		formatString: #,0
+		displayFolder: Drivers
+
+	/// Billable hours / available hours.
+	measure 'Utilisation %' = DIVIDE ( [Billable Hours], [Available Hours] )
+		formatString: 0.0%
+		displayFolder: Drivers
+
+	/// Fee revenue per billable hour.
+	measure 'Billing Rate' = DIVIDE ( [Revenue], [Billable Hours] )
+		formatString: £#,0.00
+		displayFolder: Drivers
+
+	measure 'KPI Utilisation' = [Utilisation %]
+		formatString: 0.0%
+		displayFolder: KPI
+
+	measure 'KPI Utilisation Context' = "Target " & FORMAT ( [Utilisation Target], "0.0%" ) & " · " & FORMAT ( ( [Utilisation %] - [Utilisation Target] ) * 100, "+0.0;(0.0)" ) & " pts"
+		displayFolder: KPI
+
+	measure 'Colour Utilisation Context' = IF ( [Utilisation %] < [Utilisation Target] - 0.01, "#B0402F", "#5C6B70" )
+		displayFolder: Colours
+
+	measure 'Colour Utilisation' = IF ( [Utilisation %] < [Utilisation Target] - 0.01, "#B0402F", "#232A2E" )
+		displayFolder: Colours
+
+	measure 'Colour Billing Rate' = IF ( [Billing Rate] < [Rate Card] * 0.99, "#B0402F", "#232A2E" )
+		displayFolder: Colours
+
+	column 'Month Start'
+		dataType: dateTime
+		isHidden
+		formatString: mmm yyyy
+		summarizeBy: none
+		sourceColumn: Month Start
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	column 'Entity Code'
+		dataType: string
+		isHidden
+		summarizeBy: none
+		sourceColumn: Entity Code
+
+	column 'Service Line'
+		dataType: string
+		isHidden
+		summarizeBy: none
+		sourceColumn: Service Line
+
+	column Available
+		dataType: int64
+		isHidden
+		formatString: #,0
+		summarizeBy: sum
+		sourceColumn: Available
+
+	column Billable
+		dataType: int64
+		isHidden
+		formatString: #,0
+		summarizeBy: sum
+		sourceColumn: Billable
+
+	partition Hours = m
+		mode: import
+		source =
+				let
+				    Source = Sql.Database(Server, Database),
+				    Hours = Source{[Schema = "rpt", Item = "Hours"]}[Data]
+				in
+				    Hours
+
+	annotation PBI_ResultType = Table

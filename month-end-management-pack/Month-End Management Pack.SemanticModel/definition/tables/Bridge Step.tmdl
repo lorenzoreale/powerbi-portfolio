@@ -1,55 +1,72 @@
-/// The four movements between budget and actual operating profit, in the order the bridge shows them. Not related to the other tables: the bridge measures read the step in context.
+/// The steps between budget and actual operating profit, for the bridge on the Summary page.
 table 'Bridge Step'
 
-	/// The size of each movement. Positive helped profit.
-	measure 'Bridge Amount' =
-			SWITCH (
-			    SELECTEDVALUE ( 'Bridge Step'[Step Order] ),
-			    1, [Hours Effect],
-			    2, [Rate Effect],
-			    3, [Direct Costs Variance],
-			    4, [Overheads Variance]
-			)
-		formatString: #,0,;(#,0,);-
+	/// Operating profit split into the steps of the bridge, for the budget and for the actual. The difference between the two is each step's effect.
+	measure 'Bridge Component' =
+			VAR isActual = SELECTEDVALUE ( Scenario[Scenario] ) = "Actual"
+			RETURN
+			    SUMX (
+			        VALUES ( 'Bridge Step'[Step] ),
+			        SWITCH (
+			            'Bridge Step'[Step],
+			            "Capacity", IF ( isActual, [Capacity Effect], 0 ),
+			            "Billable hours", IF ( isActual, [Hours Effect], 0 ),
+			            "Billing rates", [Revenue Budget] + IF ( isActual, [Rate Effect], 0 ),
+			            "Direct costs", IF ( isActual, [Direct Costs], [Direct Costs Budget] ),
+			            "Overheads", IF ( isActual, [Overheads], [Overheads Budget] )
+			        )
+			    )
+		formatString: #,0,.0;(#,0,.0);0.0
 		displayFolder: Bridge
 
-	/// Visual subtitle for the bridge: the two ends the movements connect.
-	measure 'Subtitle Bridge' =
-			"£000. Budget £" & FORMAT ( [Operating Profit Budget] / 1000, "#,0" ) & "k to actual £" & FORMAT ( [Operating Profit] / 1000, "#,0" )
-			    & "k operating profit. Hours valued at the budget rate."
-		displayFolder: Report text
-
-	/// Visual title for the bridge: the movement that did the most.
-	measure 'Title Bridge' =
-			VAR steps = ADDCOLUMNS ( ALL ( 'Bridge Step' ), "@Amount", [Bridge Amount] )
-			VAR biggest = TOPN ( 1, steps, ABS ( [@Amount] ), DESC )
-			VAR amount = MAXX ( biggest, [@Amount] )
+	measure 'Bridge Axis Start' =
+			VAR budget = [Operating Profit Budget]
+			VAR steps = { [Capacity Effect], [Hours Effect], [Rate Effect], [Direct Costs Variance], [Overheads Variance] }
+			VAR low = budget + SUMX ( FILTER ( steps, [Value] < 0 ), [Value] )
+			VAR high = budget + SUMX ( FILTER ( steps, [Value] > 0 ), [Value] )
+			VAR range = MAX ( high - low, 1 )
 			RETURN
-			    "Biggest movement: " & LOWER ( MAXX ( biggest, 'Bridge Step'[Step] ) )
-			        & IF ( amount < 0, " took £", " added £" ) & FORMAT ( ABS ( amount ) / 1000, "#,0" ) & IF ( amount < 0, "k off profit", "k to profit" )
-		displayFolder: Report text
+			    IF ( low >= 0, MAX ( 0, FLOOR ( low - range * 0.6, 10000 ) ), FLOOR ( low - range * 0.15, 10000 ) )
+		formatString: #,0,
+		isHidden
+		displayFolder: Bridge
+
+	measure 'Bridge Axis End' =
+			VAR budget = [Operating Profit Budget]
+			VAR steps = { [Capacity Effect], [Hours Effect], [Rate Effect], [Direct Costs Variance], [Overheads Variance] }
+			VAR low = budget + SUMX ( FILTER ( steps, [Value] < 0 ), [Value] )
+			VAR high = budget + SUMX ( FILTER ( steps, [Value] > 0 ), [Value] )
+			VAR range = MAX ( high - low, 1 )
+			RETURN
+			    IF ( high <= 0, MIN ( 0, CEILING ( high + range * 0.6, 10000 ) ), CEILING ( high + range * 0.15, 10000 ) )
+		formatString: #,0,
+		isHidden
+		displayFolder: Bridge
 
 	column 'Step Order'
 		dataType: int64
 		isHidden
 		formatString: 0
 		summarizeBy: none
-		sourceColumn: Step Order
+		sourceColumn: [Step Order]
 
 	column Step
 		dataType: string
 		summarizeBy: none
-		sourceColumn: Step
+		sourceColumn: [Step]
 		sortByColumn: 'Step Order'
 
-	partition 'Bridge Step' = m
+	partition 'Bridge Step' = calculated
 		mode: import
 		source =
-				let
-				    Source = #table(
-				        type table [Step Order = Int64.Type, Step = text],
-				        {{1, "Billable hours"}, {2, "Billing rates"}, {3, "Direct costs"}, {4, "Overheads"}}
-				    )
-				in
-				    Source
-
+				DATATABLE (
+				    "Step Order", INTEGER,
+				    "Step", STRING,
+				    {
+				        { 1, "Capacity" },
+				        { 2, "Billable hours" },
+				        { 3, "Billing rates" },
+				        { 4, "Direct costs" },
+				        { 5, "Overheads" }
+				    }
+				)

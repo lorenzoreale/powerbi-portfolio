@@ -1,0 +1,83 @@
+/// One row per month, company, service line and account, from the budget workbooks.
+table 'Budget Line'
+
+	/// Budget lines whose account code had to be trimmed before it matched the chart of accounts.
+	measure 'Budget Codes Trimmed' = COUNTROWS ( FILTER ( 'Budget Line', 'Budget Line'[Code Trimmed] ) ) + 0
+		formatString: #,0
+		displayFolder: Checks
+
+	/// Budget lines whose account code matches no account, even after trimming.
+	measure 'Budget Lines Not Matched' = COUNTROWS ( FILTER ( 'Budget Line', ISBLANK ( RELATED ( Account[Account Code] ) ) ) ) + 0
+		formatString: #,0
+		displayFolder: Checks
+
+	column 'Entity Code'
+		dataType: string
+		isHidden
+		summarizeBy: none
+		sourceColumn: Entity Code
+
+	column 'Service Line'
+		dataType: string
+		isHidden
+		summarizeBy: none
+		sourceColumn: Service Line
+
+	/// True where the account code was typed with spaces around it and trimmed before matching.
+	column 'Code Trimmed'
+		dataType: boolean
+		isHidden
+		formatString: """TRUE"";""TRUE"";""FALSE"""
+		summarizeBy: none
+		sourceColumn: Code Trimmed
+
+	column 'Account Code'
+		dataType: string
+		isHidden
+		summarizeBy: none
+		sourceColumn: Account Code
+
+	column 'Month Start'
+		dataType: dateTime
+		isHidden
+		formatString: mmm yyyy
+		summarizeBy: none
+		sourceColumn: Month Start
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	/// The budget as finance typed it, costs as positive amounts.
+	column 'Budget Amount'
+		dataType: decimal
+		isHidden
+		formatString: #,0
+		summarizeBy: sum
+		sourceColumn: Budget Amount
+
+	/// The budget with its profit sign: revenue positive, costs negative.
+	column Amount = 'Budget Line'[Budget Amount] * RELATED ( Account[Sign] )
+		dataType: decimal
+		isHidden
+		formatString: #,0
+		summarizeBy: sum
+
+	partition 'Budget Line' = m
+		mode: import
+		source =
+				let
+				    Months = {"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"},
+				    Source = #"Budget Workbooks",
+				    #"Added Budget Table" = Table.AddColumn(Source, "Budget", each [Tables]{[Item = "Budget", Kind = "Table"]}[Data]),
+				    #"Expanded Budget Table" = Table.ExpandTableColumn(#"Added Budget Table", "Budget", {"Company", "Service line", "Account"} & Months),
+				    #"Removed Tables" = Table.RemoveColumns(#"Expanded Budget Table", {"Tables"}),
+				    #"Trimmed Account Codes" = Table.AddColumn(#"Removed Tables", "Account Code", each Text.Trim([Account]), type text),
+				    #"Flagged Trimmed Codes" = Table.AddColumn(#"Trimmed Account Codes", "Code Trimmed", each [Account] <> [Account Code], type logical),
+				    #"Unpivoted Months" = Table.Unpivot(#"Flagged Trimmed Codes", Months, "Month", "Budget Amount"),
+				    #"Added Month Start" = Table.AddColumn(#"Unpivoted Months", "Month Start", each #date([Year], List.PositionOf(Months, [Month]) + 1, 1), type date),
+				    #"Removed Columns" = Table.RemoveColumns(#"Added Month Start", {"Year", "Month", "Account"}),
+				    #"Renamed Columns" = Table.RenameColumns(#"Removed Columns", {{"Company", "Entity Code"}, {"Service line", "Service Line"}}),
+				    #"Changed Type" = Table.TransformColumnTypes(#"Renamed Columns", {{"Entity Code", type text}, {"Service Line", type text}, {"Budget Amount", Currency.Type}})
+				in
+				    #"Changed Type"
+
+	annotation PBI_ResultType = Table

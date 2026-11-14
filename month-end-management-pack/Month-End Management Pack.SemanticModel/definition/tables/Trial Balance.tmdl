@@ -1,0 +1,51 @@
+/// Monthly movement per company and account from the ERP trial balance, in profit signs. The control total for the ledger.
+table 'Trial Balance'
+
+	measure 'Trial Balance Amount' = SUM ( 'Trial Balance'[Amount] )
+		formatString: #,0.00;(#,0.00);0.00
+		displayFolder: Checks
+
+	/// Ledger lines less the trial balance. Zero when the ledger is complete and nothing is counted twice.
+	measure 'Difference to Trial Balance' = [Ledger Amount] - [Trial Balance Amount]
+		formatString: #,0.00;(#,0.00);0.00
+		displayFolder: Checks
+
+	column 'Month Start'
+		dataType: dateTime
+		isHidden
+		formatString: mmm yyyy
+		summarizeBy: none
+		sourceColumn: Month Start
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	column 'Entity Code'
+		dataType: string
+		isHidden
+		summarizeBy: none
+		sourceColumn: Entity Code
+
+	column 'Account Code'
+		dataType: string
+		isHidden
+		summarizeBy: none
+		sourceColumn: Account Code
+
+	column Amount
+		dataType: decimal
+		isHidden
+		formatString: #,0.00;(#,0.00);-
+		summarizeBy: sum
+		sourceColumn: Amount
+
+	partition 'Trial Balance' = m
+		mode: import
+		source =
+				let
+				    Source = Sql.Database(Server, Database),
+				    TrialBalance = Source{[Schema = "rpt", Item = "TrialBalance"]}[Data],
+				    #"Changed Type" = Table.TransformColumnTypes(TrialBalance, {{"Amount", Currency.Type}})
+				in
+				    #"Changed Type"
+
+	annotation PBI_ResultType = Table

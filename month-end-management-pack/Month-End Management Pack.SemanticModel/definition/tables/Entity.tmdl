@@ -1,4 +1,4 @@
-/// The three companies in the group. Used to read the P&L for one company at a time.
+/// The three companies of the group.
 table Entity
 
 	column 'Entity Code'
@@ -16,10 +16,9 @@ table Entity
 		mode: import
 		source =
 				let
-				    Source = Csv.Document(File.Contents(#"Data Folder" & "\entity.csv"), [Delimiter = ",", Columns = 2, Encoding = 65001, QuoteStyle = QuoteStyle.Csv]),
-				    #"Promoted Headers" = Table.PromoteHeaders(Source, [PromoteAllScalars = true]),
-				    #"Renamed Columns" = Table.RenameColumns(#"Promoted Headers", {{"entity_code", "Entity Code"}, {"entity_name", "Company"}}),
-				    #"Changed Types" = Table.TransformColumnTypes(#"Renamed Columns", {{"Entity Code", type text}, {"Company", type text}})
+				    Source = Sql.Database(Server, Database),
+				    Entity = Source{[Schema = "rpt", Item = "Entity"]}[Data]
 				in
-				    #"Changed Types"
+				    Entity
 
+	annotation PBI_ResultType = Table

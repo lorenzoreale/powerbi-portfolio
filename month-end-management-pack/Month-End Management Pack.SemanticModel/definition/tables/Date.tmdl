@@ -1,0 +1,59 @@
+/// One row per day, for the years in the ledger.
+table Date
+	dataCategory: Time
+
+	column Date
+		dataType: dateTime
+		isKey
+		formatString: dd mmm yyyy
+		summarizeBy: none
+		sourceColumn: Date
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	column Year
+		dataType: int64
+		formatString: 0
+		summarizeBy: none
+		sourceColumn: Year
+
+	column Month
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Month
+		sortByColumn: 'Month Start'
+
+	column 'Month Start'
+		dataType: dateTime
+		formatString: mmm yyyy
+		summarizeBy: none
+		sourceColumn: Month Start
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	/// True for the months with actuals in the ledger. Limits the Month selector.
+	column 'Has Actuals'
+		dataType: boolean
+		isHidden
+		formatString: """TRUE"";""TRUE"";""FALSE"""
+		summarizeBy: none
+		sourceColumn: Has Actuals
+
+	partition Date = m
+		mode: import
+		source =
+				let
+				    LastPosting = List.Max(#"GL Line"[Posting Date]),
+				    FirstDay = #date(Date.Year(List.Min(#"GL Line"[Posting Date])), 1, 1),
+				    LastDay = #date(Date.Year(LastPosting), 12, 31),
+				    Dates = List.Dates(FirstDay, Duration.Days(LastDay - FirstDay) + 1, #duration(1, 0, 0, 0)),
+				    #"Converted to Table" = Table.FromList(Dates, Splitter.SplitByNothing(), {"Date"}),
+				    #"Changed Type" = Table.TransformColumnTypes(#"Converted to Table", {{"Date", type date}}),
+				    #"Added Year" = Table.AddColumn(#"Changed Type", "Year", each Date.Year([Date]), Int64.Type),
+				    #"Added Month" = Table.AddColumn(#"Added Year", "Month", each Date.ToText([Date], "MMM yyyy", "en-GB"), type text),
+				    #"Added Month Start" = Table.AddColumn(#"Added Month", "Month Start", each Date.StartOfMonth([Date]), type date),
+				    #"Added Has Actuals" = Table.AddColumn(#"Added Month Start", "Has Actuals", each [Date] <= Date.EndOfMonth(LastPosting), type logical)
+				in
+				    #"Added Has Actuals"
+
+	annotation PBI_ResultType = Table

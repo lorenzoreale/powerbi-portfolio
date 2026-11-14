@@ -1,3 +1,26 @@
-/// Folder holding the CSV files written by generator/generate-data.js. Change this one value after cloning the repository.
-expression 'Data Folder' = "C:\powerbi_portfolio\month-end-management-pack\data" meta [IsParameterQuery=true, Type="Text", IsParameterQueryRequired=true]
+/// SQL Server instance holding the AshcombeFinance database, for example localhost or (localdb)\MSSQLLocalDB.
+expression Server = "localhost" meta [IsParameterQuery=true, Type="Text", IsParameterQueryRequired=true]
 
+	annotation PBI_ResultType = Text
+
+/// Database built by the scripts in the sql folder.
+expression Database = "AshcombeFinance" meta [IsParameterQuery=true, Type="Text", IsParameterQueryRequired=true]
+
+	annotation PBI_ResultType = Text
+
+/// Folder holding the budget and commentary workbooks.
+expression 'Finance Folder' = "C:\powerbi_portfolio\month-end-management-pack\finance" meta [IsParameterQuery=true, Type="Text", IsParameterQueryRequired=true]
+
+	annotation PBI_ResultType = Text
+
+expression 'Budget Workbooks' =
+		let
+		    Source = Folder.Files(#"Finance Folder"),
+		    #"Filtered Budget Workbooks" = Table.SelectRows(Source, each Text.StartsWith([Name], "Budget ") and [Extension] = ".xlsx"),
+		    #"Added Year" = Table.AddColumn(#"Filtered Budget Workbooks", "Year", each Number.From(Text.Middle([Name], 7, 4)), Int64.Type),
+		    #"Added Tables" = Table.AddColumn(#"Added Year", "Tables", each Excel.Workbook([Content], true)),
+		    #"Removed Other Columns" = Table.SelectColumns(#"Added Tables", {"Year", "Tables"})
+		in
+		    #"Removed Other Columns"
+
+	annotation PBI_ResultType = Table

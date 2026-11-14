@@ -1,0 +1,21 @@
+/// Budget or Actual, read by the statement measures so the statement logic is written once.
+table Scenario
+	isHidden
+
+	column Scenario
+		dataType: string
+		isHidden
+		summarizeBy: none
+		sourceColumn: [Scenario]
+		sortByColumn: 'Scenario Order'
+
+	column 'Scenario Order'
+		dataType: int64
+		isHidden
+		formatString: 0
+		summarizeBy: none
+		sourceColumn: [Scenario Order]
+
+	partition Scenario = calculated
+		mode: import
+		source = DATATABLE ( "Scenario", STRING, "Scenario Order", INTEGER, { { "Budget", 1 }, { "Actual", 2 } } )

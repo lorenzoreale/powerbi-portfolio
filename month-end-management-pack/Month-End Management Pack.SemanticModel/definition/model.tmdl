@@ -9,15 +9,23 @@ model Model
 
 annotation __PBI_TimeIntelligenceEnabled = 0
 
-annotation PBI_QueryOrder = ["Data Folder","Calendar","Entity","Service Line","Account","Client","Ledger","Capacity","P&L Line","Bridge Step","Close Point"]
+annotation PBI_QueryOrder = ["Server","Database","Finance Folder","Budget Workbooks","GL Line","Trial Balance","Duplicate Line","Hours","Account","Client","Entity","Service Line","Budget Line","Plan","Commentary","Date"]
 
-ref table Calendar
-ref table Entity
-ref table 'Service Line'
+ref table 'GL Line'
+ref table 'Budget Line'
+ref table Hours
+ref table Plan
+ref table 'Trial Balance'
+ref table 'Duplicate Line'
+ref table Commentary
 ref table Account
 ref table Client
-ref table Ledger
-ref table Capacity
+ref table Entity
+ref table 'Service Line'
+ref table Date
+ref table 'Trend Month'
 ref table 'P&L Line'
 ref table 'Bridge Step'
-ref table 'Close Point'
+ref table Check
+ref table Scenario
+ref table Period
