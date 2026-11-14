@@ -18,7 +18,7 @@ Meridian inspects 42 sites in six UK regions against a 24-question safety checkl
 
 ## Pages
 
-Overview answers the review's four questions. Compliance, Actions and Visits hold the evidence behind each answer, and Data quality shows what was found and corrected in the files. Right-click a site for its detail page. The Guide button opens a page on how to read the report.
+Overview answers the review's four questions. Compliance, Actions and Visits hold the evidence behind each answer, and Data quality shows what was found and corrected in the files. Select a site and press Site detail, or right-click it, for its detail page. The Guide button opens a page on how to read the report.
 
 ![Visits page](screenshots/4-visits.png)
 
