@@ -4,10 +4,10 @@
   "position": {
     "x": 812,
     "y": 372,
-    "z": 15000,
+    "z": 16000,
     "height": 676,
     "width": 1076,
-    "tabOrder": 15000
+    "tabOrder": 16000
   },
   "visual": {
     "visualType": "tableEx",
@@ -654,7 +654,7 @@
             "text": {
               "expr": {
                 "Literal": {
-                  "Value": "'Every open action, earliest due date first · right-click a site for its detail page'"
+                  "Value": "'Every open action, earliest due date first · select a site and press Site detail for its page'"
                 }
               }
             },

@@ -4,10 +4,10 @@
   "position": {
     "x": 500,
     "y": 208,
-    "z": 10000,
+    "z": 11000,
     "height": 148,
     "width": 452,
-    "tabOrder": 10000
+    "tabOrder": 11000
   },
   "visual": {
     "visualType": "cardVisual",
@@ -436,7 +436,7 @@
             "text": {
               "expr": {
                 "Literal": {
-                  "Value": "'Inspections'"
+                  "Value": "'Inspections ›'"
                 }
               }
             },
