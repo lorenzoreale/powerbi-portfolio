@@ -37,6 +37,26 @@ table 'Trend Month'
 		formatString: 0.0%
 		displayFolder: Trends
 
+	/// Utilisation in the months more than a point under target, drawn over the trend so those months stand out.
+	measure 'Utilisation % Under Target' =
+			VAR utilisation = [Utilisation % Trend]
+			RETURN
+			    IF ( utilisation < [Utilisation Target] - 0.01, utilisation )
+		formatString: 0.0%
+		displayFolder: Trends
+
+	/// Gross margin against budget in each of the 12 months to the pack month, in points.
+	measure 'Gross Margin Variance Trend' =
+			VAR actual = [Gross Margin % Trend]
+			VAR budget = [Gross Margin % Budget Trend]
+			RETURN
+			    IF ( NOT ISBLANK ( actual ) && NOT ISBLANK ( budget ), ( actual - budget ) * 100 )
+		formatString: +0.0;(0.0);0.0
+		displayFolder: Trends
+
+	measure 'Colour Margin Variance Trend' = IF ( [Gross Margin Variance Trend] < -1, "#B0402F", "#146B60" )
+		displayFolder: Colours
+
 	column 'Month Start'
 		dataType: dateTime
 		formatString: mmm yy
