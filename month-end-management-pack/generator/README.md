@@ -1,23 +1,24 @@
 # Data generator
 
-Writes the CSVs in [`../data`](../data/) for the Month-End Management Pack.
+Writes the files the Month-End Management Pack is built from: the ledger extract, trial balance, timesheet hours and reference lists in [`../data`](../data/), and the contents of the finance workbooks in [`workbooks`](workbooks/).
 
 ```
 node generate-data.js
+powershell -File build-workbooks.ps1
 ```
 
-No dependencies. The random numbers are seeded, so every run writes the same files. The script ends with a summary of revenue, operating profit, margin and utilisation by month, the June hours and rate effects, and client margins.
+The first script has no dependencies. The random numbers are seeded, so every run writes the same files, and it ends with a summary of the figures the report should show. The second needs Excel: it writes `Budget 2025.xlsx`, `Budget 2026.xlsx` and `Close commentary.xlsx` in [`../finance`](../finance/) from the CSV files in `workbooks`, which are there so the budgets can also be read without Excel.
 
 | File | Rows |
 |---|---|
-| `calendar.csv` | 18 months, January 2025 to June 2026 |
-| `entity.csv` | 3 |
-| `service_line.csv` | 5, including Central for overheads |
-| `account.csv` | 14 |
-| `client.csv` | 13 |
-| `ledger.csv` | 3,012, of which 6 are duplicates |
-| `capacity.csv` | 144 |
+| `journal_lines.csv` | 2,629: 2,622 journal lines, 7 of them loaded twice |
+| `trial_balance.csv` | 704, the monthly movement per company and account |
+| `hours.csv` | 88, available and billable hours per month, company and service line |
+| `accounts.csv`, `clients.csv`, `entities.csv`, `service_lines.csv` | 14, 13, 3 and 5 |
+| `workbooks/budget_2025.csv`, `budget_2026.csv` | 32 each, months across, costs as positive amounts |
+| `workbooks/assumptions_2025.csv`, `assumptions_2026.csv` | 4 each: rate card, target utilisation and planned hours |
+| `workbooks/commentary.csv` | 13, the finance director's notes for August to October 2026 |
 
-Each month is built from operating drivers: available hours from working days and leave, utilisation, billing rates against the rate card, staff cost per hour, and subcontractors and expenses as a share of revenue. The budget applies 82% utilisation and the rate card to the same available hours. June 2026 is pinned to fixed figures.
+Actuals run from January 2025 to October 2026. Each month is built from operating drivers: available hours from working days and leave, utilisation, client billing rates, staff cost per hour, and subcontractors and expenses as a share of revenue. The budget applies 82% utilisation and the rate card to the planned hours.
 
-Problems planted on purpose: a June journal batch exported twice, ten client names with stray spaces or capitals, overheads with no client, one delivery staff cost posted with the wrong sign, and depreciation with actuals but no budget line.
+Problems planted on purpose: the purchase invoices of 23 October 2026 loaded again by the extract three days later, manual journals on revenue with no client, a laptop lease posted as a credit, depreciation with actuals but no budget line, and an account code typed with a trailing space in the 2026 workbook.

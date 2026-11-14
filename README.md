@@ -10,9 +10,8 @@ The clients are fictional and the data is synthetic, written by the generator sc
 | [Month-End Management Pack](month-end-management-pack/) | Finance director and partners | Why is profit different from budget this month? |
 | [Data Reconciliation Monitor](data-reconciliation-monitor/) | The business each morning, and the data team | Can we use today's numbers? |
 
-Each project holds the PBIP files, the CSV data, the generator, and a README on what the report shows and how it is built.
+Each project holds the PBIP files, its source data, the generator, and a README on what the report shows and how it is built.
 
 ## Opening a project
 
-1. Open the `.pbip` file in Power BI Desktop.
-2. In Transform data, set the `Data Folder` parameter to the project's `data` folder, then refresh.
+Each project's README says how to open it. In short: open the `.pbip` file in Power BI Desktop, point the parameters in Transform data at the project's sources, then refresh. Site Inspection Performance reads a folder of CSV files; the Month-End Management Pack reads a SQL Server database built by the scripts in its `sql` folder, plus Excel workbooks.

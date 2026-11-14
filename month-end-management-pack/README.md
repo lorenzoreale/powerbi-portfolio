@@ -1,40 +1,48 @@
 # Month-End Management Pack
 
-A month-end pack for a professional-services firm with three companies, four service lines and 13 clients, built for the close meeting. The meeting starts with one question: why is profit different from budget? The pack answers it on the first page, separates volume from price, and lists the points the meeting should discuss. The other pages hold the trends, the full P&L and the client view.
+A monthly management pack that tells the partners why profit differs from budget, and checks itself against the ledger before it goes out.
 
 Synthetic data, fictional client (Ashcombe Partners).
 
-![Variance page](screenshots/1-variance.png)
+![Summary page](screenshots/1-summary.png)
 
-## What it shows (June 2026)
+## The problem
 
-- Operating profit was £612k against a £720k budget. Revenue was £219k short and £206k of that was billable hours.
-- Managed Services lost 420 hours. Its utilisation has fallen every month this year, from 80.6% in January to 75.0%, so this is a resourcing question more than a sales one.
-- Projects' gross margin was 31.7% against 36.1%, with subcontractors £56k over budget. Advisory billed £472 an hour against a £486 rate card.
-- Two clients are below the 30% margin floor, Nyle Distribution and Oakline Foods.
-- Overheads were £57k under budget, which softened the month, though admin staff costs have risen every month this year.
+Ashcombe Partners runs four service lines across three companies. The monthly pack was assembled in Excel from ledger exports, so the close meeting spent its time agreeing the numbers rather than explaining them. The partners wanted one answer at the start of every close: why is profit different from budget, and what do we do about it?
 
-Year to date, operating profit is £270k behind budget.
+## What it showed (October 2026)
+
+- **The shortfall is billable time, not capacity.** Operating profit was £206k against a budget of £267k. Available hours were on plan, but Managed Services lost £39k of billable time: its utilisation has fallen every month since January, to 75.8% against an 82% target. The answer is resourcing in that line, not hiring.
+- **Price and subcontractors take the rest.** Advisory is still billing at 2025 rates, £20k below its rate card this month and £158k over the year. Projects lost gross margin to subcontractors, 22.7% against 28.6%, and Corven Group, at 10.8%, sits with Nyle Logistics below the 30% margin floor. Both clients need a pricing review.
+- **The pack proves itself before it goes out.** The ledger agrees with the trial balance to the penny once seven lines loaded twice by the extract are removed. Two items are left for finance to confirm: £8.4k of revenue posted with no client, and a laptop lease posted as a credit that flatters overheads.
 
 ## Pages
 
-Variance, Service lines, P&L, Clients and About. One Month dropdown drives every page. The two trend charts on Service lines always show all 18 months.
+Summary, P&L, Service lines, Clients and Checks, with Month, Company and Service line filters at the top of every page. Right-click any line of the P&L for the journal lines behind it. The Guide button explains how to read the pack.
 
-![Service lines page](screenshots/2-service-lines.png)
+![Checks page](screenshots/5-checks.png)
 
 ## How it is built
 
-- The budget is flexed: 82% utilisation and the rate card applied to the hours each team actually had. What is left of the revenue variance splits into an hours effect and a rate effect, worked out by service line and month so that a shift towards cheaper work does not read as discounting.
-- Amounts are stored as profit contributions, revenue positive and costs negative, so a positive variance is favourable on every line.
-- The P&L layout comes from a small `P&L Line` table and one measure, so subtotals and margins sit where an accountant expects them.
-- The headlines, chart titles and the points for the meeting are measures, with a £5k threshold so the meeting is not given noise.
-- Power Query removes a journal batch exported twice, cleans hand-typed client names and makes every cost negative, which fixes one posted with the wrong sign. Depreciation has no budget line, and the P&L shows that instead of a variance percentage.
+```mermaid
+flowchart LR
+  A[Ledger and timesheets: SQL Server views] --> C[Power Query]
+  B[Budget and commentary: Excel workbooks] --> C
+  C --> D[Star schema, calculation group for the period]
+  D --> E[Report]
+```
 
-The figures above were recalculated from the CSVs outside Power BI and match the report.
+- **The views do the cleaning.** SQL views hand the model one row per journal line, amounts with their effect on profit and a client for every line. Power Query stays thin and folds back to the server; only the finance workbooks are shaped in Power Query.
+- **The revenue variance splits three ways, exactly.** Capacity, billable hours and billing rates are valued so that they add up to the revenue variance to the pound, so leave and vacancies never show as lost sales.
+- **The period is set in one place.** A calculation group gives every measure its month, year to date and last-year versions, and the statement is read from a layout table, so its logic is written once.
+
+The files carry the problems real extracts do: a batch of purchase invoices loaded twice, manual journals with no client, a cost posted as a credit, depreciation with no budget line, and an account code typed with a trailing space. The Checks page counts each one.
+
+Every figure above was recalculated from the CSV files outside Power BI and matches the report.
 
 ## Opening it
 
-1. Open `Month-End Management Pack.pbip` in Power BI Desktop.
-2. In Transform data, set `Data Folder` to this project's [`data`](data/) folder and refresh.
+1. Build the database: `sql\build.cmd` creates `AshcombeFinance` on SQL Server on localhost. For another server, pass its name, for example `sql\build.cmd (localdb)\MSSQLLocalDB`.
+2. Open `Month-End Management Pack.pbip` in Power BI Desktop. In Transform data, set `Server` and `Database` to match, set `Finance Folder` to this project's [`finance`](finance/) folder, and refresh. Use Windows credentials for SQL Server.
 
-`node generator/generate-data.js` rebuilds the CSVs. See [`generator/`](generator/).
+`node generator/generate-data.js` rebuilds the data, and `generator/build-workbooks.ps1` the workbooks. See [`generator/`](generator/).
