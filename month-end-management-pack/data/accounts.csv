@@ -1,0 +1,15 @@
+account_code,account_name,account_type,sort_order
+4100,Advisory fees,Revenue,1
+4200,Managed services fees,Revenue,2
+4300,Project fees,Revenue,3
+4400,Support fees,Revenue,4
+5100,Delivery staff,Direct costs,5
+5200,Subcontractors,Direct costs,6
+5300,Recharged expenses,Direct costs,7
+6100,Admin staff,Overheads,8
+6200,Premises,Overheads,9
+6300,Technology,Overheads,10
+6400,Marketing,Overheads,11
+6500,Professional fees,Overheads,12
+6600,Depreciation,Overheads,13
+6900,Other admin,Overheads,14

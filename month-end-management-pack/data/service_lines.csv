@@ -1,0 +1,6 @@
+service_line_code,service_line,client_facing,sort_order
+ADV,Advisory,1,1
+MSV,Managed Services,1,2
+PRJ,Projects,1,3
+SUP,Support,1,4
+CEN,Central,0,5

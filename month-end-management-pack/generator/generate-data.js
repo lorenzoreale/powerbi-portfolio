@@ -1,27 +1,13 @@
 'use strict';
-// Deterministic data generator for the Month-End Management Pack.
-// The figures the report has to show are listed in the project README.
-// Run: node generate-data.js   (writes CSVs to ../data and prints a check summary)
-//
-// Every month is built from operating drivers, the way a professional-services
-// firm actually earns its money:
-//   available hours  = team capacity x working days, less leave
-//   billable hours   = available hours x utilisation
-//   revenue          = billable hours x average billing rate
-//   delivery staff   = available hours x staff cost per hour (paid whether billed or not)
-//   subcontractors   = a share of revenue;  recharged expenses = a share of revenue
-// The budget is flexed: budget utilisation (82%) and the rate card are applied to
-// the actual available hours, so the gap between them is pure utilisation and rate.
-//
-// Amounts are signed profit contributions in whole pounds: revenue positive, costs
-// negative. June 2026, the month of the pack, is pinned to fixed figures.
+// Writes the ledger extract, trial balance, timesheet hours and reference lists in ../data,
+// and the contents of the finance workbooks in ./workbooks.
+// Run with: node generate-data.js, then build-workbooks.ps1 to write the Excel files.
 
 const fs = require('fs');
 const path = require('path');
 
-// ---------------------------------------------------------------- randomness
-// Embedded PRNG (mulberry32), so the output is identical on every machine.
-const SEED = 20260630;
+// mulberry32: a small seeded generator, so every run writes the same files.
+const SEED = 20261031;
 function mulberry32(seed) {
   let a = seed >>> 0;
   return function () {
@@ -32,317 +18,383 @@ function mulberry32(seed) {
   };
 }
 const rand = mulberry32(SEED);
-const noise = (spread) => 1 + (rand() - 0.5) * spread;
+const between = (lo, hi) => lo + rand() * (hi - lo);
 
-// ---------------------------------------------------------------- calendar
-// January 2025 to June 2026. Working days are weekdays less England and Wales bank holidays.
+// Actuals run from January 2025 to October 2026. The budgets cover both full years.
 const BANK_HOLIDAYS = new Set([
   '2025-01-01', '2025-04-18', '2025-04-21', '2025-05-05', '2025-05-26', '2025-08-25', '2025-12-25', '2025-12-26',
-  '2026-01-01', '2026-04-03', '2026-04-06', '2026-05-04', '2026-05-25',
+  '2026-01-01', '2026-04-03', '2026-04-06', '2026-05-04', '2026-05-25', '2026-08-31', '2026-12-25', '2026-12-28',
 ]);
-const iso = (d) => d.toISOString().slice(0, 10);
-function workingDays(y, m) {
-  let n = 0;
-  for (let d = new Date(Date.UTC(y, m - 1, 1)); d.getUTCMonth() === m - 1; d.setUTCDate(d.getUTCDate() + 1)) {
-    const wd = d.getUTCDay();
-    if (wd !== 0 && wd !== 6 && !BANK_HOLIDAYS.has(iso(d))) n++;
-  }
-  return n;
-}
+const pad = (n) => String(n).padStart(2, '0');
+const iso = (y, m, d) => `${y}-${pad(m)}-${pad(d)}`;
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-const MONTHS = [];
-for (let y = 2025; y <= 2026; y++) {
-  for (let m = 1; m <= 12; m++) {
-    if (y === 2026 && m > 6) break;
-    MONTHS.push({
-      i: MONTHS.length, y, m, key: y * 100 + m,
-      label: MONTH_NAMES[m - 1] + ' ' + y,
-      start: `${y}-${String(m).padStart(2, '0')}-01`,
-      days: workingDays(y, m),
-    });
+const daysIn = (y, m) => new Date(Date.UTC(y, m, 0)).getUTCDate();
+function workingDays(y, m) {
+  const out = [];
+  for (let d = 1; d <= daysIn(y, m); d++) {
+    const wd = new Date(Date.UTC(y, m - 1, d)).getUTCDay();
+    if (wd !== 0 && wd !== 6 && !BANK_HOLIDAYS.has(iso(y, m, d))) out.push(d);
   }
-}
-const JUNE = MONTHS[MONTHS.length - 1];
-const isJune = (mo) => mo.key === JUNE.key;
-
-// ---------------------------------------------------------------- dimensions
-const ENTITIES = [['LLP', 'Ashcombe Partners LLP'], ['MSL', 'Ashcombe Managed Services Ltd'], ['PRJ', 'Ashcombe Projects Ltd']];
-const LINES = ['Advisory', 'Managed Services', 'Projects', 'Support'];
-const ENTITY_OF = { Advisory: 'LLP', 'Managed Services': 'MSL', Projects: 'PRJ', Support: 'LLP' };
-const REVENUE_ACCOUNT = { Advisory: 'REV-ADV', 'Managed Services': 'REV-MAN', Projects: 'REV-PRJ', Support: 'REV-SUP' };
-const ACCOUNTS = [
-  // code, name, category, sort order
-  ['REV-ADV', 'Advisory fees', 'Revenue', 11], ['REV-MAN', 'Managed services fees', 'Revenue', 12],
-  ['REV-PRJ', 'Project fees', 'Revenue', 13], ['REV-SUP', 'Support fees', 'Revenue', 14],
-  ['DC-STAFF', 'Delivery staff', 'Direct costs', 21], ['DC-SUBS', 'Subcontractors', 'Direct costs', 22],
-  ['DC-EXP', 'Recharged expenses', 'Direct costs', 23],
-  ['OH-ADMIN', 'Admin staff', 'Overheads', 41], ['OH-PREM', 'Premises', 'Overheads', 42],
-  ['OH-TECH', 'Technology', 'Overheads', 43], ['OH-MKT', 'Marketing', 'Overheads', 44],
-  ['OH-PROF', 'Professional fees', 'Overheads', 45], ['OH-DEP', 'Depreciation', 'Overheads', 46],
-  ['OH-OTHER', 'Other admin', 'Overheads', 47],
-];
-
-// Clients by service line, with their share of the line's revenue in June 2026 (GBP 000)
-// and a margin offset: extra delivery cost as a share of revenue. Oakline Foods and
-// Nyle Distribution are the low-margin accounts the Clients page has to surface.
-const CLIENTS = {
-  'Managed Services': [['Peverel Group', 640, -0.04], ['Castleton Retail', 520, -0.02], ['Trentham Group', 300, -0.01], ['Nyle Distribution', 180, 0.11], ['Ashfield Care', 120, 0.06]],
-  Advisory: [['Oakline Foods', 415, 0.16], ['Bramwell Media', 360, -0.02], ['Marrow Klein', 235, -0.05], ['Vantis Retail', 170, -0.03]],
-  Projects: [['Harding & Co', 470, -0.02], ['Delphi Works', 240, -0.03], ['Corven Group', 180, -0.04]],
-  Support: [['Kelby Foods', 150, 0.05], ['Ashfield Care', 110, 0.06], ['Nyle Distribution', 100, 0.11], ['Castleton Retail', 91, -0.02]],
-};
-const CLIENT_SINCE = {
-  'Peverel Group': 2019, 'Castleton Retail': 2021, 'Trentham Group': 2018, 'Nyle Distribution': 2020, 'Ashfield Care': 2023,
-  'Oakline Foods': 2018, 'Bramwell Media': 2021, 'Marrow Klein': 2024, 'Vantis Retail': 2025,
-  'Harding & Co': 2022, 'Delphi Works': 2024, 'Corven Group': 2020, 'Kelby Foods': 2022,
-};
-
-// ---------------------------------------------------------------- drivers
-// June 2026 capacity (available hours) and the budget rate card (GBP per billable hour).
-// 2025 rates and staff costs are a year earlier: rates 4% lower, pay 3% lower.
-const JUNE_AVAILABLE = { Advisory: 3200, 'Managed Services': 6000, Projects: 3000, Support: 1800 };
-const JUNE_BILLABLE = { Advisory: 2500, 'Managed Services': 4500, Projects: 2520, Support: 1460 };
-const RATE_CARD_2026 = { Advisory: 486, 'Managed Services': 386, Projects: 350, Support: 315 };
-const BUDGET_UTILISATION = 0.82;
-
-// Team size relative to June 2026: the firm grew through 2025.
-const headcount = (sl, mo) => {
-  const start = { Advisory: 0.94, 'Managed Services': 0.9, Projects: 0.95, Support: 0.97 }[sl];
-  return isJune(mo) ? 1 : start + (1 - start) * (mo.i / JUNE.i);
-};
-// Annual leave: summer and Christmas.
-const LEAVE = { 7: 0.95, 8: 0.88, 12: 0.9 };
-
-// Actual utilisation, month by month (January 2025 to June 2026).
-// Managed Services slides every month in 2026; Projects stays strong.
-const UTILISATION = {
-  Advisory:           [80.5, 81.8, 82.4, 81.2, 82.9, 83.1, 81.6, 80.2, 82.7, 83.4, 82.1, 79.8, 81.0, 80.6, 79.9, 79.4, 78.8],
-  'Managed Services': [82.4, 83.0, 82.1, 81.7, 82.6, 83.2, 82.0, 80.9, 82.3, 82.8, 81.9, 80.6, 80.6, 79.6, 78.5, 77.4, 76.2],
-  Projects:           [83.1, 84.2, 82.9, 83.8, 84.6, 85.0, 83.7, 82.4, 84.1, 84.9, 83.8, 82.2, 83.4, 84.1, 84.6, 83.9, 84.4],
-  Support:            [81.4, 82.2, 81.9, 82.5, 81.7, 82.4, 81.1, 80.3, 82.0, 82.6, 81.8, 80.7, 81.5, 81.9, 82.3, 81.4, 81.6],
-};
-// Average billing rate against the rate card. Advisory starts discounting in 2026.
-const RATE_PREMIUM = {
-  Advisory: (mo) => (mo.y === 2025 ? 0.004 : -0.006 * (mo.m - 0.5)),
-  'Managed Services': () => 0.012,
-  Projects: () => 0.01,
-  Support: () => -0.012,
-};
-
-// Direct costs. Staff cost per available hour (2026) and budget shares of revenue.
-const STAFF_COST_2026 = { Advisory: 175, 'Managed Services': 760000 / 6000, Projects: 110, Support: 250000 / 1800 };
-const SUBS_SHARE = { Advisory: 0.0863, 'Managed Services': 0.1264, Projects: 0.209, Support: 0.0968 };
-const EXPENSE_SHARE = { Advisory: 0.0447, 'Managed Services': 0.0537, Projects: 0.0465, Support: 0.056 };
-// Projects leans on subcontractors from April 2026 and its margin falls.
-const SUBS_OVERRUN = (sl, mo) => (sl === 'Projects' && mo.y === 2026 && mo.m >= 4 ? [1.12, 1.2][mo.m - 4] || 1.27 : 1);
-
-// Overheads, monthly budget for 2026 (GBP 000). Depreciation has no budget line:
-// its 25 a month was budgeted inside Other admin.
-const OVERHEAD_BUDGET = { 'OH-ADMIN': 520, 'OH-PREM': 175, 'OH-TECH': 150, 'OH-MKT': 90, 'OH-PROF': 45, 'OH-DEP': 0, 'OH-OTHER': 100 };
-// Phasing against the monthly budget (1 = the June figure above).
-const MARKETING_PHASING = { 3: 1.5, 9: 1.5, 8: 0.5, 12: 0.5 };
-const PROF_PHASING = { 1: 1.8, 2: 1.4 };
-function overheadActual(acc, mo, budget) {
-  if (acc === 'OH-DEP') return 25;
-  if (acc === 'OH-ADMIN') return mo.y === 2025 ? budget * noise(0.03) : [519, 523, 541, 552, 558][mo.m - 1] || 560;
-  if (acc === 'OH-MKT' && mo.y === 2026) return budget * 0.7 * noise(0.1);
-  if (acc === 'OH-OTHER') return 75 * (mo.y === 2026 ? 1 : 0.96) * noise(0.08);
-  return budget * noise(0.08);
-}
-const OVERHEAD_JUNE_ACTUAL = { 'OH-ADMIN': 560, 'OH-PREM': 180, 'OH-TECH': 145, 'OH-MKT': 60, 'OH-PROF': 30, 'OH-DEP': 25, 'OH-OTHER': 23 };
-const OVERHEAD_ENTITY_SPLIT = [['LLP', 0.5], ['MSL', 0.3], ['PRJ', 0.2]];
-
-// June 2026 pinned figures (GBP 000), so the pack tells the story in the spec.
-const JUNE_REVENUE_ACTUAL = { Advisory: 1180, 'Managed Services': 1760, Projects: 890, Support: 451 };
-const JUNE_DIRECT = { // [actual, budget] per account
-  Advisory: { 'DC-STAFF': [560, 560], 'DC-SUBS': [84, 110], 'DC-EXP': [50, 57] },
-  'Managed Services': { 'DC-STAFF': [760, 760], 'DC-SUBS': [180, 240], 'DC-EXP': [88, 102] },
-  Projects: { 'DC-STAFF': [330, 330], 'DC-SUBS': [236, 180], 'DC-EXP': [42, 40] },
-  Support: { 'DC-STAFF': [250, 250], 'DC-SUBS': [42, 45], 'DC-EXP': [24, 26] },
-};
-// June cost drift by client, in the order of CLIENTS (share of revenue, positive = more cost),
-// so each client's margin moves a little differently from its service line's.
-const JUNE_CLIENT_DRIFT = {
-  'Managed Services': [0.01, -0.008, 0.012, -0.004, -0.006],
-  Advisory: [0.004, -0.01, 0.012, -0.004],
-  Projects: [0.006, -0.012, 0.004],
-  Support: [-0.008, 0.006, 0.004, -0.01],
-};
-
-// ---------------------------------------------------------------- helpers
-// Split a whole-pound total across weights so the parts add up exactly.
-function split(total, weights) {
-  const sum = weights.reduce((s, w) => s + w, 0);
-  const raw = weights.map((w) => (total * w) / sum);
-  const out = raw.map(Math.floor);
-  let rest = Math.round(total) - out.reduce((s, v) => s + v, 0);
-  const order = raw.map((v, k) => [v - Math.floor(v), k]).sort((a, b) => b[0] - a[0]);
-  for (let k = 0; rest > 0; k = (k + 1) % order.length, rest--) out[order[k][1]]++;
   return out;
 }
-const pounds = (x) => Math.round(x);
-
-// ---------------------------------------------------------------- build
-const ledger = [];   // month_key, scenario, entity, service_line, account_code, client, amount
-const capacity = []; // month_key, scenario, service_line, billable_hours, available_hours
-const post = (mo, scenario, sl, account, client, amount) => {
-  if (amount !== 0) ledger.push([mo.key, scenario, sl === 'Central' ? null : ENTITY_OF[sl], sl, account, client, amount]);
+const MONTHS = [];
+for (const y of [2025, 2026]) {
+  for (let m = 1; m <= 12; m++) {
+    MONTHS.push({ y, m, key: `${y}-${pad(m)}`, label: `${MONTH_NAMES[m - 1]} ${y}`, days: workingDays(y, m), actual: y === 2025 || m <= 10 });
+  }
+}
+const ACTUALS = MONTHS.filter((mo) => mo.actual);
+const lastWorkingDay = (mo, onOrBefore = 31) => mo.days.filter((d) => d <= onOrBefore).pop();
+const workingDayBetween = (mo, from, to) => {
+  const days = mo.days.filter((d) => d >= from && d <= to);
+  return days[Math.floor(rand() * days.length)];
 };
 
-for (const mo of MONTHS) {
-  const rateCardYear = mo.y === 2026 ? 1 : 1 / 1.04;
-  const payYear = mo.y === 2026 ? 1 : 1 / 1.03;
+const ENTITIES = [['LLP', 'Ashcombe Partners LLP'], ['AMS', 'Ashcombe Managed Services Ltd'], ['APL', 'Ashcombe Projects Ltd']];
+const SERVICE_LINES = [
+  { code: 'ADV', name: 'Advisory', entity: 'LLP', revenue: '4100' },
+  { code: 'MSV', name: 'Managed Services', entity: 'AMS', revenue: '4200' },
+  { code: 'PRJ', name: 'Projects', entity: 'APL', revenue: '4300' },
+  { code: 'SUP', name: 'Support', entity: 'LLP', revenue: '4400' },
+];
+const ACCOUNTS = [
+  ['4100', 'Advisory fees', 'Revenue'], ['4200', 'Managed services fees', 'Revenue'],
+  ['4300', 'Project fees', 'Revenue'], ['4400', 'Support fees', 'Revenue'],
+  ['5100', 'Delivery staff', 'Direct costs'], ['5200', 'Subcontractors', 'Direct costs'], ['5300', 'Recharged expenses', 'Direct costs'],
+  ['6100', 'Admin staff', 'Overheads'], ['6200', 'Premises', 'Overheads'], ['6300', 'Technology', 'Overheads'],
+  ['6400', 'Marketing', 'Overheads'], ['6500', 'Professional fees', 'Overheads'], ['6600', 'Depreciation', 'Overheads'],
+  ['6900', 'Other admin', 'Overheads'],
+];
+const ACCOUNT_NAME = Object.fromEntries(ACCOUNTS.map(([c, n]) => [c, n]));
+const CLIENTS = [
+  ['PEV001', 'Peverel Group', 2019], ['CAS001', 'Castleton Retail', 2021], ['TRE001', 'Trentham Group', 2018],
+  ['NYL001', 'Nyle Logistics', 2020], ['ASH001', 'Ashfield Care', 2023], ['OAK001', 'Oakline Foods', 2018],
+  ['BRA001', 'Bramwell Media', 2021], ['MAR001', 'Marrow Klein', 2024], ['VAN001', 'Vantis Retail', 2025],
+  ['HAR001', 'Harding & Co', 2022], ['COR001', 'Corven Group', 2020], ['DEL001', 'Delphi Works', 2024],
+  ['KEL001', 'Kelby Foods', 2022],
+];
+const CLIENT_NAME = Object.fromEntries(CLIENTS.map(([c, n]) => [c, n]));
 
-  for (const sl of LINES) {
-    // hours
-    const available = isJune(mo) ? JUNE_AVAILABLE[sl]
-      : Math.round(JUNE_AVAILABLE[sl] * (mo.days / JUNE.days) * (LEAVE[mo.m] || 1) * headcount(sl, mo));
-    const billable = isJune(mo) ? JUNE_BILLABLE[sl] : Math.round(available * UTILISATION[sl][mo.i] / 100);
-    const budgetBillable = Math.round(available * BUDGET_UTILISATION);
-    capacity.push([mo.key, 'Actual', sl, billable, available], [mo.key, 'Budget', sl, budgetBillable, available]);
+// Each service line's clients, with their usual share of its billable hours and the subcontractor used.
+const BOOK = {
+  ADV: [['OAK001', 0.35, 'Halden Associates'], ['BRA001', 0.30, 'Halden Associates'], ['MAR001', 0.20, 'Halden Associates'], ['VAN001', 0.15, 'Halden Associates']],
+  MSV: [['PEV001', 0.34, 'Calder Network Services'], ['CAS001', 0.26, 'Calder Network Services'], ['TRE001', 0.18, 'Calder Network Services'],
+    ['NYL001', 0.13, 'Northway Service Desk'], ['ASH001', 0.09, 'Calder Network Services']],
+  PRJ: [['HAR001', 0.45, 'Pell Resourcing'], ['COR001', 0.32, 'Corran Technical'], ['DEL001', 0.23, 'Pell Resourcing']],
+  SUP: [['KEL001', 0.34, 'Ardent Field Support'], ['ASH001', 0.26, 'Ardent Field Support'], ['NYL001', 0.22, 'Ardent Field Support'], ['CAS001', 0.18, 'Ardent Field Support']],
+};
 
-    // revenue
-    const rateCard = Math.round(RATE_CARD_2026[sl] * rateCardYear);
-    const revenueActual = isJune(mo) ? JUNE_REVENUE_ACTUAL[sl] * 1000 : pounds(billable * rateCard * (1 + RATE_PREMIUM[sl](mo)) * noise(0.012));
-    const revenueBudget = budgetBillable * rateCard;
+// Budget drivers by year: delivery headcount, rate card (per billable hour) and staff cost per available hour.
+const PLAN = {
+  2025: { fte: { ADV: 19, MSV: 43, PRJ: 19, SUP: 14 }, rate: { ADV: 188, MSV: 92, PRJ: 130, SUP: 68 }, cost: { ADV: 75, MSV: 44, PRJ: 56, SUP: 32 } },
+  2026: { fte: { ADV: 20, MSV: 45, PRJ: 20, SUP: 14 }, rate: { ADV: 195, MSV: 95, PRJ: 135, SUP: 70 }, cost: { ADV: 78, MSV: 46, PRJ: 58, SUP: 33 } },
+};
+const TARGET_UTILISATION = 0.82;
+const HOURS_A_DAY = 7.5;
+const PLANNED_LEAVE = [0.07, 0.07, 0.08, 0.10, 0.09, 0.09, 0.14, 0.18, 0.09, 0.09, 0.08, 0.16];
+const plannedHours = (sl, mo) => Math.round((PLAN[mo.y].fte[sl] * HOURS_A_DAY * mo.days.length * (1 - PLANNED_LEAVE[mo.m - 1])) / 50) * 50;
+const SUBS_BUDGET = { ADV: 0.05, MSV: 0.11, PRJ: 0.16, SUP: 0.04 };
+const EXPENSE_SHARE = { ADV: 0.03, MSV: 0.015, PRJ: 0.03, SUP: 0.02 };
 
-    // direct costs by account
-    const staffCost = available * STAFF_COST_2026[sl] * payYear;
-    const direct = {
-      Actual: isJune(mo) ? mapValues(JUNE_DIRECT[sl], (v) => v[0] * 1000) : {
-        'DC-STAFF': pounds(staffCost * noise(0.03)),
-        'DC-SUBS': pounds(revenueActual * SUBS_SHARE[sl] * SUBS_OVERRUN(sl, mo) * noise(0.16) * (sl === 'Managed Services' && mo.y === 2026 ? 0.9 : 1)),
-        'DC-EXP': pounds(revenueActual * EXPENSE_SHARE[sl] * noise(0.12)),
-      },
-      Budget: isJune(mo) ? mapValues(JUNE_DIRECT[sl], (v) => v[1] * 1000) : {
-        'DC-STAFF': pounds(staffCost),
-        'DC-SUBS': pounds(revenueBudget * SUBS_SHARE[sl]),
-        'DC-EXP': pounds(revenueBudget * EXPENSE_SHARE[sl]),
-      },
-    };
+// Overheads budget a month, and how each account is shared between the companies.
+const MARKETING = { 2025: [9, 9, 20, 12, 12, 19, 10, 7, 20, 14, 18, 18], 2026: [12, 12, 22, 14, 14, 20, 12, 8, 22, 16, 20, 20] };
+const OVERHEADS = {
+  2025: { 6100: 98000, 6200: 40000, 6300: 28000, 6500: 12000, 6900: 23000 },
+  2026: { 6100: 105000, 6200: 41000, 6300: 30000, 6500: 12500, 6900: 24000 },
+};
+const overheadBudget = (account, mo) => (account === '6400' ? MARKETING[mo.y][mo.m - 1] * 1000 : OVERHEADS[mo.y][account]);
+const SPLIT = {
+  6100: { LLP: 0.55, AMS: 0.27, APL: 0.18 }, 6200: { LLP: 0.6, AMS: 0.25, APL: 0.15 }, 6300: { LLP: 0.5, AMS: 0.35, APL: 0.15 },
+  6400: { LLP: 1 }, 6500: { LLP: 0.6, AMS: 0.2, APL: 0.2 }, 6600: { LLP: 0.5, AMS: 0.3, APL: 0.2 }, 6900: { LLP: 0.5, AMS: 0.3, APL: 0.2 },
+};
+// Depreciation has no budget line: finance budgeted it inside Other admin.
+const DEPRECIATION = { 2025: 9000, 2026: 9500 };
 
-    // spread revenue and direct costs over the line's clients
-    const clients = CLIENTS[sl];
-    const weights = clients.map(([, share]) => share * (isJune(mo) ? 1 : noise(0.1)));
-    for (const scenario of ['Actual', 'Budget']) {
-      const revenue = scenario === 'Actual' ? revenueActual : revenueBudget;
-      const revByClient = split(revenue, scenario === 'Actual' ? weights : clients.map(([, share]) => share));
-      // a client's direct cost leans on its margin offset and its drift, each measured from the
-      // line's revenue-weighted average, so the line total is unchanged
-      const lineCost = Object.values(direct[scenario]).reduce((s, v) => s + v, 0);
-      const averageOffset = clients.reduce((s, [, , offset], k) => s + revByClient[k] * offset, 0) / revenue;
-      const drift = scenario === 'Budget' ? clients.map(() => 0)
-        : isJune(mo) ? JUNE_CLIENT_DRIFT[sl] : clients.map(() => (rand() - 0.5) * 0.024);
-      const averageDrift = clients.reduce((s, c, k) => s + revByClient[k] * drift[k], 0) / revenue;
-      const costWeights = clients.map(([, , offset], k) => revByClient[k] * (lineCost / revenue + offset - averageOffset + drift[k] - averageDrift));
-      clients.forEach(([client], k) => post(mo, scenario, sl, REVENUE_ACCOUNT[sl], client, revByClient[k]));
-      for (const [account, total] of Object.entries(direct[scenario])) {
-        split(total, costWeights).forEach((v, k) => post(mo, scenario, sl, account, clients[k][0], -v));
+// Actual drivers, January 2025 to October 2026.
+const UTILISATION = {
+  ADV: [81.8, 82.4, 82.9, 81.6, 82.7, 83.0, 81.9, 80.8, 82.6, 83.2, 82.4, 80.9, 82.0, 81.6, 82.3, 81.4, 81.9, 82.2, 81.1, 80.6, 81.8, 81.5],
+  MSV: [82.6, 83.1, 82.4, 82.0, 82.8, 83.3, 82.2, 81.4, 82.5, 82.9, 82.1, 81.0, 81.6, 81.0, 80.3, 79.7, 79.0, 78.4, 77.9, 77.1, 76.6, 75.8],
+  PRJ: [83.4, 84.1, 83.0, 83.7, 84.5, 84.9, 83.6, 82.6, 84.0, 84.7, 83.9, 82.4, 83.6, 84.2, 84.8, 84.0, 84.5, 85.1, 83.9, 83.2, 84.6, 84.3],
+  SUP: [81.6, 82.3, 81.9, 82.6, 81.8, 82.5, 81.3, 80.6, 82.1, 82.7, 81.9, 80.8, 81.7, 82.0, 82.4, 81.6, 81.8, 82.3, 81.5, 80.9, 81.9, 82.2],
+};
+// Available hours against plan. Managed Services carried two vacancies in July and August 2026.
+function capacityFactor(sl, mo) {
+  if (mo.y === 2026 && mo.m === 10) return { ADV: 1.004, MSV: 0.993, PRJ: 1.006, SUP: 0.998 }[sl];
+  if (sl === 'MSV' && mo.y === 2026 && (mo.m === 7 || mo.m === 8)) return 0.955;
+  return between(0.982, 1.018);
+}
+const PREMIUM = { OAK001: 0.005, BRA001: 0, MAR001: -0.005, VAN001: 0.01, PEV001: 0.01, CAS001: 0, TRE001: 0.005, NYL001: -0.01, ASH001: 0, HAR001: 0.01, COR001: 0, DEL001: -0.005, KEL001: 0.005 };
+// Advisory clients kept their 2025 rates when the 2026 rate card went up.
+function clientRate(sl, client, y) {
+  if (sl === 'ADV' && y === 2026) return clientRate(sl, client, 2025);
+  return Math.round(PLAN[y].rate[sl] * (1 + PREMIUM[client]));
+}
+// Corven Group's subcontractors run further over budget every month of 2026.
+const CORVEN_2026 = [0.20, 0.21, 0.23, 0.26, 0.29, 0.32, 0.35, 0.38, 0.41, 0.44];
+function subsShare(sl, client, mo) {
+  if (client === 'COR001') return mo.y === 2025 ? 0.18 : CORVEN_2026[mo.m - 1];
+  if (client === 'NYL001' && sl === 'MSV') return 0.30;
+  return { ADV: 0.05, MSV: 0.08, PRJ: 0.15, SUP: 0.04 }[sl];
+}
+const ADMIN_2026 = (m) => 101200 + 1350 * (m - 1);
+
+// Splits a whole number into integer parts in proportion to the weights.
+function allocate(total, weights) {
+  const sum = weights.reduce((s, w) => s + w, 0);
+  const exact = weights.map((w) => (total * w) / sum);
+  const out = exact.map(Math.floor);
+  let left = total - out.reduce((s, x) => s + x, 0);
+  exact.map((x, i) => [x - Math.floor(x), i]).sort((a, b) => b[0] - a[0]).forEach(([, i]) => { if (left > 0) { out[i]++; left--; } });
+  return out;
+}
+const pence = (pounds) => Math.round(pounds * 100);
+
+const journals = [];
+const journal = (date, type, entity, lines) => journals.push({ date, type, entity, lines });
+const line = (account, sl, client, text, amount) => ({ account, sl, client, text, amount });
+const hoursRows = [];
+const drivers = [];
+
+ACTUALS.forEach((mo, i) => {
+  const d = (day) => iso(mo.y, mo.m, day);
+  const monthEnd = d(daysIn(mo.y, mo.m));
+  const payroll = {};
+  for (const [entity] of ENTITIES) payroll[entity] = [];
+
+  for (const sl of SERVICE_LINES) {
+    const planned = plannedHours(sl.code, mo);
+    const available = Math.round(planned * capacityFactor(sl.code, mo));
+    const billable = Math.round((available * UTILISATION[sl.code][i]) / 100);
+    hoursRows.push([iso(mo.y, mo.m, 1), sl.entity, sl.code, available, billable]);
+    const book = BOOK[sl.code];
+    const clientHours = allocate(billable, book.map(([, share]) => share * between(0.94, 1.06)));
+    const staff = pence(available * PLAN[mo.y].cost[sl.code] * between(0.996, 1.006));
+    drivers.push({ mo, sl: sl.code, planned, available, billable });
+
+    let timeCost = 0;
+    const subsBySupplier = {};
+    const expenseLines = [];
+    book.forEach(([client, , supplier], k) => {
+      const hours = clientHours[k];
+      const rate = clientRate(sl.code, client, mo.y);
+      const revenue = hours * rate * 100;
+      // Advisory and Projects invoice twice a month, the two services once at month end.
+      const twice = sl.code === 'ADV' || sl.code === 'PRJ';
+      const firstHalf = Math.round((hours * mo.days.filter((x) => x <= 15).length) / mo.days.length);
+      if (twice) {
+        journal(d(lastWorkingDay(mo, 15)), 'SI', sl.entity, [line(sl.revenue, sl.code, client, `Fees 1-15 ${mo.label}`, -firstHalf * rate * 100)]);
+        journal(d(lastWorkingDay(mo)), 'SI', sl.entity, [line(sl.revenue, sl.code, client, `Fees 16-${daysIn(mo.y, mo.m)} ${mo.label}`, -(revenue - firstHalf * rate * 100))]);
+      } else {
+        journal(d(lastWorkingDay(mo)), 'SI', sl.entity, [line(sl.revenue, sl.code, client, `${sl.name} fees, ${mo.label}`, -revenue)]);
       }
+      const cost = Math.round((staff * hours) / available);
+      timeCost += cost;
+      payroll[sl.entity].push(line('5100', sl.code, client, `Time cost, ${CLIENT_NAME[client]}`, cost));
+      const subs = Math.round(revenue * subsShare(sl.code, client, mo) * between(0.95, 1.05));
+      (subsBySupplier[supplier] ||= []).push(line('5200', sl.code, client, `${supplier}, ${CLIENT_NAME[client]}, ${mo.label}`, subs));
+      const expenses = Math.round(revenue * EXPENSE_SHARE[sl.code] * between(0.85, 1.15));
+      expenseLines.push(line('5300', sl.code, client, `Travel and subsistence, ${CLIENT_NAME[client]}`, expenses));
+    });
+    payroll[sl.entity].push(line('5100', sl.code, null, 'Non-chargeable time', staff - timeCost));
+    for (const lines of Object.values(subsBySupplier)) {
+      const day = mo.y === 2026 && mo.m === 10 && sl.code === 'PRJ' ? 23 : workingDayBetween(mo, 18, 28);
+      journal(d(day), 'PI', sl.entity, lines);
     }
+    journal(d(mo.days[mo.days.length - 2]), 'PI', sl.entity, expenseLines);
   }
 
-  // overheads, held centrally and split across the three entities
-  for (const [account, budget2026] of Object.entries(OVERHEAD_BUDGET)) {
-    const phasing = (account === 'OH-MKT' ? MARKETING_PHASING[mo.m] : account === 'OH-PROF' ? PROF_PHASING[mo.m] : 1) || 1;
-    const budget = budget2026 * (mo.y === 2026 ? 1 : 0.96) * phasing;
-    const actual = isJune(mo) ? OVERHEAD_JUNE_ACTUAL[account] : overheadActual(account, mo, budget);
-    for (const [scenario, total] of [['Actual', actual], ['Budget', budget]]) {
-      const parts = split(pounds(total * 1000), OVERHEAD_ENTITY_SPLIT.map(([, w]) => w));
-      OVERHEAD_ENTITY_SPLIT.forEach(([entity], k) => {
-        if (parts[k] !== 0) ledger.push([mo.key, scenario, entity, 'Central', account, null, -parts[k]]);
+  // Overheads
+  const actual = {
+    6100: mo.y === 2025 ? overheadBudget('6100', mo) * between(0.99, 1.01) : ADMIN_2026(mo.m) + between(-150, 150),
+    6200: overheadBudget('6200', mo) * between(0.995, 1.005),
+    6300: overheadBudget('6300', mo) * between(0.90, 0.96),
+    6400: overheadBudget('6400', mo) * (mo.y === 2025 ? between(0.9, 1.0) : between(0.5, 0.6)),
+    6500: overheadBudget('6500', mo) * between(0.7, 0.9),
+    6600: DEPRECIATION[mo.y],
+    6900: (overheadBudget('6900', mo) - DEPRECIATION[mo.y]) * between(0.93, 1.0),
+  };
+  const byEntity = (account) => {
+    const shares = Object.entries(SPLIT[account]);
+    const parts = allocate(pence(actual[account]), shares.map(([, s]) => s));
+    return shares.map(([entity], k) => [entity, parts[k]]);
+  };
+  for (const [entity, amount] of byEntity('6100')) payroll[entity].push(line('6100', 'CEN', null, 'Admin staff', amount));
+  for (const [entity, lines] of Object.entries(payroll)) journal(d(lastWorkingDay(mo, 26)), 'PAY', entity, lines);
+
+  const invoices = {
+    6200: [['Office rent', 0.78, 'rent'], ['Service charge', 0.14], ['Energy and water', 0.08]],
+    6300: [['Software subscriptions', 0.47], ['IT support contract', 0.30], ['Laptop leases', 0.23]],
+    6400: [['Events and sponsorship', 0.6], ['Website and design', 0.4]],
+    6500: [['Audit fee accrual', 0.55, 'accrual'], ['Legal advice', 0.45]],
+    6900: [['Insurance', 0.35], ['Training', 0.25], ['Recruitment', 0.25], ['Office supplies', 0.15]],
+  };
+  for (const [account, pieces] of Object.entries(invoices)) {
+    for (const [entity, amount] of byEntity(account)) {
+      const parts = allocate(amount, pieces.map(([, s]) => s));
+      pieces.forEach(([text, , kind], k) => {
+        let value = parts[k];
+        // A laptop lease invoice posted as a credit in October 2026.
+        if (account === '6300' && text === 'Laptop leases' && entity === 'LLP' && mo.y === 2026 && mo.m === 10) value = -value;
+        if (kind === 'accrual') journal(monthEnd, 'MJ', entity, [line(account, 'CEN', null, `${text}, ${mo.label}`, value)]);
+        else journal(d(kind === 'rent' ? mo.days[0] : workingDayBetween(mo, 4, 26)), 'PI', entity, [line(account, 'CEN', null, `${text}, ${mo.label}`, value)]);
       });
     }
   }
-}
-function mapValues(o, f) { return Object.fromEntries(Object.entries(o).map(([k, v]) => [k, f(v)])); }
+  for (const [entity, amount] of byEntity('6600')) journal(monthEnd, 'DEP', entity, [line('6600', 'CEN', null, `Depreciation, ${mo.label}`, amount)]);
+});
 
-// ---------------------------------------------------------------- data problems
-// The kind of faults a real ledger export has. The model handles each one.
-// 1. Depreciation has actuals but no budget line (its budget sits in Other admin): built in above.
-// 2. A late journal batch was exported twice: six June revenue rows appear twice.
-const actualRevenueJune = ledger.filter((r) => r[0] === JUNE.key && r[1] === 'Actual' && r[4].startsWith('REV'));
-for (const r of actualRevenueJune.slice(0, 6)) ledger.push(r.slice());
-// 3. Client names typed by hand in the billing system: trailing spaces, capitals, double spaces.
-const untidy = [(n) => n + ' ', (n) => n.toUpperCase(), (n) => n.replace(' ', '  ')];
-let untidyCount = 0;
-for (const r of ledger) {
-  if (untidyCount < 12 && r[1] === 'Actual' && r[4].startsWith('REV') && r[0] < JUNE.key && rand() < 0.04) {
-    r[5] = untidy[untidyCount % 3](r[5]);
-    untidyCount++;
+// Manual journals posted with no client. Accrued income moves revenue off the client's invoice
+// until it is billed, and a rebate was agreed without saying with whom.
+const ACCRUALS = [['2026-06-30', '2026-07-01', 1580000, 'Jun 2026'], ['2026-10-30', null, 1260000, 'Oct 2026']];
+for (const [date, reversal, amount, label] of ACCRUALS) {
+  const invoice = journals.find((j) => j.type === 'SI' && j.date === date && j.lines[0].client === 'PEV001');
+  invoice.lines[0].amount += amount;
+  journal(date, 'MJ', 'AMS', [line('4200', 'MSV', null, `Accrued income, Managed Services, ${label}`, -amount)]);
+  if (reversal) {
+    const next = journals.find((j) => j.type === 'SI' && j.date.slice(0, 7) === reversal.slice(0, 7) && j.lines[0].client === 'PEV001');
+    next.lines[0].amount -= amount;
+    journal(reversal, 'MJ', 'AMS', [line('4200', 'MSV', null, `Reversal of accrued income, ${label}`, amount)]);
   }
 }
-// 4. Overheads carry no client: the model maps them to an Unallocated client.
-// 5. One June delivery staff cost was posted with the wrong sign.
-const wrongSign = ledger.find((r) => r[0] === JUNE.key && r[1] === 'Actual' && r[4] === 'DC-STAFF');
-wrongSign[6] = Math.abs(wrongSign[6]);
+journal('2026-10-20', 'MJ', 'LLP', [line('4100', 'ADV', null, 'Fee rebate agreed, Advisory', 420000)]);
 
-// ---------------------------------------------------------------- write CSVs
-const esc = (x) => { const s = x === null || x === undefined ? '' : String(x); return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
+// Journal numbers follow the posting date.
+const TYPE_ORDER = { SI: 1, PI: 2, PAY: 3, MJ: 4, DEP: 5 };
+journals.sort((a, b) => a.date.localeCompare(b.date) || TYPE_ORDER[a.type] - TYPE_ORDER[b.type] || a.entity.localeCompare(b.entity));
+const extractRows = [];
+const nextDay = (date) => new Date(Date.parse(date) + 86400000).toISOString().slice(0, 10);
+journals.forEach((j, n) => {
+  j.no = 100001 + n;
+  j.lines.forEach((l, k) => extractRows.push({ j, l, lineNo: k + 1, extractedAt: `${nextDay(j.date)} 02:15:00` }));
+});
+// The extract was run again on 26 October 2026 and appended the purchase invoices of 23 October a second time.
+const reloaded = extractRows.filter((r) => r.j.date === '2026-10-23' && r.j.type === 'PI').map((r) => ({ ...r, extractedAt: '2026-10-26 02:15:00' }));
+
+// Files
 const dataDir = path.join(__dirname, '..', 'data');
+const workbookDir = path.join(__dirname, 'workbooks');
 fs.mkdirSync(dataDir, { recursive: true });
-const write = (file, header, rows) => fs.writeFileSync(path.join(dataDir, file), [header, ...rows].map((r) => r.map(esc).join(',')).join('\n') + '\n', 'utf8');
-
-write('calendar.csv', ['month_key', 'month', 'month_start', 'year', 'month_number', 'working_days'], MONTHS.map((mo) => [mo.key, mo.label, mo.start, mo.y, mo.m, mo.days]));
-write('entity.csv', ['entity_code', 'entity_name'], ENTITIES);
-write('service_line.csv', ['service_line', 'entity_code', 'client_facing'], [...LINES.map((sl) => [sl, ENTITY_OF[sl], 'true']), ['Central', '', 'false']]);
-write('account.csv', ['account_code', 'account', 'category', 'sort_order'], ACCOUNTS);
-const clientRows = [];
-for (const sl of LINES) for (const [client] of CLIENTS[sl]) if (!clientRows.some((c) => c[0] === client)) clientRows.push([client, sl, CLIENT_SINCE[client]]);
-write('client.csv', ['client', 'lead_service_line', 'client_since'], clientRows);
-write('ledger.csv', ['month_key', 'scenario', 'entity_code', 'service_line', 'account_code', 'client', 'amount'], ledger);
-write('capacity.csv', ['month_key', 'scenario', 'service_line', 'billable_hours', 'available_hours'], capacity);
-
-// ---------------------------------------------------------------- check summary
-// Recomputed from the clean data (duplicates removed, signs fixed), in GBP 000.
-const seen = new Set();
-const clean = [];
-for (const r of ledger) {
-  const key = r.join('|');
-  if (seen.has(key)) continue;
-  seen.add(key);
-  const category = ACCOUNTS.find((a) => a[0] === r[4])[2];
-  clean.push({ key: r[0], scenario: r[1], sl: r[3], account: r[4], client: (r[5] || '').trim().replace(/\s+/g, ' ').toLowerCase(), category, amount: category === 'Revenue' ? r[6] : -Math.abs(r[6]) });
-}
-const total = (f) => clean.filter(f).reduce((s, r) => s + r.amount, 0) / 1000;
-const pl = (scenario, keys) => {
-  const t = (cat) => total((r) => keys.includes(r.key) && r.scenario === scenario && r.category === cat);
-  const revenue = t('Revenue'), gp = revenue + t('Direct costs'), op = gp + t('Overheads');
-  return { revenue, gp, op };
+fs.mkdirSync(workbookDir, { recursive: true });
+const csvField = (v) => {
+  const s = v === null || v === undefined ? '' : String(v);
+  return /[",\n]|^\s|\s$/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 };
-const hours = (scenario, keys, sl) => capacity.filter((c) => keys.includes(c[0]) && c[1] === scenario && (!sl || c[2] === sl)).reduce((s, c) => [s[0] + c[3], s[1] + c[4]], [0, 0]);
-const f0 = (x) => x.toFixed(0).padStart(7);
-const pct = (x) => (100 * x).toFixed(1) + '%';
+function writeCsv(file, header, rows) {
+  fs.writeFileSync(file, [header, ...rows].map((r) => r.map(csvField).join(',')).join('\n') + '\n', 'utf8');
+  return rows.length;
+}
+const money = (p) => (p / 100).toFixed(2);
 
-console.log(`Seed ${SEED}. Ledger ${ledger.length} rows, capacity ${capacity.length} rows, ${MONTHS.length} months.`);
-console.log('\nMonth          Revenue A/B          Op profit A/B        GM A      Util A');
-for (const mo of MONTHS) {
-  const a = pl('Actual', [mo.key]), b = pl('Budget', [mo.key]);
-  const [bh, ah] = hours('Actual', [mo.key]);
-  console.log(`${mo.label.padEnd(10)} ${f0(a.revenue)} ${f0(b.revenue)}   ${f0(a.op)} ${f0(b.op)}   ${pct(a.gp / a.revenue).padStart(6)}  ${pct(bh / ah).padStart(6)}`);
+writeCsv(path.join(dataDir, 'entities.csv'), ['entity_code', 'entity_name'], ENTITIES);
+writeCsv(path.join(dataDir, 'service_lines.csv'), ['service_line_code', 'service_line', 'client_facing', 'sort_order'],
+  [...SERVICE_LINES.map((s, k) => [s.code, s.name, 1, k + 1]), ['CEN', 'Central', 0, 5]]);
+writeCsv(path.join(dataDir, 'accounts.csv'), ['account_code', 'account_name', 'account_type', 'sort_order'], ACCOUNTS.map((a, k) => [...a, k + 1]));
+writeCsv(path.join(dataDir, 'clients.csv'), ['client_code', 'client_name', 'client_since'], CLIENTS);
+const allRows = [...extractRows, ...reloaded].sort((a, b) => a.extractedAt.localeCompare(b.extractedAt) || a.j.no - b.j.no || a.lineNo - b.lineNo);
+writeCsv(path.join(dataDir, 'journal_lines.csv'),
+  ['journal_no', 'line_no', 'journal_type', 'posting_date', 'entity_code', 'account_code', 'service_line_code', 'client_code', 'description', 'debit', 'credit', 'extracted_at'],
+  allRows.map(({ j, l, lineNo, extractedAt }) => [j.no, lineNo, j.type, j.date, j.entity, l.account, l.sl, l.client, l.text,
+    money(Math.max(l.amount, 0)), money(Math.max(-l.amount, 0)), extractedAt]));
+
+const tb = new Map();
+for (const { j, l } of extractRows) {
+  const key = `${j.date.slice(0, 7)}-01|${j.entity}|${l.account}`;
+  tb.set(key, (tb.get(key) || 0) + l.amount);
 }
-const ytd = MONTHS.filter((mo) => mo.y === 2026).map((mo) => mo.key);
-const ya = pl('Actual', ytd), yb = pl('Budget', ytd);
-console.log(`\nYear to date 2026: revenue ${ya.revenue.toFixed(0)} against ${yb.revenue.toFixed(0)}, operating profit ${ya.op.toFixed(0)} against ${yb.op.toFixed(0)} (${(ya.op - yb.op).toFixed(0)})`);
-const y25 = MONTHS.filter((mo) => mo.y === 2025).map((mo) => mo.key);
-const a25 = pl('Actual', y25), b25 = pl('Budget', y25);
-console.log(`Full year 2025: operating profit ${a25.op.toFixed(0)} against ${b25.op.toFixed(0)} (${(a25.op - b25.op).toFixed(0)})`);
-console.log('\nJune 2026 by service line: utilisation A/B, hours effect, rate effect (GBP 000)');
-let he = 0, re = 0;
-for (const sl of LINES) {
-  const [ba, av] = hours('Actual', [JUNE.key], sl); const [bb] = hours('Budget', [JUNE.key], sl);
-  const rate = RATE_CARD_2026[sl];
-  const rev = total((r) => r.key === JUNE.key && r.scenario === 'Actual' && r.sl === sl && r.category === 'Revenue');
-  const h = (ba - bb) * rate / 1000, x = rev - ba * rate / 1000;
-  he += h; re += x;
-  console.log(`  ${sl.padEnd(17)} ${pct(ba / av)} / ${pct(bb / av)}   ${h.toFixed(1).padStart(7)}  ${x.toFixed(1).padStart(7)}`);
+writeCsv(path.join(dataDir, 'trial_balance.csv'), ['month', 'entity_code', 'account_code', 'movement'],
+  [...tb.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([key, amount]) => [...key.split('|'), money(amount)]));
+writeCsv(path.join(dataDir, 'hours.csv'), ['month', 'entity_code', 'service_line_code', 'available_hours', 'billable_hours'], hoursRows);
+
+// Workbook contents: budgets with costs as positive amounts, as finance types them.
+for (const y of [2025, 2026]) {
+  const months = MONTHS.filter((mo) => mo.y === y);
+  const rows = [];
+  for (const sl of SERVICE_LINES) {
+    const revenue = months.map((mo) => (plannedHours(sl.code, mo) * 82 * PLAN[y].rate[sl.code]) / 100);
+    rows.push([sl.entity, sl.name, sl.revenue, ACCOUNT_NAME[sl.revenue], ...revenue]);
+    rows.push([sl.entity, sl.name, '5100', ACCOUNT_NAME['5100'], ...months.map((mo) => plannedHours(sl.code, mo) * PLAN[y].cost[sl.code])]);
+    rows.push([sl.entity, sl.name, '5200', ACCOUNT_NAME['5200'], ...revenue.map((r) => Math.round(r * SUBS_BUDGET[sl.code]))]);
+    rows.push([sl.entity, sl.name, '5300', ACCOUNT_NAME['5300'], ...revenue.map((r) => Math.round(r * EXPENSE_SHARE[sl.code]))]);
+  }
+  for (const [entity] of ENTITIES) {
+    for (const account of ['6100', '6200', '6300', '6400', '6500', '6900']) {
+      if (!SPLIT[account][entity]) continue;
+      const amounts = months.map((mo) => {
+        const shares = Object.entries(SPLIT[account]);
+        return allocate(overheadBudget(account, mo), shares.map(([, s]) => s))[shares.findIndex(([e]) => e === entity)];
+      });
+      // In the 2026 workbook one account code was typed with a trailing space.
+      const code = y === 2026 && entity === 'AMS' && account === '6300' ? '6300 ' : account;
+      rows.push([entity, 'Central', code, ACCOUNT_NAME[account], ...amounts]);
+    }
+  }
+  writeCsv(path.join(workbookDir, `budget_${y}.csv`), ['Company', 'Service line', 'Account', 'Account name', ...MONTH_NAMES], rows);
+  writeCsv(path.join(workbookDir, `assumptions_${y}.csv`), ['Company', 'Service line', 'Rate card', 'Target utilisation', ...MONTH_NAMES],
+    SERVICE_LINES.map((sl) => [sl.entity, sl.name, PLAN[y].rate[sl.code], TARGET_UTILISATION, ...months.map((mo) => plannedHours(sl.code, mo))]));
 }
-console.log(`  Total             hours effect ${he.toFixed(1)}, rate effect ${re.toFixed(1)}`);
-const clientName = new Map(Object.values(CLIENTS).flat().map(([c]) => [c.toLowerCase(), c]));
-const juneMargins = [...clientName.keys()].map((c) => {
-  const t = (cat) => total((r) => r.key === JUNE.key && r.scenario === 'Actual' && r.client === c && r.category === cat);
-  return [clientName.get(c), (t('Revenue') + t('Direct costs')) / t('Revenue')];
-}).sort((a, b) => a[1] - b[1]);
-console.log('\nJune 2026 gross margin by client, lowest first (floor 30%)');
-console.log('  ' + juneMargins.map(([c, m]) => `${c} ${pct(m)}`).join(', '));
-console.log(`\nData problems: duplicate rows 6, untidy client names ${untidyCount}, wrong-sign cost 1, unbudgeted account Depreciation, overheads with no client`);
+
+// The finance director's commentary for the last three closes.
+const COMMENTARY = [
+  ['2026-08-01', 'Headline', 'Operating profit £129k against a budget of £185k, £56k short.'],
+  ['2026-08-01', 'Revenue', 'Two vacancies in Managed Services reduced available hours. That shows as capacity in the bridge, not as lost billable time. Utilisation in the line was 77.1%.'],
+  ['2026-08-01', 'Margin', 'Projects gross margin 23.1% against 28.6% budget, on Corven Group subcontractor costs.'],
+  ['2026-08-01', 'Costs', 'Overheads £3k under budget. Admin staff over budget again.'],
+  ['2026-09-01', 'Headline', 'Operating profit £208k against a budget of £261k, £53k short.'],
+  ['2026-09-01', 'Revenue', 'Managed Services utilisation fell to 76.6%, £35k of billable time against the 82% target. Advisory is still billing at 2025 rates.'],
+  ['2026-09-01', 'Margin', 'Projects gross margin 21.5% against 28.6%. Corven Group subcontractor costs keep rising and its margin is 10.7%.'],
+  ['2026-09-01', 'Costs', 'Overheads £8k under budget, mostly marketing. Admin staff £7k over.'],
+  ['2026-10-01', 'Headline', 'Operating profit £206k against a budget of £267k, £61k short, and £272k behind budget for the year to date.'],
+  ['2026-10-01', 'Revenue', 'Revenue £52k under budget. Managed Services utilisation has fallen every month since January, to 75.8%, and cost £39k of billable time. Advisory billed £20k below its rate card, including a £4k rebate posted without a client.'],
+  ['2026-10-01', 'Margin', 'Projects gross margin 22.7% against 28.6%. Corven Group is at 10.8% and Nyle Logistics at 27.4%, both below the 30% floor.'],
+  ['2026-10-01', 'Costs', 'Overheads £9k under budget. That includes a £3k laptop lease posted as a credit, which we are checking with the supplier. Admin staff costs are £8k over budget and have risen every month this year.'],
+  ['2026-10-01', 'Actions', 'Partners to agree the Managed Services resourcing plan, and a pricing review for Corven Group before its next phase.'],
+];
+writeCsv(path.join(workbookDir, 'commentary.csv'), ['Month', 'Topic', 'Comment'], COMMENTARY);
+
+// Summary of what the report should show, read back from the clean extract.
+const f0 = (p) => Math.round(p / 100).toLocaleString('en-GB');
+const sumBy = (pred) => extractRows.filter(pred).reduce((s, r) => s - r.l.amount, 0);
+const inMonth = (key) => (r) => r.j.date.startsWith(key);
+const ytd = (y, m) => (r) => r.j.date >= `${y}-01-01` && r.j.date <= `${y}-${pad(m)}-31`;
+const typeOf = (code) => ACCOUNTS.find(([c]) => c === code)[2];
+const type = (t) => (r) => typeOf(r.l.account) === t;
+const and = (...ps) => (r) => ps.every((p) => p(r));
+const budgetRows = (y) => fs.readFileSync(path.join(workbookDir, `budget_${y}.csv`), 'utf8').trim().split('\n').slice(1)
+  .map((s) => s.match(/("[^"]*"|[^,]*)(,|$)/g).map((x) => x.replace(/,$/, '').replace(/^"|"$/g, '')));
+function budget(y, fromM, toM, types) {
+  let total = 0;
+  for (const r of budgetRows(y)) {
+    const t = typeOf(r[2].trim());
+    if (!types.includes(t)) continue;
+    for (let m = fromM; m <= toM; m++) total += (t === 'Revenue' ? 1 : -1) * Number(r[3 + m]) * 100;
+  }
+  return total;
+}
+for (const [label, pred, from, to] of [['Oct 2026', inMonth('2026-10'), 10, 10], ['YTD 2026', ytd(2026, 10), 1, 10]]) {
+  const rev = sumBy(and(pred, type('Revenue'))), dc = sumBy(and(pred, type('Direct costs'))), oh = sumBy(and(pred, type('Overheads')));
+  const bRev = budget(2026, from, to, ['Revenue']), bDc = budget(2026, from, to, ['Direct costs']), bOh = budget(2026, from, to, ['Overheads']);
+  console.log(`${label}: revenue ${f0(rev)} (budget ${f0(bRev)}), direct costs ${f0(dc)} (${f0(bDc)}), gross margin ${(100 * (rev + dc) / rev).toFixed(1)}% (${(100 * (bRev + bDc) / bRev).toFixed(1)}%), overheads ${f0(oh)} (${f0(bOh)}), operating profit ${f0(rev + dc + oh)} (${f0(bRev + bDc + bOh)})`);
+}
+console.log('\nOct 2026 by service line: utilisation, billing rate against rate card, capacity / hours / rate effects');
+for (const sl of SERVICE_LINES) {
+  const dr = drivers.find((x) => x.sl === sl.code && x.mo.key === '2026-10');
+  const rc = PLAN[2026].rate[sl.code];
+  const rev = sumBy(and(inMonth('2026-10'), (r) => r.l.account === sl.revenue));
+  const cap = (dr.available - dr.planned) * TARGET_UTILISATION * rc, hrs = (dr.billable - dr.available * TARGET_UTILISATION) * rc, rate = rev / 100 - dr.billable * rc;
+  console.log(`  ${sl.name.padEnd(17)} ${(100 * dr.billable / dr.available).toFixed(1)}%  ${(rev / 100 / dr.billable).toFixed(2)} vs ${rc}  ${cap.toFixed(0)} / ${hrs.toFixed(0)} / ${rate.toFixed(0)}`);
+}
+console.log('\nClient gross margin, Oct 2026 and 2026 to date');
+const clientMargin = (code, pred) => {
+  const rev = sumBy(and(pred, (r) => r.l.client === code, type('Revenue'))), dc = sumBy(and(pred, (r) => r.l.client === code, type('Direct costs')));
+  return [rev, rev ? (100 * (rev + dc)) / rev : NaN];
+};
+for (const [code, name] of CLIENTS) {
+  const [rev, m1] = clientMargin(code, inMonth('2026-10'));
+  const [revY, mY] = clientMargin(code, ytd(2026, 10));
+  console.log(`  ${name.padEnd(18)} ${f0(rev).padStart(8)} ${m1.toFixed(1).padStart(6)}%   ${f0(revY).padStart(10)} ${mY.toFixed(1).padStart(6)}%`);
+}
+const unallocated = sumBy(and(inMonth('2026-10'), (r) => !r.l.client, type('Revenue')));
+const credits = extractRows.filter((r) => r.l.amount < 0 && !type('Revenue')(r));
+console.log(`\nChecks: ${extractRows.length} journal lines, ${reloaded.length} loaded twice (${f0(reloaded.reduce((s, r) => s + r.l.amount, 0))}), unallocated revenue Oct 2026 ${f0(unallocated)}, cost lines in credit ${credits.length} (${credits.map((r) => `${r.j.date} ${r.l.text} ${f0(-r.l.amount)}`).join('; ')})`);
+console.log('Admin staff 2026 by month: ' + ACTUALS.filter((mo) => mo.y === 2026).map((mo) => f0(-sumBy(and(inMonth(mo.key), (r) => r.l.account === '6100')))).join(', '));
+console.log('Managed Services utilisation 2026: ' + drivers.filter((x) => x.sl === 'MSV' && x.mo.y === 2026).map((x) => (100 * x.billable / x.available).toFixed(1)).join(', '));
