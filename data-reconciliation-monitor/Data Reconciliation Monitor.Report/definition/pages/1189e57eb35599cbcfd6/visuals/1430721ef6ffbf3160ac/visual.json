@@ -27,7 +27,7 @@
                     }
                   },
                   {
-                    "value": "Load checks decide the status. A quality rule that fails is a note for the data team; it never holds a report back.",
+                    "value": "Load checks decide the status. A quality rule that fails is a note for the data team and never holds a report back.",
                     "textStyle": {
                       "fontFamily": "Segoe UI",
                       "fontSize": "13pt",

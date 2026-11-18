@@ -27,7 +27,7 @@
                     }
                   },
                   {
-                    "value": "One status per data area for the night selected. Only the load checks decide it; quality rules add notes.",
+                    "value": "One status per data area for the night selected. Only the load checks decide it, and quality rules add notes.",
                     "textStyle": {
                       "fontFamily": "Segoe UI",
                       "fontSize": "13pt",
