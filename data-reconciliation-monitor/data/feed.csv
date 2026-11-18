@@ -1,9 +1,9 @@
-feed_code,data_area,feed,source_system,feeds_into,record_name,schedule,owner,has_value,files_expected,sort_order
-POS,Store sales,POS transactions,Storeline POS,"Sales, margin and stock",transactions,Every night,L. Prentice,true,4,1
-ECOM,Online orders,E-commerce orders,Webshop,Online sales and returns,orders,Every night,L. Prentice,true,1,2
-GL,Finance ledger,ERP GL journal,Ledger ERP,Management accounts,journal lines,Monday to Friday,J. Meads,true,1,3
-EDI,Supplier invoices,Supplier EDI invoices,EDI gateway,Accounts payable and supplier spend,invoices,Monday to Saturday,D. Okafor,true,3,4
-LOG,Deliveries,Logistics shipments,DepotTrack,Logistics and availability,shipments,Every night,S. Varga,false,2,5
-LOY,Loyalty members,Loyalty members,Loyalty CRM,Customer and marketing,members,Every night,S. Varga,false,1,6
-PRD,Products,Product master,Ledger ERP,All product reporting,products,Every night,J. Meads,false,1,7
-STO,Stores,Store master,Ledger ERP,All store reporting,stores,Every night,J. Meads,false,1,8
+feed_code,data_area,feed_name,source_system,feeds_into,record_name,schedule,owner,has_value,files_expected,sort_order
+POS,Store sales,POS transactions,Storeline POS,"Sales, margin and stock",transactions,Every night,L. Prentice,1,4,1
+ECOM,Online orders,E-commerce orders,Webshop,Online sales and returns,orders,Every night,L. Prentice,1,1,2
+GL,Finance ledger,ERP GL journal,Ledger ERP,Management accounts,journal lines,Monday to Friday,J. Meads,1,1,3
+EDI,Supplier invoices,Supplier EDI invoices,EDI gateway,Accounts payable and supplier spend,invoices,Monday to Saturday,D. Okafor,1,3,4
+LOG,Deliveries,Logistics shipments,DepotTrack,Logistics and availability,shipments,Every night,S. Varga,0,2,5
+LOY,Loyalty members,Loyalty members,Loyalty CRM,Customer and marketing,members,Every night,S. Varga,0,1,6
+PRD,Products,Product master,Ledger ERP,All product reporting,products,Every night,J. Meads,0,1,7
+STO,Stores,Store master,Ledger ERP,All store reporting,stores,Every night,J. Meads,0,1,8
