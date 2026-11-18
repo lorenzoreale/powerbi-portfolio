@@ -1,38 +1,48 @@
 # Data Reconciliation Monitor
 
-A morning check for a retailer whose warehouse is loaded every night from six source systems. Before the business opens its dashboards, the first page says in plain words which data can be used today, which reports to hold back, and why. The pages behind it give the data team the evidence: source against warehouse, the quality rules, and the issue log.
+A morning check that tells the business which data it can use today, and gives the data team the evidence behind every answer.
 
 Synthetic data, fictional client (Thornfield Retail Group).
 
 ![Status page](screenshots/1-status.png)
 
-## What it shows (load of 29 June 2026)
+## The problem
 
-- Seven of eight data areas can be used. Supplier invoices are not ready: one of three files never arrived, so 1,204 invoices worth £214,608 are missing. Accounts payable and supplier spend reporting should wait for the resend.
-- Online orders are three orders (£412) short for the third night running, inside tolerance and traced to refunds posted after the extract closes. Fine for trends.
-- Supplier invoices are the recurring problem: trouble on 5 of the last 14 nights and 5 of the 14 open issues, mostly late or incomplete files from the supplier.
-- Issues are resolved in 2.7 days on average, inside the 3-day target, but 14 are open against 2 a month earlier.
+Thornfield's warehouse is loaded every night from six source systems into eight data areas that finance, trading and supply chain report from. When a load failed, the business found out from a wrong figure in a meeting. The data team needed one page to say, before the reports were opened, which areas could be used and which reports to hold back.
+
+## What it showed (load of Friday 30 October 2026)
+
+- **Seven of eight areas can be used.** Supplier invoices are not ready: one of three files did not arrive, so 1,204 invoices worth £214,608 are missing and the last file landed at 05:41, 41 minutes late. Accounts payable and supplier spend reporting waits for the resend.
+- **Supplier invoices are the recurring problem.** They had trouble on 5 of the last 14 nights and hold 5 of the 14 open issues, mostly late or incomplete files from the supplier. Online orders are 3 orders (£412) short for the third night running, inside tolerance and traced to refunds posted after the extract closes, so they are fine for trends.
+- **The team resolves issues on time, but the queue is growing.** Issues closed in the last four weeks took 2.8 days on average against a 3-day target, yet 14 are open against 2 four weeks earlier. The backlog, not the speed, is the conversation for the data team lead.
 
 ## Pages
 
-Status, Reconciliation, Quality rules, Issue log and About, plus a Data area page reached by right-clicking any data area. The Load dropdown picks any of the 90 nights, and the report shows how things stood that morning.
+Status, Reconciliation, Quality rules and Issues, with Load, data area, source system and owner filters at the top of every page. Load picks any of the last 90 nights, and every page then shows that morning as it stood, the issue log included. Select an area and press Data area, or right-click it, for everything about that area. The Guide button explains how to read the monitor.
 
 ![Reconciliation page](screenshots/2-reconciliation.png)
 
 ## How it is built
 
-- The facts are measurements about the data: rows and value at the source and in the warehouse, files received and when, and records failing each of 48 quality rules.
-- No status is stored. One measure compares every check with the thresholds in the `Rule` table, so changing a tolerance changes every status in the report.
-- Only the load checks (rows, value, file arrival) decide whether a data area can be used. Quality-rule warnings show as notes.
-- The Load dropdown filters `Date`. Trend charts use a separate `Night` axis and `TREATAS`, so they show the nights leading up to the load selected.
-- `Issue` is not related to `Date`. Its measures compare the dates opened and resolved with the night selected, so the log reads as it stood that morning.
-- Power Query keeps the latest of two result sets written for 14 June and cleans arrival times recorded three ways. One issue closed before it was opened is counted and left out of the averages.
+```mermaid
+flowchart LR
+  A[Monitoring tables: SQL Server views] --> C[Power Query]
+  B[Issue log: CSV export] --> C
+  C --> D[Star schema, status from the rulebook]
+  D --> E[Report]
+```
 
-The figures above were recalculated from the CSVs outside Power BI and match the report.
+- **No status is stored.** The load records what it moved: rows and value at the source and in the warehouse, files received and when, and records failing each of 48 rules. One measure compares those figures with the limits in the rulebook, so a tolerance changes in one place and every status follows.
+- **Only the load checks decide whether an area can be used.** Rows and value against the source and files in by 05:00 set the status; the other quality rules add notes for the data team and never hold a report back.
+- **Any past morning reads as it was.** Trend charts use their own night axis, so they always end on the night selected, and the issue measures compare the dates opened and resolved with that night, so the queue shows what was open at the time.
+
+The data carries the problems real monitoring tables do: one night's store sales checks written twice by a rerun, arrival times recorded in three formats, nights with no load scheduled, areas with no money to reconcile, a rule added part-way through the window and an issue closed before it was opened. The views keep the latest run and read every time, and the Reconciliation page counts each problem.
+
+Every figure above was recalculated from the CSV files outside Power BI and matches the report.
 
 ## Opening it
 
-1. Open `Data Reconciliation Monitor.pbip` in Power BI Desktop.
-2. In Transform data, set `Data Folder` to this project's [`data`](data/) folder and refresh.
+1. Build the database: `sql\build.cmd` creates `ThornfieldDW` on SQL Server on localhost. For another server, pass its name, for example `sql\build.cmd (localdb)\MSSQLLocalDB`.
+2. Open `Data Reconciliation Monitor.pbip` in Power BI Desktop. In Transform data, set `Server` and `Database` to match, set `Issue Log Folder` to this project's [`data`](data/) folder, and refresh. Use Windows credentials for SQL Server.
 
-`node generator/generate-data.js` rebuilds the CSVs. See [`generator/`](generator/).
+`node generator/generate-data.js` rebuilds the data. See [`generator/`](generator/).
