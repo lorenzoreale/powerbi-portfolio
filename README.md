@@ -14,4 +14,4 @@ Each project holds the PBIP files, its source data, the generator, and a README 
 
 ## Opening a project
 
-Each project's README says how to open it. In short: open the `.pbip` file in Power BI Desktop, point the parameters in Transform data at the project's sources, then refresh. Site Inspection Performance reads a folder of CSV files. The Month-End Management Pack and the Data Reconciliation Monitor each read a SQL Server database built by the scripts in their `sql` folder, plus Excel workbooks for the first and the issue log export for the second.
+Each project's README says how to open it. The quickest way to see a report is its v2.0 [release](https://github.com/lorenzoreale/powerbi-portfolio/releases): a .pbix with its data and a PDF of every page. In short: open the `.pbip` file in Power BI Desktop, point the parameters in Transform data at the project's sources, then refresh. Site Inspection Performance reads a folder of CSV files. The Month-End Management Pack and the Data Reconciliation Monitor each read a SQL Server database built by the scripts in their `sql` folder, plus Excel workbooks for the first and the issue log export for the second.
