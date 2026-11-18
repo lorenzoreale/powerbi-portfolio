@@ -185,7 +185,7 @@ for (const day of DAYS) {
       src = a.src; wh = a.wh; arrive = a.arrive; recv = a.recv;
       if (f.hasValue) { srcAmt = a.srcAmt; whAmt = a.whAmt; }
     }
-    // Four areas carry no money, so their value is left empty rather than zero.
+    // Four areas carry no money, so their value is left empty.
     if (!f.hasValue) { srcAmt = null; whAmt = null; }
     loads.push({ day, f, src, wh, srcAmt, whAmt, files: f.files, recv, arrive, raw: rawArrival(f.code, arrive, day.idx) });
   }

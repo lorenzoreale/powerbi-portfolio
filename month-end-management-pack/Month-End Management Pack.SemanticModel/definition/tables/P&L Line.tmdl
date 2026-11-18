@@ -28,7 +28,7 @@ table 'P&L Line'
 		summarizeBy: none
 		sourceColumn: [Account Code]
 
-	/// The account types a subtotal adds up. For a margin, the numerator; the denominator is always revenue.
+	/// The account types a subtotal adds up. For a margin, the numerator. The denominator is always revenue.
 	column 'Account Types'
 		dataType: string
 		isHidden

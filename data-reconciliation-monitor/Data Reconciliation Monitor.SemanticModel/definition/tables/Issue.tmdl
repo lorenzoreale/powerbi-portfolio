@@ -22,7 +22,7 @@ table Issue
 		formatString: 0
 		displayFolder: Issues
 
-	/// Days an open issue has been open on the night selected; the oldest when several are in context.
+	/// Days an open issue has been open on the night selected, or the oldest when several are in context.
 	measure 'Days Open' =
 			VAR night = MAX ( 'Date'[Date] )
 			RETURN

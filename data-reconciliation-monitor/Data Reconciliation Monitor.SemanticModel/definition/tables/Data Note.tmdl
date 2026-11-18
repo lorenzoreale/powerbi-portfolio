@@ -68,7 +68,7 @@ table 'Data Note'
 				        { 1, "Checks written twice by a rerun: latest run kept" },
 				        { 2, "Arrival times in another format: read as times" },
 				        { 3, "Nights with no load scheduled: shown as No load" },
-				        { 4, "Loads with no money: value blank, not zero" },
+				        { 4, "Loads with no money: value left blank" },
 				        { 5, "Rules added in the window: counted from their first night" },
 				        { 6, "Issues closed before they were opened: left out of averages" }
 				    }

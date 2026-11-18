@@ -47,7 +47,7 @@ SELECT
 FROM (SELECT DISTINCT run_date FROM mon.FeedRun) AS n;
 GO
 
--- DepotTrack writes its arrival times three ways; they are read as times to the minute.
+-- DepotTrack writes its arrival times three ways, all read here as times to the minute.
 CREATE VIEW rpt.FeedRun AS
 SELECT
     r.run_date        AS [Date],
@@ -65,7 +65,7 @@ JOIN mon.Feed AS f ON f.feed_code = r.feed_code
 CROSS APPLY (SELECT TRY_CONVERT(TIME(0), r.arrival_time) AS arrival) AS a;
 GO
 
--- A rerun writes a second set of results for the same night; the latest run is kept.
+-- A rerun writes a second set of results for the same night, and only the latest run is kept.
 CREATE VIEW rpt.CheckResult AS
 WITH numbered AS (
     SELECT
