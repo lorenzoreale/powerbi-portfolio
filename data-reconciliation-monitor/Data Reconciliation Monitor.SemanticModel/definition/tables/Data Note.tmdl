@@ -1,0 +1,75 @@
+/// What was corrected or flagged in the monitoring data and the issue log before it was reported.
+table 'Data Note'
+
+	measure 'Note Count' =
+			SWITCH (
+			    SELECTEDVALUE ( 'Data Note'[Note Order] ),
+			    1, [Results Replaced by Rerun],
+			    2, [Arrival Times Reformatted],
+			    3, [Nights With No Load],
+			    4, [Loads With No Value],
+			    5, COUNTROWS ( FILTER ( Rule, Rule[Active From] > CALCULATE ( MIN ( 'Date'[Date] ), REMOVEFILTERS ( 'Date' ) ) ) ) + 0,
+			    6, [Issues Out of Order]
+			)
+		formatString: #,0
+		displayFolder: Data notes
+
+	measure 'Note Where' =
+			VAR firstNight = CALCULATE ( MIN ( 'Date'[Date] ), REMOVEFILTERS ( 'Date' ) )
+			VAR allNights = CALCULATE ( COUNTROWS ( 'Date' ), REMOVEFILTERS ( 'Date' ) )
+			RETURN
+			    SWITCH (
+			        SELECTEDVALUE ( 'Data Note'[Note Order] ),
+			        1,
+			            CONCATENATEX (
+			                CALCULATETABLE ( SUMMARIZE ( FILTER ( 'Check Result', 'Check Result'[Runs] > 1 ), Feed[Data Area], 'Date'[Date] ), REMOVEFILTERS ( 'Date' ) ),
+			                Feed[Data Area] & ", " & FORMAT ( 'Date'[Date], "d mmm", "en-GB" ),
+			                "; "
+			            ),
+			        2,
+			            CONCATENATEX (
+			                CALCULATETABLE ( SUMMARIZE ( FILTER ( 'Feed Run', 'Feed Run'[Arrival Reformatted] ), Feed[Source System] ), REMOVEFILTERS ( 'Date' ) ),
+			                Feed[Source System],
+			                ", "
+			            ),
+			        3,
+			            CONCATENATEX (
+			                FILTER ( VALUES ( Feed[Data Area] ), CALCULATE ( COUNTROWS ( 'Feed Run' ), REMOVEFILTERS ( 'Date' ) ) < allNights ),
+			                Feed[Data Area],
+			                ", ",
+			                CALCULATE ( MAX ( Feed[Sort Order] ) ), ASC
+			            ),
+			        4, CONCATENATEX ( FILTER ( VALUES ( Feed[Data Area] ), CALCULATE ( COUNTROWS ( Feed ), Feed[Has Value] = FALSE () ) > 0 ), Feed[Data Area], ", " ),
+			        5, CONCATENATEX ( FILTER ( Rule, Rule[Active From] > firstNight ), Rule[Rule Id] & " from " & FORMAT ( Rule[Active From], "d mmm", "en-GB" ), ", " ),
+			        6, CONCATENATEX ( FILTER ( Issue, Issue[Resolved Before Opened] ), Issue[Issue Id], ", " )
+			    )
+		displayFolder: Data notes
+
+	column 'Note Order'
+		dataType: int64
+		isHidden
+		formatString: 0
+		summarizeBy: none
+		sourceColumn: [Note Order]
+
+	column Note
+		dataType: string
+		summarizeBy: none
+		sourceColumn: [Note]
+		sortByColumn: 'Note Order'
+
+	partition 'Data Note' = calculated
+		mode: import
+		source =
+				DATATABLE (
+				    "Note Order", INTEGER,
+				    "Note", STRING,
+				    {
+				        { 1, "Checks written twice by a rerun: latest run kept" },
+				        { 2, "Arrival times in another format: read as times" },
+				        { 3, "Nights with no load scheduled: shown as No load" },
+				        { 4, "Loads with no money: value blank, not zero" },
+				        { 5, "Rules added in the window: counted from their first night" },
+				        { 6, "Issues closed before they were opened: left out of averages" }
+				    }
+				)

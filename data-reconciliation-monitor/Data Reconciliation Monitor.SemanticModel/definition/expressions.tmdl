@@ -1,2 +1,14 @@
-/// Folder holding the CSV files written by generator/generate-data.js. Change this one value after cloning the repository.
-expression 'Data Folder' = "C:\powerbi_portfolio\data-reconciliation-monitor\data" meta [IsParameterQuery=true, Type="Text", IsParameterQueryRequired=true]
+/// SQL Server instance holding the ThornfieldDW database, for example localhost or (localdb)\MSSQLLocalDB.
+expression Server = "localhost" meta [IsParameterQuery=true, Type="Text", IsParameterQueryRequired=true]
+
+	annotation PBI_ResultType = Text
+
+/// Database built by the scripts in the sql folder.
+expression Database = "ThornfieldDW" meta [IsParameterQuery=true, Type="Text", IsParameterQueryRequired=true]
+
+	annotation PBI_ResultType = Text
+
+/// Folder holding issue_log.csv, the nightly export from the ticketing tool.
+expression 'Issue Log Folder' = "C:\powerbi_portfolio\data-reconciliation-monitor\data" meta [IsParameterQuery=true, Type="Text", IsParameterQueryRequired=true]
+
+	annotation PBI_ResultType = Text

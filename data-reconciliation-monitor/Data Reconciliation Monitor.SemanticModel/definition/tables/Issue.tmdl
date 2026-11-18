@@ -1,7 +1,7 @@
-/// The issue log: one row per problem raised by the data team, with when it was opened and resolved, who owns it and where it stands. Not related to Date on purpose, so the Load dropdown never hides an issue: the measures compare its dates with the night selected to work out which issues were open.
+/// One row per issue in the ticketing tool export. The measures read it as it stood on the night selected.
 table Issue
 
-	/// Issues open at the end of the night selected: opened on or before it and not resolved by then.
+	/// Issues open on the morning of the load selected: opened by then and not yet resolved.
 	measure 'Open Issues' =
 			VAR night = MAX ( 'Date'[Date] )
 			RETURN
@@ -9,20 +9,20 @@ table Issue
 		formatString: 0
 		displayFolder: Issues
 
-	/// Open issues of Critical severity.
-	measure 'Critical Open Issues' = CALCULATE ( [Open Issues], Issue[Severity] = "Critical" )
+	/// Open issues logged as critical.
+	measure 'Critical Open' = CALCULATE ( [Open Issues], Issue[Severity] = "Critical" )
 		formatString: 0
 		displayFolder: Issues
 
-	/// Open Issues seven nights before the night selected.
-	measure 'Open Issues a Week Earlier' =
-			VAR night = MAX ( 'Date'[Date] )
+	/// Issues open four weeks before the load selected.
+	measure 'Open Four Weeks Earlier' =
+			VAR night = MAX ( 'Date'[Date] ) - 28
 			RETURN
-			    CALCULATE ( [Open Issues], 'Date'[Date] = night - 7 )
+			    COUNTROWS ( FILTER ( Issue, Issue[Opened] <= night && ( ISBLANK ( Issue[Resolved] ) || Issue[Resolved] > night ) ) ) + 0
 		formatString: 0
 		displayFolder: Issues
 
-	/// Days an issue has been open at the night selected. Across several issues, the oldest.
+	/// Days an open issue has been open on the night selected; the oldest when several are in context.
 	measure 'Days Open' =
 			VAR night = MAX ( 'Date'[Date] )
 			RETURN
@@ -30,31 +30,7 @@ table Issue
 		formatString: 0
 		displayFolder: Issues
 
-	/// Open issues raised in the last three nights, for the table by owner and age.
-	measure 'Open 0 to 2 Days' =
-			VAR night = MAX ( 'Date'[Date] )
-			RETURN
-			    COUNTROWS ( FILTER ( Issue, Issue[Opened] <= night && Issue[Opened] > night - 3 && ( ISBLANK ( Issue[Resolved] ) || Issue[Resolved] > night ) ) ) + 0
-		formatString: 0
-		displayFolder: Issues
-
-	/// Open issues raised three to six nights before the night selected.
-	measure 'Open 3 to 6 Days' =
-			VAR night = MAX ( 'Date'[Date] )
-			RETURN
-			    COUNTROWS ( FILTER ( Issue, Issue[Opened] <= night - 3 && Issue[Opened] > night - 7 && ( ISBLANK ( Issue[Resolved] ) || Issue[Resolved] > night ) ) ) + 0
-		formatString: 0
-		displayFolder: Issues
-
-	/// Open issues raised seven or more nights before the night selected.
-	measure 'Open 7 Days or More' =
-			VAR night = MAX ( 'Date'[Date] )
-			RETURN
-			    COUNTROWS ( FILTER ( Issue, Issue[Opened] <= night - 7 && ( ISBLANK ( Issue[Resolved] ) || Issue[Resolved] > night ) ) ) + 0
-		formatString: 0
-		displayFolder: Issues
-
-	/// Issues opened in the seven nights up to the night selected.
+	/// Issues opened in the 7 nights to the load selected.
 	measure 'Opened Last 7 Nights' =
 			VAR night = MAX ( 'Date'[Date] )
 			RETURN
@@ -62,7 +38,7 @@ table Issue
 		formatString: 0
 		displayFolder: Issues
 
-	/// Issues resolved in the seven nights up to the night selected. The one record resolved before it was opened is left out.
+	/// Issues resolved in the 7 nights to the load selected.
 	measure 'Resolved Last 7 Nights' =
 			VAR night = MAX ( 'Date'[Date] )
 			RETURN
@@ -70,129 +46,118 @@ table Issue
 		formatString: 0
 		displayFolder: Issues
 
-	/// Average days from opened to resolved, for issues resolved in the 28 nights up to the night selected. The record resolved before it was opened is left out.
+	/// Average days from opened to resolved, for issues resolved in the 28 nights to the load selected.
 	measure 'Days to Resolve' =
 			VAR night = MAX ( 'Date'[Date] )
 			RETURN
 			    AVERAGEX (
 			        FILTER ( Issue, Issue[Resolved] > night - 28 && Issue[Resolved] <= night && Issue[Resolved] >= Issue[Opened] ),
-			        Issue[Resolved] - Issue[Opened]
+			        INT ( Issue[Resolved] - Issue[Opened] )
 			    )
 		formatString: 0.0
 		displayFolder: Issues
 
-	/// The team's target for resolving an issue, in days.
+	measure 'Resolved Last 28 Nights' =
+			VAR night = MAX ( 'Date'[Date] )
+			RETURN
+			    COUNTROWS ( FILTER ( Issue, Issue[Resolved] > night - 28 && Issue[Resolved] <= night && Issue[Resolved] >= Issue[Opened] ) ) + 0
+		formatString: 0
+		isHidden
+		displayFolder: Issues
+
+	/// The target for Days to Resolve.
 	measure 'Days to Resolve Target' = 3
 		formatString: 0
 		displayFolder: Issues
 
-	/// Records resolved before they were opened: a data-entry slip the log should not contain.
-	measure 'Issues Logged Out of Order' = COUNTROWS ( FILTER ( Issue, NOT ISBLANK ( Issue[Resolved] ) && Issue[Resolved] < Issue[Opened] ) ) + 0
+	measure 'Open 0 to 2 Days' =
+			VAR night = MAX ( 'Date'[Date] )
+			RETURN
+			    COUNTROWS ( FILTER ( Issue, Issue[Opened] <= night && Issue[Opened] > night - 3 && ( ISBLANK ( Issue[Resolved] ) || Issue[Resolved] > night ) ) ) + 0
 		formatString: 0
-		displayFolder: Issues
+		displayFolder: Age bands
 
-	/// 1 when the issue in context was open at the night selected. Filters the register.
+	measure 'Open 3 to 6 Days' =
+			VAR night = MAX ( 'Date'[Date] )
+			RETURN
+			    COUNTROWS ( FILTER ( Issue, Issue[Opened] <= night - 3 && Issue[Opened] > night - 7 && ( ISBLANK ( Issue[Resolved] ) || Issue[Resolved] > night ) ) ) + 0
+		formatString: 0
+		displayFolder: Age bands
+
+	measure 'Open 7 Days or More' =
+			VAR night = MAX ( 'Date'[Date] )
+			RETURN
+			    COUNTROWS ( FILTER ( Issue, Issue[Opened] <= night - 7 && ( ISBLANK ( Issue[Resolved] ) || Issue[Resolved] > night ) ) ) + 0
+		formatString: 0
+		displayFolder: Age bands
+
 	measure 'Is Open' = IF ( [Open Issues] > 0, 1 )
 		formatString: 0
 		isHidden
 		displayFolder: Issues
 
-	/// Open issues at the end of the night on the axis, for the 30 nights up to the load selected.
-	measure 'Open Issues by Night' =
-			IF ( [In Last 30 Nights] = 1, CALCULATE ( [Open Issues], TREATAS ( VALUES ( Night[Night] ), 'Date'[Date] ) ) )
+	/// Issues opened, night by night, over the 30 nights to the load selected.
+	measure 'Opened by Night' =
+			VAR night = MAX ( Night[Night] )
+			RETURN
+			    IF ( [In Last 30 Nights] = 1, COUNTROWS ( FILTER ( Issue, Issue[Opened] = night ) ) + 0 )
 		formatString: 0
 		displayFolder: Trends
 
-	/// Where an issue stands. An issue listed for an earlier night that has since been resolved says when.
-	measure 'Where It Stands' =
-			VAR resolved = SELECTEDVALUE ( Issue[Resolved] )
+	/// Issues resolved, night by night, over the 30 nights to the load selected.
+	measure 'Resolved by Night' =
+			VAR night = MAX ( Night[Night] )
 			RETURN
-			    IF ( ISBLANK ( resolved ), SELECTEDVALUE ( Issue[Latest Update] ), "Resolved on " & FORMAT ( resolved, "d mmm" ) )
-		displayFolder: Report text
+			    IF ( [In Last 30 Nights] = 1, COUNTROWS ( FILTER ( Issue, Issue[Resolved] = night && Issue[Resolved] >= Issue[Opened] ) ) + 0 )
+		formatString: 0
+		displayFolder: Trends
 
-	/// The most recent issue open on a data area at the night selected and where it stands, for the Last night text.
-	measure 'Latest Issue Note' =
-			VAR night = MAX ( 'Date'[Date] )
-			VAR openIssues = FILTER ( Issue, Issue[Opened] <= night && ( ISBLANK ( Issue[Resolved] ) || Issue[Resolved] > night ) )
-			VAR latest = TOPN ( 1, openIssues, Issue[Opened], DESC, Issue[Issue Id], DESC )
-			VAR resolved = MAXX ( latest, Issue[Resolved] )
-			RETURN
-			    IF (
-			        NOT ISEMPTY ( latest ),
-			        IF ( ISBLANK ( resolved ), MAXX ( latest, Issue[Latest Update] ), "Resolved on " & FORMAT ( resolved, "d mmm" ) ) & "."
-			    )
-		displayFolder: Report text
-
-	/// The oldest open issue, for example "ISS-0171 · Products, schema change".
-	measure 'Oldest Open Issue' =
-			VAR night = MAX ( 'Date'[Date] )
-			VAR openIssues = FILTER ( Issue, Issue[Opened] <= night && ( ISBLANK ( Issue[Resolved] ) || Issue[Resolved] > night ) )
-			VAR oldest = TOPN ( 1, openIssues, Issue[Opened], ASC, Issue[Issue Id], ASC )
-			RETURN
-			    MAXX ( oldest, Issue[Issue Id] & " · " & RELATED ( Feed[Data Area] ) & ", " & LOWER ( Issue[Category] ) )
-		displayFolder: Report text
-
-	/// Context line under the count of log entries to correct.
-	measure 'Context Log Entries' =
+	/// Issues open on each night, over the 30 nights to the load selected.
+	measure 'Open Issues by Night' =
 			IF (
-			    [Issues Logged Out of Order] = 0,
-			    "Every entry is in order",
-			    "Resolved before opened: " & CONCATENATEX ( FILTER ( Issue, NOT ISBLANK ( Issue[Resolved] ) && Issue[Resolved] < Issue[Opened] ), Issue[Issue Id], ", " )
+			    [In Last 30 Nights] = 1,
+			    CALCULATE ( [Open Issues], REMOVEFILTERS ( 'Date' ), TREATAS ( VALUES ( Night[Night] ), 'Date'[Date] ) )
 			)
-		displayFolder: Report text
+		formatString: 0
+		displayFolder: Trends
 
-	/// Context line under the open issues figure.
-	measure 'Context Open Issues' = [Critical Open Issues] & " critical · " & [Open Issues a Week Earlier] & " a week earlier"
-		displayFolder: Report text
+	measure 'Issues Out of Order' = COUNTROWS ( FILTER ( Issue, Issue[Resolved Before Opened] ) ) + 0
+		formatString: 0
+		isHidden
+		displayFolder: Data notes
 
-	/// Context line under the days to resolve figure: the target and the last seven nights.
-	measure 'Context Days to Resolve' =
-			"Target " & [Days to Resolve Target] & " days · " & [Opened Last 7 Nights] & " opened, " & [Resolved Last 7 Nights] & " resolved"
-		displayFolder: Report text
+	measure 'KPI Open Context' = [Critical Open] & " critical · " & [Open Four Weeks Earlier] & " open four weeks earlier"
+		displayFolder: KPI
 
-	/// First line of the Issue log page.
-	measure 'Headline Issues' =
-			VAR openNow = [Open Issues]
-			VAR areas = ADDCOLUMNS ( VALUES ( Feed[Data Area] ), "@Open", [Open Issues] )
-			VAR most = TOPN ( 1, areas, [@Open], DESC, Feed[Data Area], ASC )
+	measure 'KPI Critical Context' = "High " & CALCULATE ( [Open Issues], Issue[Severity] = "High" ) & " · medium " & CALCULATE ( [Open Issues], Issue[Severity] = "Medium" ) & " · low " & CALCULATE ( [Open Issues], Issue[Severity] = "Low" )
+		displayFolder: KPI
+
+	measure 'KPI Oldest Context' =
+			VAR night = MAX ( 'Date'[Date] )
+			VAR oldest = TOPN ( 1, FILTER ( Issue, Issue[Opened] <= night && ( ISBLANK ( Issue[Resolved] ) || Issue[Resolved] > night ) ), Issue[Opened], ASC, Issue[Issue Id], ASC )
 			RETURN
-			    IF (
-			        openNow = 0,
-			        "No issues are open.",
-			        openNow & " issues are open, " & [Critical Open Issues] & " of them critical. " & MAXX ( most, [@Open] ) & " are on "
-			            & LOWER ( MAXX ( most, Feed[Data Area] ) ) & ", the most of any data area."
-			    )
-		displayFolder: Report text
+			    IF ( NOT ISEMPTY ( oldest ), MAXX ( oldest, Issue[Issue Id] ) & " · " & MAXX ( oldest, RELATED ( Feed[Data Area] ) ) )
+		displayFolder: KPI
 
-	/// Second line of the Issue log page: is the team keeping up?
-	measure 'Headline Issues Follow-up' =
-			VAR days = [Days to Resolve]
-			VAR target = [Days to Resolve Target]
-			RETURN
-			    "In the last 7 nights " & [Opened Last 7 Nights] & " were opened and " & [Resolved Last 7 Nights] & " resolved. Issues take "
-			        & FORMAT ( days, "0.0" ) & " days to resolve on average, " & IF ( days <= target, "inside", "outside" ) & " the " & target & "-day target."
-		displayFolder: Report text
+	measure 'KPI Resolve Context' = "Target " & [Days to Resolve Target] & " days · " & [Resolved Last 28 Nights] & " resolved in 28 nights"
+		displayFolder: KPI
 
-	/// Title of the open-issues trend.
-	measure 'Title Issue Trend' =
-			VAR lastLoad = MAX ( 'Date'[Date] )
-			VAR atStart = CALCULATE ( [Open Issues], 'Date'[Date] = lastLoad - 29 )
-			VAR atEnd = [Open Issues]
-			RETURN
-			    "Open issues " & SWITCH ( TRUE (), atEnd > atStart, "rose from ", atEnd < atStart, "fell from ", "stayed at " )
-			        & IF ( atEnd = atStart, atEnd, atStart & " to " & atEnd ) & " in 30 nights"
-		displayFolder: Report text
-
-	/// Red when a critical issue is open.
-	measure 'Colour Open Issues Context' = IF ( [Critical Open Issues] > 0, "#9C2A1E", "#5D6B79" )
+	measure 'Colour Critical' = IF ( [Critical Open] > 0, "#EE8A84", "#E6EBF2" )
 		displayFolder: Colours
 
-	/// Red when issues take longer than the target to resolve.
-	measure 'Colour Days to Resolve Context' = IF ( [Days to Resolve] > [Days to Resolve Target], "#9C2A1E", "#5D6B79" )
+	measure 'Colour Critical Accent' = IF ( [Critical Open] > 0, "#D65F5F", "#58B7D4" )
 		displayFolder: Colours
 
-	/// Red for a critical issue in the register.
-	measure 'Colour Severity' = IF ( SELECTEDVALUE ( Issue[Severity] ) = "Critical", "#9C2A1E", "#1D2A36" )
+	measure 'Colour Days to Resolve' = IF ( [Days to Resolve] > [Days to Resolve Target], "#EE8A84", "#E6EBF2" )
+		displayFolder: Colours
+
+	measure 'Colour Severity Fill' = SWITCH ( SELECTEDVALUE ( Issue[Severity] ), "Critical", "#4A2629", "High", "#45381D", "#252C35" )
+		displayFolder: Colours
+
+	measure 'Colour Severity Text' = SWITCH ( SELECTEDVALUE ( Issue[Severity] ), "Critical", "#F2A49F", "High", "#EDC679", "#B9C2CE" )
+		displayFolder: Colours
+
+	measure 'Colour Old Issues' = IF ( [Open 7 Days or More] > 0, "#E8BA62", "#E6EBF2" )
 		displayFolder: Colours
 
 	column 'Issue Id'
@@ -203,7 +168,7 @@ table Issue
 
 	column Opened
 		dataType: dateTime
-		formatString: d mmm
+		formatString: d mmm yyyy
 		summarizeBy: none
 		sourceColumn: Opened
 
@@ -212,7 +177,7 @@ table Issue
 	/// Blank while the issue is open.
 	column Resolved
 		dataType: dateTime
-		formatString: d mmm
+		formatString: d mmm yyyy
 		summarizeBy: none
 		sourceColumn: Resolved
 
@@ -224,13 +189,11 @@ table Issue
 		summarizeBy: none
 		sourceColumn: Feed Code
 
-	/// Missing file, Rows missing, Value difference, Late arrival, Duplicate records, Schema change or Rule breach.
 	column Category
 		dataType: string
 		summarizeBy: none
 		sourceColumn: Category
 
-	/// Critical, High, Medium or Low, sorted in that order.
 	column Severity
 		dataType: string
 		summarizeBy: none
@@ -249,21 +212,31 @@ table Issue
 		summarizeBy: none
 		sourceColumn: Owner
 
-	/// The owner's latest note on the issue, in plain words. Resolved once it is closed.
-	column 'Latest Update'
+	/// The latest note on the issue in the ticketing tool.
+	column 'Where It Stands'
 		dataType: string
 		summarizeBy: none
-		sourceColumn: Latest Update
+		sourceColumn: Where It Stands
+
+	/// True for an issue closed on a date before it was opened: counted, but left out of the averages.
+	column 'Resolved Before Opened'
+		dataType: boolean
+		isHidden
+		formatString: """TRUE"";""TRUE"";""FALSE"""
+		summarizeBy: none
+		sourceColumn: Resolved Before Opened
 
 	partition Issue = m
 		mode: import
 		source =
 				let
-				    Source = Csv.Document(File.Contents(#"Data Folder" & "\issue_log.csv"), [Delimiter = ",", Columns = 8, Encoding = 65001, QuoteStyle = QuoteStyle.Csv]),
+				    Source = Csv.Document(File.Contents(#"Issue Log Folder" & "\issue_log.csv"), [Delimiter = ",", Columns = 8, Encoding = 65001, QuoteStyle = QuoteStyle.Csv]),
 				    #"Promoted Headers" = Table.PromoteHeaders(Source, [PromoteAllScalars = true]),
-				    #"Renamed Columns" = Table.RenameColumns(#"Promoted Headers", {{"issue_id", "Issue Id"}, {"opened", "Opened"}, {"resolved", "Resolved"}, {"feed_code", "Feed Code"}, {"category", "Category"}, {"severity", "Severity"}, {"owner", "Owner"}, {"status", "Latest Update"}}),
-				    #"Changed Types" = Table.TransformColumnTypes(#"Renamed Columns", {{"Issue Id", type text}, {"Opened", type date}, {"Resolved", type date}, {"Feed Code", type text}, {"Category", type text}, {"Severity", type text}, {"Owner", type text}, {"Latest Update", type text}}),
-				    #"Added Severity Order" = Table.AddColumn(#"Changed Types", "Severity Order", each List.PositionOf({"Critical", "High", "Medium", "Low"}, [Severity]) + 1, Int64.Type)
+				    #"Changed Types" = Table.TransformColumnTypes(#"Promoted Headers", {{"issue_id", type text}, {"opened", type date}, {"resolved", type date}, {"feed_code", type text}, {"category", type text}, {"severity", type text}, {"owner", type text}, {"status", type text}}),
+				    #"Renamed Columns" = Table.RenameColumns(#"Changed Types", {{"issue_id", "Issue Id"}, {"opened", "Opened"}, {"resolved", "Resolved"}, {"feed_code", "Feed Code"}, {"category", "Category"}, {"severity", "Severity"}, {"owner", "Owner"}, {"status", "Where It Stands"}}),
+				    #"Added Severity Order" = Table.AddColumn(#"Renamed Columns", "Severity Order", each List.PositionOf({"Critical", "High", "Medium", "Low"}, [Severity]) + 1, Int64.Type),
+				    #"Flagged Resolved Before Opened" = Table.AddColumn(#"Added Severity Order", "Resolved Before Opened", each [Resolved] <> null and [Resolved] < [Opened], type logical)
 				in
-				    #"Added Severity Order"
+				    #"Flagged Resolved Before Opened"
 
+	annotation PBI_ResultType = Table

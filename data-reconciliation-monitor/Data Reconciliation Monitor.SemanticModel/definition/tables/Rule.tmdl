@@ -1,4 +1,4 @@
-/// The rulebook: one row per check, with the thresholds that turn an observation into Passed, Warning or Failed. Change a threshold here and every status in the report follows.
+/// The rulebook: one row per check, with the limits that decide warning and failure.
 table Rule
 
 	column 'Rule Id'
@@ -7,26 +7,18 @@ table Rule
 		summarizeBy: none
 		sourceColumn: Rule Id
 
-	column 'Rule Name'
-		dataType: string
-		summarizeBy: none
-		sourceColumn: Rule Name
-
-	/// Id and name together, for tables.
-	column Rule
-		dataType: string
-		summarizeBy: none
-		sourceColumn: Rule
-		sortByColumn: 'Rule Id'
-
-	/// The data area the rule checks. Not related to Feed: results reach Feed through Check Result.
 	column 'Feed Code'
 		dataType: string
 		isHidden
 		summarizeBy: none
 		sourceColumn: Feed Code
 
-	/// Completeness, Validity, Uniqueness, Timeliness or Consistency.
+	column Rule
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Rule
+
+	/// Completeness, Consistency, Timeliness, Uniqueness or Validity.
 	column 'Quality Dimension'
 		dataType: string
 		summarizeBy: none
@@ -35,42 +27,58 @@ table Rule
 	/// What the rule counts: rows, pounds or files.
 	column Unit
 		dataType: string
+		isHidden
 		summarizeBy: none
 		sourceColumn: Unit
 
-	/// True for the checks on the load itself (rows and value against the source, file arrival). These decide the status of a data area.
+	/// True for the checks against the source and the deadline, the only ones that decide the status.
 	column 'Is Load Check'
 		dataType: boolean
+		isHidden
+		formatString: """TRUE"";""TRUE"";""FALSE"""
 		summarizeBy: none
 		sourceColumn: Is Load Check
 
-	/// Share failing, in per cent, above which the result is at least Warning.
+	column 'Check Type'
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Check Type
+
 	column 'Warn Above %'
-		dataType: double
+		dataType: decimal
+		isHidden
+		formatString: 0.00
 		summarizeBy: none
 		sourceColumn: Warn Above %
 
-	/// Share failing, in per cent, above which the result is Failed.
 	column 'Fail Above %'
-		dataType: double
+		dataType: decimal
+		isHidden
+		formatString: 0.00
 		summarizeBy: none
 		sourceColumn: Fail Above %
 
-	/// Timeliness rules: minutes after 05:00 above which the result is at least Warning.
 	column 'Warn Late Mins'
 		dataType: int64
+		isHidden
 		formatString: 0
 		summarizeBy: none
 		sourceColumn: Warn Late Mins
 
-	/// Timeliness rules: minutes after 05:00 above which the result is Failed. A missing file always fails.
 	column 'Fail Late Mins'
 		dataType: int64
+		isHidden
 		formatString: 0
 		summarizeBy: none
 		sourceColumn: Fail Late Mins
 
-	/// The first night the rule ran. Blank for rules that ran all along.
+	/// The limits of the rule in words.
+	column Limit
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Limit
+
+	/// The first night the rule ran, for rules added during the window.
 	column 'Active From'
 		dataType: dateTime
 		formatString: d mmm yyyy
@@ -79,29 +87,19 @@ table Rule
 
 		annotation UnderlyingDateTimeDataType = Date
 
-	/// What a failing record is, in plain words, for the notes on the Status page.
-	column Problem
-		dataType: string
-		isHidden
-		summarizeBy: none
-		sourceColumn: Problem
-
-	/// The rule's limit in words, for tables.
-	column Limit
+	/// What one failing record is, for the quality rules.
+	column 'Failing Record'
 		dataType: string
 		summarizeBy: none
-		sourceColumn: Limit
+		sourceColumn: Failing Record
 
 	partition Rule = m
 		mode: import
 		source =
 				let
-				    Source = Csv.Document(File.Contents(#"Data Folder" & "\rule.csv"), [Delimiter = ",", Columns = 12, Encoding = 65001, QuoteStyle = QuoteStyle.Csv]),
-				    #"Promoted Headers" = Table.PromoteHeaders(Source, [PromoteAllScalars = true]),
-				    #"Renamed Columns" = Table.RenameColumns(#"Promoted Headers", {{"rule_id", "Rule Id"}, {"rule_name", "Rule Name"}, {"feed_code", "Feed Code"}, {"quality_dimension", "Quality Dimension"}, {"unit", "Unit"}, {"is_load_check", "Is Load Check"}, {"warn_above_pct", "Warn Above %"}, {"fail_above_pct", "Fail Above %"}, {"warn_late_mins", "Warn Late Mins"}, {"fail_late_mins", "Fail Late Mins"}, {"active_from", "Active From"}, {"problem", "Problem"}}),
-				    #"Changed Types" = Table.TransformColumnTypes(#"Renamed Columns", {{"Rule Id", type text}, {"Rule Name", type text}, {"Feed Code", type text}, {"Quality Dimension", type text}, {"Unit", type text}, {"Is Load Check", type logical}, {"Warn Above %", type number}, {"Fail Above %", type number}, {"Warn Late Mins", Int64.Type}, {"Fail Late Mins", Int64.Type}, {"Active From", type date}, {"Problem", type text}}),
-				    #"Added Rule" = Table.AddColumn(#"Changed Types", "Rule", each [Rule Id] & " " & [Rule Name], type text),
-				    #"Added Limit" = Table.AddColumn(#"Added Rule", "Limit", each if [Quality Dimension] = "Timeliness" then "Due by 05:00, fails after " & Text.From([Fail Late Mins]) & " minutes" else "Fails above " & Text.From([#"Fail Above %"]) & "%", type text)
+				    Source = Sql.Database(Server, Database),
+				    Rule = Source{[Schema = "rpt", Item = "Rule"]}[Data]
 				in
-				    #"Added Limit"
+				    Rule
 
+	annotation PBI_ResultType = Table

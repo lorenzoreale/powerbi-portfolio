@@ -1,35 +1,41 @@
-/// One row per overnight load, 1 April to 29 June 2026, marked as the date table. The Load dropdown on every page filters it, so a plain measure gives the figure for the load selected.
+/// One row per night in the window. The Load selector filters this table.
 table Date
 	dataCategory: Time
 
-	/// The night of the load. Shown in the Load dropdown.
+	measure 'Header Subtitle' = "Load of " & FORMAT ( MAX ( 'Date'[Date] ), "ddd d mmm yyyy", "en-GB" ) & " · " & COUNTROWS ( ALL ( Feed ) ) & " data areas · deadline 05:00"
+		displayFolder: Report text
+
 	column Date
 		dataType: dateTime
 		isKey
-		formatString: ddd d mmm yyyy
+		formatString: d mmm yyyy
 		summarizeBy: none
 		sourceColumn: Date
 
 		annotation UnderlyingDateTimeDataType = Date
 
-	column Weekday
+	/// The night of the load, latest first in the selector.
+	column Load
 		dataType: string
 		summarizeBy: none
-		sourceColumn: Weekday
+		sourceColumn: Load
+		sortByColumn: 'Nights Back'
 
-	column Month
-		dataType: string
+	column 'Nights Back'
+		dataType: int64
+		isHidden
+		formatString: 0
 		summarizeBy: none
-		sourceColumn: Month
+		sourceColumn: Nights Back
 
 	partition Date = m
 		mode: import
 		source =
 				let
-				    Source = Csv.Document(File.Contents(#"Data Folder" & "\date.csv"), [Delimiter = ",", Columns = 3, Encoding = 65001, QuoteStyle = QuoteStyle.Csv]),
-				    #"Promoted Headers" = Table.PromoteHeaders(Source, [PromoteAllScalars = true]),
-				    #"Renamed Columns" = Table.RenameColumns(#"Promoted Headers", {{"date", "Date"}, {"weekday", "Weekday"}, {"month", "Month"}}),
-				    #"Changed Types" = Table.TransformColumnTypes(#"Renamed Columns", {{"Date", type date}, {"Weekday", type text}, {"Month", type text}})
+				    Source = Sql.Database(Server, Database),
+				    Night = Source{[Schema = "rpt", Item = "Night"]}[Data],
+				    #"Removed Night Label" = Table.RemoveColumns(Night, {"Night Label"})
 				in
-				    #"Changed Types"
+				    #"Removed Night Label"
 
+	annotation PBI_ResultType = Table

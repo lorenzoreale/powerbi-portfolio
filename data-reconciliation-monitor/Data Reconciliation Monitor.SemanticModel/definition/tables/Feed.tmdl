@@ -1,192 +1,127 @@
-/// One row per data area: a nightly load from a source system into the warehouse, with the business name, the reporting it feeds and the person who owns it.
+/// One row per data area: a nightly load from a source system, the reports it feeds and who owns it.
 table Feed
 
-	/// The status of a data area as a number: 2 not ready, 1 use with care, 0 ready, -1 no load scheduled that night. Judged on the load checks only (rows and value against the source, file arrival), so a quality-rule warning on its own never holds a report back.
-	measure 'Status Rank' = COALESCE ( CALCULATE ( [Check Rank], Rule[Is Load Check] = TRUE () ), -1 )
+	/// 2 not ready, 1 use with care, 0 ready, -1 no load that night. Only the load checks count.
+	measure 'Status Rank' = COALESCE ( CALCULATE ( [Check Rank], REMOVEFILTERS ( Rule ), Rule[Is Load Check] = TRUE () ), -1 )
 		formatString: 0
 		isHidden
 		displayFolder: Status
 
-	/// The status in words: Not ready, Use with care, Ready, or No load when none is scheduled that night.
+	/// Ready, Use with care, Not ready, or No load when none was scheduled that night.
 	measure Status = SWITCH ( [Status Rank], 2, "Not ready", 1, "Use with care", 0, "Ready", "No load" )
 		displayFolder: Status
 
-	/// The status for the board on the Status page. The number behind it (2 not ready, down to -1 no load) lets the board sort worst first, and the format string shows it in words.
-	measure 'Board Status' = [Status Rank]
+	measure 'Board Status' = [Status Rank] * 100 - MAX ( Feed[Sort Order] )
+		isHidden
 		displayFolder: Status
-		formatStringDefinition = SWITCH ( [Status Rank], 2, """Not ready""", 1, """Use with care""", 0, """Ready""", """No load""" )
+		formatStringDefinition = SWITCH ( [Status Rank], 2, """Not ready"";""Not ready"";""Not ready""", 1, """Use with care"";""Use with care"";""Use with care""", 0, """Ready"";""Ready"";""Ready""", """No load"";""No load"";""No load""" )
 
-	/// The number of data areas loaded each night.
-	measure 'Data Areas' = COUNTROWS ( Feed )
-		formatString: 0
-		displayFolder: Status
-
-	/// Data areas whose figures can be used: every status except Not ready. An area with no load scheduled keeps its last figures.
+	/// Data areas whose figures can be used that morning: every status except Not ready.
 	measure 'Areas Usable' = COUNTROWS ( FILTER ( Feed, [Status Rank] <> 2 ) ) + 0
 		formatString: 0
 		displayFolder: Status
 
-	/// The status of the data area on the night on the axis, for the 14-night grid. Blank outside the window, so the grid shows only those nights.
-	measure 'Status on Night' =
-			IF (
-			    [In Last 14 Nights] = 1,
-			    CALCULATE ( [Status], TREATAS ( VALUES ( Night[Night] ), 'Date'[Date] ) )
-			)
+	/// Data areas whose rows and value match the source and whose files all arrived by 05:00.
+	measure 'Areas Ready' = COUNTROWS ( FILTER ( Feed, [Status Rank] = 0 ) ) + 0
+		formatString: 0
 		displayFolder: Status
 
-	/// Part of the Last night text: files that did not arrive.
-	measure 'Problem Files' =
-			VAR missing = [Files Missing]
-			RETURN
-			    IF ( missing > 0, IF ( [Files Due] = 1, "The file did not arrive. ", missing & " of " & [Files Due] & " files did not arrive. " ) )
-		displayFolder: Report text
+	/// Data areas with a difference inside tolerance or a late file.
+	measure 'Areas With Care' = COUNTROWS ( FILTER ( Feed, [Status Rank] = 1 ) ) + 0
+		formatString: 0
+		displayFolder: Status
 
-	/// Part of the Last night text: rows or value missing from the warehouse. Record names are regular plurals, so the singular drops the final s.
-	measure 'Problem Missing' =
-			VAR rowsMissing = [Rows Missing]
-			VAR valueMissing = [Value Missing]
-			VAR records = SELECTEDVALUE ( Feed[Record Name] )
-			VAR tolerance = IF ( [Status Rank] = 1, ", inside tolerance" )
-			RETURN
-			    SWITCH (
-			        TRUE (),
-			        rowsMissing > 0,
-			            FORMAT ( rowsMissing, "#,0" ) & " " & IF ( rowsMissing = 1, LEFT ( records, LEN ( records ) - 1 ), records )
-			                & IF ( valueMissing > 0, " worth £" & FORMAT ( valueMissing, "#,0" ) ) & IF ( rowsMissing = 1, " is", " are" ) & " missing" & tolerance & ". ",
-			        valueMissing > 0, "£" & FORMAT ( valueMissing, "#,0" ) & " of value is missing" & tolerance & ". "
-			    )
-		displayFolder: Report text
+	/// Data areas not ready: the reports they feed wait for a reload.
+	measure 'Areas Not Ready' = COUNTROWS ( FILTER ( Feed, [Status Rank] = 2 ) ) + 0
+		formatString: 0
+		displayFolder: Status
 
-	/// Part of the Last night text: a late arrival, after the 05:00 deadline.
-	measure 'Problem Late' =
-			VAR minutesLate = [Minutes Late]
-			RETURN
-			    IF ( minutesLate > 0, "Landed " & minutesLate & IF ( minutesLate = 1, " minute", " minutes" ) & " late. " )
-		displayFolder: Report text
+	measure 'Areas No Load' = COUNTROWS ( FILTER ( Feed, [Status Rank] = -1 ) ) + 0
+		formatString: 0
+		isHidden
+		displayFolder: Status
 
-	/// Everything that went wrong with the load of one data area, in plain sentences. Blank when nothing did.
-	measure 'Load Problem' = TRIM ( [Problem Files] & [Problem Missing] & [Problem Late] )
-		displayFolder: Report text
+	measure 'Data Areas' = COUNTROWS ( Feed ) + 0
+		formatString: 0
+		isHidden
+		displayFolder: Status
 
-	/// The first thing that went wrong, as a phrase for the headline: a missing file, then missing rows or value, then lateness.
-	measure 'Main Problem' =
-			VAR first = COALESCE ( [Problem Files], [Problem Missing], [Problem Late] )
-			RETURN
-			    LOWER ( LEFT ( first, 1 ) ) & MID ( first, 2, LEN ( first ) - 3 )
-		displayFolder: Report text
-
-	/// The worst quality rule that did not pass for the data area, as a note, for example "Note: 12,480 members with an invalid email (0.67%, fails above 1%)." Blank when every rule passed.
-	measure 'Quality Note' =
-			VAR rules =
-			    FILTER (
-			        ADDCOLUMNS (
-			            CALCULATETABLE ( VALUES ( Rule[Rule Id] ), Rule[Is Load Check] = FALSE () ),
-			            "@Rank", [Check Rank],
-			            "@Failed", [Units Failed],
-			            "@Rate", [Fail Rate]
-			        ),
-			        [@Rank] >= 1
-			    )
-			VAR worst = TOPN ( 1, rules, [@Rank], DESC, [@Rate], DESC )
-			VAR ruleId = MAXX ( worst, Rule[Rule Id] )
-			RETURN
-			    IF (
-			        NOT ISBLANK ( ruleId ),
-			        "Note: " & FORMAT ( MAXX ( worst, [@Failed] ), "#,0" ) & " " & LOOKUPVALUE ( Rule[Problem], Rule[Rule Id], ruleId )
-			            & " (" & FORMAT ( MAXX ( worst, [@Rate] ), "0.00%" ) & ", fails above "
-			            & FORMAT ( LOOKUPVALUE ( Rule[Fail Above %], Rule[Rule Id], ruleId ), "General Number" ) & "%)."
-			    )
-		displayFolder: Report text
-
-	/// The Last night column on the Status page. A ready load says what matched, with a note if a quality rule warned. Any other load says what went wrong and where its latest open issue stands.
-	measure 'Last Night' =
+	/// The night of one area in short facts: files missing, rows and value short, arrival, quality rules flagged.
+	measure 'Last Night Facts' =
 			VAR statusRank = [Status Rank]
 			VAR records = SELECTEDVALUE ( Feed[Record Name] )
+			VAR rowsMissing = [Rows Missing]
+			VAR valueMissing = [Value Missing]
+			VAR filesMissing = [Files Missing]
+			VAR minutesLate = [Minutes Late]
 			VAR warehouseValue = [Value in Warehouse]
-			VAR valueText = IF ( warehouseValue >= 1000000, "£" & FORMAT ( warehouseValue / 1000000, "0.00" ) & "m", "£" & FORMAT ( warehouseValue, "#,0" ) )
-			VAR issueNote = [Latest Issue Note]
-			VAR qualityNote = [Quality Note]
+			VAR flagged = CALCULATE ( [Checks Not Passed], REMOVEFILTERS ( Rule ), Rule[Is Load Check] = FALSE () )
+			VAR facts =
+			    IF ( filesMissing > 0, " · " & filesMissing & " of " & [Files Due] & " files missing" )
+			        & IF ( rowsMissing > 0, " · " & FORMAT ( rowsMissing, "#,0", "en-GB" ) & " " & IF ( rowsMissing = 1, LEFT ( records, LEN ( records ) - 1 ), records ) & " short" )
+			        & IF ( valueMissing > 0, " · £" & FORMAT ( valueMissing, "#,0", "en-GB" ) & " short" )
+			        & IF ( minutesLate > 0, " · " & minutesLate & " min late", " · in at " & FORMAT ( [Arrived At], "hh:mm", "en-GB" ) )
+			        & IF ( flagged > 0, " · " & flagged & IF ( flagged = 1, " quality rule flagged", " quality rules flagged" ) )
 			RETURN
 			    SWITCH (
 			        statusRank,
-			        -1, "No load is scheduled on " & FORMAT ( MAX ( 'Date'[Date] ), "dddd" ) & "s.",
+			        -1, "No load on " & FORMAT ( MAX ( 'Date'[Date] ), "dddd", "en-GB" ) & "s",
 			        0,
-			            "All " & FORMAT ( [Rows in Warehouse], "#,0" ) & " " & records & IF ( NOT ISBLANK ( warehouseValue ), " and " & valueText ) & " match the source."
-			                & IF ( NOT ISBLANK ( qualityNote ), " " & qualityNote ),
-			        [Load Problem] & IF ( NOT ISBLANK ( issueNote ), " " & issueNote )
+			            FORMAT ( [Rows in Warehouse], "#,0", "en-GB" ) & " " & records
+			                & IF ( NOT ISBLANK ( warehouseValue ), " · £" & FORMAT ( warehouseValue / 1000000, "0.00", "en-GB" ) & "m" ) & facts,
+			        MID ( facts, 4, 500 )
 			    )
-		displayFolder: Report text
+		displayFolder: Status
 
-	/// First line of the Status page: how many data areas can be used.
-	measure 'Headline Status' =
-			VAR usable = [Areas Usable]
-			VAR areas = [Data Areas]
-			VAR load = MAX ( 'Date'[Date] )
-			VAR isLatest = load = CALCULATE ( MAX ( 'Date'[Date] ), REMOVEFILTERS ( 'Date' ) )
+	measure 'Status on Night' =
+			IF (
+			    [In Last 14 Nights] = 1,
+			    CALCULATE ( [Status Rank], REMOVEFILTERS ( 'Date' ), TREATAS ( VALUES ( Night[Night] ), 'Date'[Date] ) )
+			)
+		formatString: 0
+		isHidden
+		displayFolder: Grid
+
+	measure 'Grid Symbol' = SWITCH ( [Status on Night], 2, "✕", 1, "!", 0, "✓", -1, "–" )
+		displayFolder: Grid
+
+	measure 'KPI Usable Context' =
+			VAR care = [Areas With Care]
+			VAR noLoad = [Areas No Load]
 			RETURN
-			    IF ( usable = areas, "All " & areas, usable & " of " & areas ) & " data areas "
-			        & IF ( isLatest, "can be used today.", "could be used on " & FORMAT ( load, "dddd d mmmm" ) & "." )
-		displayFolder: Report text
+			    "of " & [Data Areas] & " · " & [Areas Ready] & " ready" & IF ( care > 0, " · " & care & " with care" ) & IF ( noLoad > 0, " · " & noLoad & " no load" )
+		displayFolder: KPI
 
-	/// Second line of the Status page: what to hold back and why, or that nothing needs to be.
-	measure 'Headline Status Follow-up' =
+	measure 'KPI Not Ready Context' =
 			VAR notReady = FILTER ( Feed, [Status Rank] = 2 )
-			VAR withCare = FILTER ( Feed, [Status Rank] = 1 )
 			RETURN
-			    SWITCH (
-			        TRUE (),
-			        COUNTROWS ( notReady ) = 1,
-			            VAR area = MAXX ( notReady, Feed[Data Area] )
-			            RETURN
-			                area & ": " & CALCULATE ( [Main Problem], Feed[Data Area] = area ) & ". Hold the reports it feeds ("
-			                    & LOWER ( MAXX ( notReady, Feed[Feeds Into] ) ) & ") until it is reloaded.",
-			        COUNTROWS ( notReady ) > 1,
-			            CONCATENATEX ( notReady, Feed[Data Area], " and ", Feed[Sort Order], ASC ) & " are not ready. Hold the reports they feed until they are reloaded.",
-			        COUNTROWS ( withCare ) = 1,
-			            VAR area = MAXX ( withCare, Feed[Data Area] )
-			            VAR onlyLate = CALCULATE ( [Rows Missing] + [Value Missing], Feed[Data Area] = area ) = 0
-			            RETURN
-			                area & ": " & CALCULATE ( [Main Problem], Feed[Data Area] = area ) & ". "
-			                    & IF ( onlyLate, "Check that its reports refreshed after it landed.", "Fine for trends, check before quoting exact totals." ),
-			        COUNTROWS ( withCare ) > 1,
-			            CONCATENATEX ( withCare, Feed[Data Area], " and ", Feed[Sort Order], ASC ) & " need care: a small difference or a late file. Check before quoting exact totals.",
-			        "Every load arrived on time and matches its source."
-			    )
+			    IF ( ISEMPTY ( notReady ), "Nothing to hold back", CONCATENATEX ( notReady, Feed[Data Area], ", ", Feed[Sort Order], ASC ) )
+		displayFolder: KPI
+
+	measure 'Drill Title' = SELECTEDVALUE ( Feed[Data Area] )
 		displayFolder: Report text
 
-	/// Title of the 14-night grid: the data area with the most nights that were not ready or needed care.
-	measure 'Title Status Grid' =
-			VAR lastLoad = MAX ( 'Date'[Date] )
-			VAR areas =
-			    ADDCOLUMNS (
-			        VALUES ( Feed[Data Area] ),
-			        "@Nights", CALCULATE ( COUNTROWS ( FILTER ( VALUES ( 'Date'[Date] ), [Status Rank] >= 1 ) ), 'Date'[Date] > lastLoad - 14 && 'Date'[Date] <= lastLoad )
-			    )
-			VAR worst = TOPN ( 1, areas, [@Nights], DESC, Feed[Data Area], ASC )
-			VAR nights = MAXX ( worst, [@Nights] )
-			RETURN
-			    IF (
-			        nights > 0,
-			        MAXX ( worst, Feed[Data Area] ) & " had a problem on " & nights & " of the last 14 nights",
-			        "Every data area was ready on each of the last 14 nights"
-			    )
+	measure 'Drill Subtitle' =
+			SELECTEDVALUE ( Feed[Source System] ) & " · feeds " & LOWER ( SELECTEDVALUE ( Feed[Feeds Into] ) ) & " · " & SELECTEDVALUE ( Feed[Schedule] )
+			    & " · owner " & SELECTEDVALUE ( Feed[Owner] )
 		displayFolder: Report text
 
-	/// Heading of the data area page, for example "Supplier invoices: not ready".
-	measure 'Title Data Area' = SELECTEDVALUE ( Feed[Data Area] ) & ": " & LOWER ( [Status] )
-		displayFolder: Report text
-
-	/// Chip background for the status.
-	measure 'Colour Status Fill' = SWITCH ( [Status Rank], 2, "#F6DCD8", 1, "#FBEBCB", 0, "#DCEFE3", "#E9EDF1" )
+	measure 'Colour Not Ready' = IF ( [Areas Not Ready] > 0, "#EE8A84", "#E6EBF2" )
 		displayFolder: Colours
 
-	/// Chip text for the status.
-	measure 'Colour Status Text' = SWITCH ( [Status Rank], 2, "#9C2A1E", 1, "#7A5200", 0, "#1E6640", "#5D6B79" )
+	measure 'Colour Not Ready Accent' = IF ( [Areas Not Ready] > 0, "#D65F5F", "#58B7D4" )
 		displayFolder: Colours
 
-	/// Square colour in the 14-night grid: red not ready, amber use with care, green ready, grey no load.
-	measure 'Colour Status on Night' =
-			SWITCH ( [Status on Night], "Not ready", "#B23A2E", "Use with care", "#D39B2A", "Ready", "#2E7D57", "No load", "#D5DBE1" )
+	measure 'Colour Status Fill' = SWITCH ( [Status Rank], 2, "#4A2629", 1, "#45381D", 0, "#1E372B", "#252C35" )
+		displayFolder: Colours
+
+	measure 'Colour Status Text' = SWITCH ( [Status Rank], 2, "#F2A49F", 1, "#EDC679", 0, "#86C99D", "#8A96A6" )
+		displayFolder: Colours
+
+	measure 'Colour Grid Fill' = SWITCH ( [Status on Night], 2, "#D65F5F", 1, "#D9A03F", 0, "#1E372B", -1, "#1C222B" )
+		displayFolder: Colours
+
+	measure 'Colour Grid Symbol' = SWITCH ( [Status on Night], 2, "#14181F", 1, "#14181F", 0, "#6FBF8B", -1, "#5C6B78" )
 		displayFolder: Colours
 
 	column 'Feed Code'
@@ -196,7 +131,7 @@ table Feed
 		summarizeBy: none
 		sourceColumn: Feed Code
 
-	/// The business name of the data area. Sorted in the order the business reads them.
+	/// The business name of the data area, in the order the business reads them.
 	column 'Data Area'
 		dataType: string
 		summarizeBy: none
@@ -214,13 +149,13 @@ table Feed
 		summarizeBy: none
 		sourceColumn: Source System
 
-	/// The reporting that depends on this data area.
+	/// The reports that depend on the data area.
 	column 'Feeds Into'
 		dataType: string
 		summarizeBy: none
 		sourceColumn: Feeds Into
 
-	/// What one row is, in plural: transactions, orders, invoices.
+	/// What one row is, in the plural: transactions, orders, invoices.
 	column 'Record Name'
 		dataType: string
 		isHidden
@@ -237,10 +172,11 @@ table Feed
 		summarizeBy: none
 		sourceColumn: Owner
 
-	/// False for the four reference and logistics loads, which carry no money to reconcile.
+	/// False for the four areas that carry no money to reconcile.
 	column 'Has Value'
 		dataType: boolean
 		isHidden
+		formatString: """TRUE"";""TRUE"";""FALSE"""
 		summarizeBy: none
 		sourceColumn: Has Value
 
@@ -262,10 +198,9 @@ table Feed
 		mode: import
 		source =
 				let
-				    Source = Csv.Document(File.Contents(#"Data Folder" & "\feed.csv"), [Delimiter = ",", Columns = 11, Encoding = 65001, QuoteStyle = QuoteStyle.Csv]),
-				    #"Promoted Headers" = Table.PromoteHeaders(Source, [PromoteAllScalars = true]),
-				    #"Renamed Columns" = Table.RenameColumns(#"Promoted Headers", {{"feed_code", "Feed Code"}, {"data_area", "Data Area"}, {"feed", "Feed"}, {"source_system", "Source System"}, {"feeds_into", "Feeds Into"}, {"record_name", "Record Name"}, {"schedule", "Schedule"}, {"owner", "Owner"}, {"has_value", "Has Value"}, {"files_expected", "Files Expected"}, {"sort_order", "Sort Order"}}),
-				    #"Changed Types" = Table.TransformColumnTypes(#"Renamed Columns", {{"Feed Code", type text}, {"Data Area", type text}, {"Feed", type text}, {"Source System", type text}, {"Feeds Into", type text}, {"Record Name", type text}, {"Schedule", type text}, {"Owner", type text}, {"Has Value", type logical}, {"Files Expected", Int64.Type}, {"Sort Order", Int64.Type}})
+				    Source = Sql.Database(Server, Database),
+				    Feed = Source{[Schema = "rpt", Item = "Feed"]}[Data]
 				in
-				    #"Changed Types"
+				    Feed
 
+	annotation PBI_ResultType = Table

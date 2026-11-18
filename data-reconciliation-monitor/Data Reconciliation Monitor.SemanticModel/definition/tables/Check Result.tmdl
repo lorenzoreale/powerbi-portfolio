@@ -1,7 +1,7 @@
-/// One row per rule per night it ran: how many units were checked, how many failed, and for timeliness rules how many minutes after 05:00 the files arrived. No result is stored: Check Rank works it out from these numbers and the thresholds on Rule.
+/// One row per rule per night it ran, latest run only: units checked, units failing and minutes late.
 table 'Check Result'
 
-	/// The result of the checks in context as a number: 2 failed, 1 warning, 0 passed, blank when nothing ran. For each check it compares the share failing (or the minutes late, or a missing file) with the rule's thresholds, then keeps the worst.
+	/// 2 failed, 1 warning, 0 passed, blank when nothing ran: the worst check in context, against the rulebook.
 	measure 'Check Rank' =
 			MAXX (
 			    'Check Result',
@@ -9,7 +9,7 @@ table 'Check Result'
 			    VAR minutesLate = 'Check Result'[Late Mins]
 			    RETURN
 			        IF (
-			            RELATED ( Rule[Quality Dimension] ) = "Timeliness",
+			            RELATED ( Rule[Unit] ) = "files",
 			            SWITCH (
 			                TRUE (),
 			                'Check Result'[Failed] > 0 || minutesLate > RELATED ( Rule[Fail Late Mins] ), 2,
@@ -26,133 +26,98 @@ table 'Check Result'
 			)
 		formatString: 0
 		isHidden
-		displayFolder: Rules
+		displayFolder: Checks
 
 	/// Passed, Warning or Failed.
 	measure Result = SWITCH ( [Check Rank], 2, "Failed", 1, "Warning", 0, "Passed" )
-		displayFolder: Rules
+		displayFolder: Checks
 
-	/// Rule results in context: one per rule per night it ran.
+	measure 'Result Order' = [Check Rank] * 10 + MIN ( [Fail Rate], 1 )
+		isHidden
+		displayFolder: Checks
+		formatStringDefinition = SWITCH ( [Check Rank], 2, """Failed""", 1, """Warning""", """Passed""" )
+
+	/// Checks run: one per rule per night.
 	measure 'Checks Run' = COUNTROWS ( 'Check Result' ) + 0
 		formatString: #,0
-		displayFolder: Rules
+		displayFolder: Checks
 
-	/// Checks whose result is Passed.
 	measure 'Checks Passed' = COUNTROWS ( FILTER ( 'Check Result', [Check Rank] = 0 ) ) + 0
 		formatString: #,0
-		displayFolder: Rules
+		displayFolder: Checks
 
-	/// Checks whose result is Warning.
 	measure 'Checks With Warning' = COUNTROWS ( FILTER ( 'Check Result', [Check Rank] = 1 ) ) + 0
 		formatString: #,0
-		displayFolder: Rules
+		displayFolder: Checks
 
-	/// Checks whose result is Failed.
 	measure 'Checks Failed' = COUNTROWS ( FILTER ( 'Check Result', [Check Rank] = 2 ) ) + 0
 		formatString: #,0
-		displayFolder: Rules
+		displayFolder: Checks
 
-	/// Checks with a warning or a failure, as a share of checks run.
-	measure 'Share Not Passed' = DIVIDE ( [Checks Run] - [Checks Passed], [Checks Run] )
-		formatString: 0.0%
-		displayFolder: Rules
-
-	/// Share Not Passed over the 30 nights up to the load selected. A rule added mid-window counts only the nights it ran.
-	measure 'Share Not Passed, Last 30 Nights' =
-			VAR lastLoad = MAX ( 'Date'[Date] )
-			RETURN
-			    CALCULATE ( [Share Not Passed], 'Date'[Date] > lastLoad - 30 && 'Date'[Date] <= lastLoad )
-		formatString: 0.0%
-		displayFolder: Rules
+	/// Checks with a warning or a failure.
+	measure 'Checks Not Passed' = [Checks Run] - [Checks Passed]
+		formatString: #,0
+		displayFolder: Checks
 
 	/// Units checked, in the rule's unit: rows, pounds or files.
 	measure 'Units Checked' = SUM ( 'Check Result'[Checked] )
 		formatString: #,0
-		displayFolder: Rules
+		displayFolder: Checks
 
-	/// Units failing. Zero is stored as zero, not left blank.
+	/// Units failing the rule, in the rule's unit.
 	measure 'Units Failed' = SUM ( 'Check Result'[Failed] )
 		formatString: #,0
-		displayFolder: Rules
+		displayFolder: Checks
 
-	/// Units failing over units checked. Shares too small to show at two decimals read as <0.01%.
+	/// Units failing over units checked.
 	measure 'Fail Rate' = DIVIDE ( [Units Failed], [Units Checked] )
-		displayFolder: Rules
+		displayFolder: Checks
 		formatStringDefinition = IF ( [Fail Rate] > 0 && [Fail Rate] < 0.0001, """<0.01%""", "0.00%" )
 
-	/// Minutes after the 05:00 deadline that the files arrived, from the timeliness rule.
-	measure 'Minutes Late' = CALCULATE ( MAX ( 'Check Result'[Late Mins] ), Rule[Quality Dimension] = "Timeliness" )
-		formatString: 0
-		displayFolder: Rules
+	/// Checks with a warning or a failure, as a share of checks run, over the 30 nights to the load selected.
+	measure 'Share Not Passed 30 Nights' =
+			VAR lastLoad = MAX ( 'Date'[Date] )
+			RETURN
+			    CALCULATE ( DIVIDE ( [Checks Not Passed], [Checks Run] ), REMOVEFILTERS ( 'Date' ), 'Date'[Date] > lastLoad - 30 && 'Date'[Date] <= lastLoad )
+		formatString: 0.0%
+		displayFolder: Trends
 
-	/// 1 when the rule in context gave a warning or failed. Filters the table of rules that did not pass.
-	measure 'Not Passed' = IF ( [Check Rank] >= 1, 1 )
-		formatString: 0
-		isHidden
-		displayFolder: Rules
-
-	/// Records failing row-based rules on the night on the axis, for the 30 nights up to the load selected.
+	/// Records failing a quality rule, night by night, over the 30 nights to the load selected. Load checks are left out.
 	measure 'Records Failing by Night' =
-			IF ( [In Last 30 Nights] = 1, CALCULATE ( [Units Failed], Rule[Unit] = "rows", TREATAS ( VALUES ( Night[Night] ), 'Date'[Date] ) ) )
+			IF (
+			    [In Last 30 Nights] = 1,
+			    CALCULATE (
+			        [Units Failed],
+			        Rule[Is Load Check] = FALSE (),
+			        Rule[Unit] = "rows",
+			        REMOVEFILTERS ( 'Date' ),
+			        TREATAS ( VALUES ( Night[Night] ), 'Date'[Date] )
+			    )
+			)
 		formatString: #,0
 		displayFolder: Trends
 
-	/// First line of the Quality rules page.
-	measure 'Headline Rules' =
-			[Checks Passed] & " of " & [Checks Run] & " rules passed for the load of " & FORMAT ( MAX ( 'Date'[Date] ), "d mmmm" ) & ", "
-			    & [Checks With Warning] & IF ( [Checks With Warning] = 1, " with a warning.", " with warnings." )
-		displayFolder: Report text
+	measure 'Not Passed' = IF ( [Check Rank] >= 1, 1 )
+		formatString: 0
+		isHidden
+		displayFolder: Checks
 
-	/// Second line of the Quality rules page: the failures, by data area and rule.
-	measure 'Headline Rules Follow-up' =
-			VAR failed = [Checks Failed]
-			VAR failedAreas = FILTER ( VALUES ( Feed[Data Area] ), [Checks Failed] > 0 )
-			VAR failedRules = FILTER ( VALUES ( Rule[Rule Name] ), [Checks Failed] > 0 )
-			RETURN
-			    SWITCH (
-			        TRUE (),
-			        failed = 0, "No rule failed.",
-			        COUNTROWS ( failedAreas ) = 1,
-			            failed & " failed" & IF ( failed > 1, ", all on ", ", on " ) & LOWER ( MAXX ( failedAreas, Feed[Data Area] ) ) & ": "
-			                & CONCATENATEX ( failedRules, Rule[Rule Name], ", " ) & ".",
-			        failed & " failed, across " & COUNTROWS ( failedAreas ) & " data areas: " & CONCATENATEX ( failedAreas, Feed[Data Area], ", " ) & "."
-			    )
-		displayFolder: Report text
+	measure 'Results Replaced by Rerun' = CALCULATE ( SUMX ( 'Check Result', 'Check Result'[Runs] - 1 ), REMOVEFILTERS ( 'Date' ) ) + 0
+		formatString: #,0
+		isHidden
+		displayFolder: Data notes
 
-	/// Title of the dimension chart: the dimension that fails most often.
-	measure 'Title Dimensions' =
-			VAR byDimension = ADDCOLUMNS ( VALUES ( Rule[Quality Dimension] ), "@Share", [Share Not Passed, Last 30 Nights] )
-			VAR weakest = TOPN ( 1, byDimension, [@Share], DESC, Rule[Quality Dimension], ASC )
-			RETURN
-			    MAXX ( weakest, Rule[Quality Dimension] ) & " fails most often: " & FORMAT ( MAXX ( weakest, [@Share] ), "0.0%" ) & " of its checks in 30 nights"
-		displayFolder: Report text
-
-	/// Title of the failing-records trend: the peak night.
-	measure 'Title Failing Records' =
-			VAR lastLoad = MAX ( 'Date'[Date] )
-			VAR nights =
-			    ADDCOLUMNS (
-			        CALCULATETABLE ( VALUES ( 'Date'[Date] ), 'Date'[Date] > lastLoad - 30 && 'Date'[Date] <= lastLoad ),
-			        "@Failing", CALCULATE ( [Units Failed], Rule[Unit] = "rows" )
-			    )
-			VAR peak = TOPN ( 1, nights, [@Failing], DESC, 'Date'[Date], DESC )
-			RETURN
-			    "Records failing a rule, last 30 nights: peak of " & FORMAT ( MAXX ( peak, [@Failing] ), "#,0" ) & " on " & FORMAT ( MAXX ( peak, 'Date'[Date] ), "d mmmm" )
-		displayFolder: Report text
-
-	/// Title of the table of rules that did not pass.
-	measure 'Title Rules Not Passed' =
-			VAR notPassed = [Checks Run] - [Checks Passed]
-			RETURN
-			    IF ( notPassed = 0, "Every rule passed", notPassed & IF ( notPassed = 1, " rule", " rules" ) & " did not pass" ) & " on " & FORMAT ( MAX ( 'Date'[Date] ), "d mmmm" )
-		displayFolder: Report text
-
-	/// Chip background for a rule result.
-	measure 'Colour Result Fill' = SWITCH ( [Check Rank], 2, "#F6DCD8", 1, "#FBEBCB", 0, "#DCEFE3" )
+	measure 'Colour Result Fill' = SWITCH ( [Check Rank], 2, "#4A2629", 1, "#45381D", 0, "#1E372B" )
 		displayFolder: Colours
 
-	/// Chip text for a rule result.
-	measure 'Colour Result Text' = SWITCH ( [Check Rank], 2, "#9C2A1E", 1, "#7A5200", 0, "#1E6640" )
+	measure 'Colour Result Text' = SWITCH ( [Check Rank], 2, "#F2A49F", 1, "#EDC679", 0, "#86C99D" )
+		displayFolder: Colours
+
+	measure 'Colour Dimension Bar' =
+			VAR share = [Share Not Passed 30 Nights]
+			VAR highest = MAXX ( ALLSELECTED ( Rule[Quality Dimension] ), [Share Not Passed 30 Nights] )
+			RETURN
+			    IF ( share = highest && share > 0, "#58B7D4", "#2C5A6B" )
 		displayFolder: Colours
 
 	column Date
@@ -191,7 +156,7 @@ table 'Check Result'
 		summarizeBy: none
 		sourceColumn: Failed
 
-	/// Minutes after 05:00. Timeliness rules only.
+	/// Minutes after 05:00, for the arrival checks only.
 	column 'Late Mins'
 		dataType: int64
 		isHidden
@@ -199,17 +164,21 @@ table 'Check Result'
 		summarizeBy: none
 		sourceColumn: Late Mins
 
+	/// How many times the check was written for the night: 2 after a rerun.
+	column Runs
+		dataType: int64
+		isHidden
+		formatString: 0
+		summarizeBy: none
+		sourceColumn: Runs
+
 	partition 'Check Result' = m
 		mode: import
 		source =
 				let
-				    Source = Csv.Document(File.Contents(#"Data Folder" & "\check_result.csv"), [Delimiter = ",", Columns = 7, Encoding = 65001, QuoteStyle = QuoteStyle.Csv]),
-				    #"Promoted Headers" = Table.PromoteHeaders(Source, [PromoteAllScalars = true]),
-				    #"Changed Types" = Table.TransformColumnTypes(#"Promoted Headers", {{"date", type date}, {"rule_id", type text}, {"feed_code", type text}, {"run_seq", Int64.Type}, {"units_checked", Int64.Type}, {"units_failed", Int64.Type}, {"minutes_late", Int64.Type}}),
-				    #"Latest Run First" = Table.Buffer(Table.Sort(#"Changed Types", {{"run_seq", Order.Descending}})),
-				    #"Kept Latest Run" = Table.Distinct(#"Latest Run First", {"date", "rule_id"}),
-				    #"Removed Run Seq" = Table.RemoveColumns(#"Kept Latest Run", {"run_seq"}),
-				    #"Renamed Columns" = Table.RenameColumns(#"Removed Run Seq", {{"date", "Date"}, {"rule_id", "Rule Id"}, {"feed_code", "Feed Code"}, {"units_checked", "Checked"}, {"units_failed", "Failed"}, {"minutes_late", "Late Mins"}})
+				    Source = Sql.Database(Server, Database),
+				    CheckResult = Source{[Schema = "rpt", Item = "CheckResult"]}[Data]
 				in
-				    #"Renamed Columns"
+				    CheckResult
 
+	annotation PBI_ResultType = Table

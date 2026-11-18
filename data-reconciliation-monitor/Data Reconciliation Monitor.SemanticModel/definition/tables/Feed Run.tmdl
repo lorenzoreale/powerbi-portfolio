@@ -1,184 +1,200 @@
-/// One row per data area per night it was loaded: rows and value counted at the source and in the warehouse, files expected and received, and when the last file arrived. Measurements about the data, not the data itself. Nights with no load scheduled have no row.
+/// One row per data area per night it loaded: rows and value at the source and in the warehouse, files and arrival.
 table 'Feed Run'
 
-	/// Rows in the source extract.
+	/// Rows the source system sent.
 	measure 'Rows at Source' = SUM ( 'Feed Run'[Source Rows] )
 		formatString: #,0
-		displayFolder: Reconciliation
+		displayFolder: Load
 
 	/// Rows that landed in the warehouse.
 	measure 'Rows in Warehouse' = SUM ( 'Feed Run'[Warehouse Rows] )
 		formatString: #,0
-		displayFolder: Reconciliation
+		displayFolder: Load
 
-	/// Warehouse minus source. Negative when rows are missing.
-	measure 'Row Difference' = [Rows in Warehouse] - [Rows at Source]
-		formatString: #,0;(#,0);0
-		displayFolder: Reconciliation
-
-	/// Source minus warehouse: the rows that did not land.
+	/// Rows at the source that did not land in the warehouse.
 	measure 'Rows Missing' = [Rows at Source] - [Rows in Warehouse]
 		formatString: #,0
-		displayFolder: Reconciliation
+		displayFolder: Load
 
-	/// Share of rows that match the source: 1 minus the absolute differences over the rows at source, so an extra row counts against it as much as a missing one.
+	/// Warehouse rows that match the source, as a share of the rows at the source.
 	measure 'Rows Matched %' =
 			VAR rowsAtSource = [Rows at Source]
 			RETURN
-			    IF ( rowsAtSource > 0, 1 - DIVIDE ( SUMX ( 'Feed Run', ABS ( 'Feed Run'[Warehouse Rows] - 'Feed Run'[Source Rows] ) ), rowsAtSource ) )
-		formatString: 0.00%
-		displayFolder: Reconciliation
+			    IF ( rowsAtSource > 0, 1 - DIVIDE ( SUMX ( 'Feed Run', ABS ( 'Feed Run'[Source Rows] - 'Feed Run'[Warehouse Rows] ) ), rowsAtSource ) )
+		displayFolder: Load
+		formatStringDefinition = IF ( [Rows Matched %] < 1 && [Rows Matched %] >= 0.99995, """>99.99%""", "0.00%" )
 
-	/// The threshold for rows matched across all data areas, drawn as a dashed line.
-	measure 'Rows Matched Threshold' = 0.999
-		formatString: 0.00%
-		displayFolder: Reconciliation
-
-	/// Money in the source extract. Blank for the four data areas that carry no money.
+	/// Value the source sent. Blank for the areas that carry no money.
 	measure 'Value at Source' = SUM ( 'Feed Run'[Source Value] )
 		formatString: £#,0
-		displayFolder: Reconciliation
+		displayFolder: Load
 
-	/// Money that landed in the warehouse. Blank for the four data areas that carry no money.
+	/// Value that landed in the warehouse. Blank for the areas that carry no money.
 	measure 'Value in Warehouse' = SUM ( 'Feed Run'[Warehouse Value] )
 		formatString: £#,0
-		displayFolder: Reconciliation
+		displayFolder: Load
 
-	/// Warehouse minus source, in pounds. Blank where there is no money to reconcile.
-	measure 'Value Difference' = [Value in Warehouse] - [Value at Source]
-		formatString: £#,0;(£#,0);£0
-		displayFolder: Reconciliation
-
-	/// Source minus warehouse, in pounds: the value that did not land.
+	/// Value at the source that did not land in the warehouse.
 	measure 'Value Missing' = [Value at Source] - [Value in Warehouse]
 		formatString: £#,0
-		displayFolder: Reconciliation
+		displayFolder: Load
 
-	/// Files expected for the load.
 	measure 'Files Due' = SUM ( 'Feed Run'[Files Expected] )
 		formatString: 0
-		displayFolder: Reconciliation
+		displayFolder: Load
 
-	/// Files received for the load.
 	measure 'Files Arrived' = SUM ( 'Feed Run'[Files Received] )
 		formatString: 0
-		displayFolder: Reconciliation
+		displayFolder: Load
 
-	/// Files expected that never arrived.
+	/// Files expected that night that did not arrive.
 	measure 'Files Missing' = [Files Due] - [Files Arrived]
 		formatString: 0
-		displayFolder: Reconciliation
+		displayFolder: Load
 
-	/// Files received out of files expected, for example "2 of 3".
-	measure 'Files Arrived Text' = IF ( NOT ISBLANK ( [Files Due] ), [Files Arrived] & " of " & [Files Due] )
-		displayFolder: Reconciliation
+	measure 'Files Text' = IF ( NOT ISBLANK ( [Files Due] ), [Files Arrived] & " of " & [Files Due] )
+		displayFolder: Load
 
 	/// When the last file of the load arrived.
 	measure 'Arrived At' = MAX ( 'Feed Run'[Arrival Time] )
 		formatString: hh:mm
-		displayFolder: Reconciliation
+		displayFolder: Load
 
-	/// Minutes between the 05:00 deadline and the arrival of the last file. Negative when early.
+	/// Minutes between the 05:00 deadline and the arrival: negative when early.
 	measure 'Minutes After Deadline' =
 			VAR arrived = [Arrived At]
 			RETURN
 			    IF ( NOT ISBLANK ( arrived ), ROUND ( ( arrived - TIME ( 5, 0, 0 ) ) * 1440, 0 ) )
 		formatString: +0;-0;0
-		displayFolder: Reconciliation
+		displayFolder: Load
 
-	/// Rows matched on the night on the axis, for the 30 nights up to the load selected.
-	measure 'Rows Matched % by Night' =
-			IF ( [In Last 30 Nights] = 1, CALCULATE ( [Rows Matched %], TREATAS ( VALUES ( Night[Night] ), 'Date'[Date] ) ) )
-		formatString: 0.00%
+	/// Minutes after the 05:00 deadline, zero when on time.
+	measure 'Minutes Late' =
+			VAR minutes = [Minutes After Deadline]
+			RETURN
+			    IF ( NOT ISBLANK ( minutes ), MAX ( minutes, 0 ) )
+		formatString: 0
+		displayFolder: Load
+
+	measure 'KPI Last File Context' =
+			VAR minutes = [Minutes After Deadline]
+			VAR lastArea = TOPN ( 1, VALUES ( Feed[Data Area] ), [Arrived At], DESC, Feed[Data Area], ASC )
+			RETURN
+			    IF (
+			        NOT ISBLANK ( minutes ),
+			        MAXX ( lastArea, Feed[Data Area] ) & " · " & IF ( minutes > 0, minutes & " min after 05:00", "before the 05:00 deadline" )
+			    )
+		displayFolder: KPI
+
+	measure 'KPI Rows Context' = IF ( ISBLANK ( [Rows at Source] ), "No load that night", "of " & FORMAT ( [Rows at Source], "#,0", "en-GB" ) & " " & SELECTEDVALUE ( Feed[Record Name] ) & " at the source" )
+		displayFolder: KPI
+
+	measure 'KPI Value Context' =
+			SWITCH (
+			    TRUE (),
+			    ISBLANK ( [Rows at Source] ), "No load that night",
+			    ISBLANK ( [Value at Source] ), "No money in this data area",
+			    "of £" & FORMAT ( [Value at Source], "#,0", "en-GB" ) & " at the source"
+			)
+		displayFolder: KPI
+
+	measure 'KPI Files Context' = IF ( NOT ISBLANK ( [Files Due] ), "Due by 05:00 · " & SELECTEDVALUE ( Feed[Schedule] ) )
+		displayFolder: KPI
+
+	measure 'KPI Arrival Context' =
+			VAR minutes = [Minutes After Deadline]
+			RETURN
+			    IF ( NOT ISBLANK ( minutes ), IF ( minutes > 0, minutes & " min after the 05:00 deadline", -minutes & " min before the 05:00 deadline" ) )
+		displayFolder: KPI
+
+	measure 'Rows Matched Limit' = 1 - CALCULATE ( MAX ( Rule[Fail Above %] ), REMOVEFILTERS ( Rule ), Rule[Is Load Check] = TRUE (), Rule[Unit] = "rows" ) / 100
+		formatString: 0.0%
+		isHidden
 		displayFolder: Trends
 
-	/// Rows missing on the night on the axis, for the 30 nights up to the load selected. Blank on nights with no load.
+	/// Rows matched for the area furthest from its source, night by night, over the 30 nights to the load selected.
+	measure 'Lowest Rows Matched by Night' =
+			IF (
+			    [In Last 30 Nights] = 1,
+			    CALCULATE (
+			        MINX ( VALUES ( Feed[Feed Code] ), [Rows Matched %] ),
+			        REMOVEFILTERS ( 'Date' ),
+			        TREATAS ( VALUES ( Night[Night] ), 'Date'[Date] )
+			    )
+			)
+		formatString: 0.0%
+		displayFolder: Trends
+
+	measure 'Lowest Rows Matched Under Limit' =
+			VAR matched = [Lowest Rows Matched by Night]
+			RETURN
+			    IF ( matched < [Rows Matched Limit], matched )
+		formatString: 0.0%
+		displayFolder: Trends
+
+	/// Rows missing from the warehouse, night by night, over the 30 nights to the load selected.
 	measure 'Rows Missing by Night' =
-			IF ( [In Last 30 Nights] = 1, CALCULATE ( [Rows Missing], TREATAS ( VALUES ( Night[Night] ), 'Date'[Date] ) ) )
+			IF (
+			    [In Last 30 Nights] = 1,
+			    CALCULATE ( [Rows Missing], REMOVEFILTERS ( 'Date' ), TREATAS ( VALUES ( Night[Night] ), 'Date'[Date] ) )
+			)
 		formatString: #,0
 		displayFolder: Trends
 
-	/// Subtitle under the report name: the load selected.
-	measure 'Header Subtitle' = "Overnight load of " & FORMAT ( MAX ( 'Date'[Date] ), "dddd d mmmm yyyy" )
-		displayFolder: Report text
-
-	/// Context line under rows missing on the data area page.
-	measure 'Context Rows' =
-			IF ( ISBLANK ( [Rows at Source] ), "No load that night", "of " & FORMAT ( [Rows at Source], "#,0" ) & " " & SELECTEDVALUE ( Feed[Record Name] ) & " at the source" )
-		displayFolder: Report text
-
-	/// Context line under value missing on the data area page.
-	measure 'Context Value' =
-			IF ( ISBLANK ( [Value at Source] ), "No money in this data area", "of £" & FORMAT ( [Value at Source], "#,0" ) & " at the source" )
-		displayFolder: Report text
-
-	/// Context line under the arrival time on the data area page.
-	measure 'Context Arrival' = IF ( NOT ISBLANK ( [Files Due] ), [Files Arrived] & " of " & [Files Due] & " files · deadline 05:00" )
-		displayFolder: Report text
-
-	/// First line of the Reconciliation page.
-	measure 'Headline Reconciliation' =
-			FORMAT ( [Rows at Source], "#,0" ) & " rows and £" & FORMAT ( [Value at Source] / 1000000, "0.0" ) & "m compared for the load of "
-			    & FORMAT ( MAX ( 'Date'[Date] ), "d mmmm" ) & ": " & FORMAT ( [Rows Matched %], "0.00%" ) & " of rows matched."
-		displayFolder: Report text
-
-	/// Second line of the Reconciliation page: every data area that is short, largest value first.
-	measure 'Headline Reconciliation Follow-up' =
-			VAR short =
-			    FILTER (
-			        ADDCOLUMNS ( VALUES ( Feed[Data Area] ), "@Rows", [Rows Missing], "@Value", [Value Missing] ),
-			        [@Rows] > 0 || [@Value] > 0
+	measure 'Colour Rows Missing by Night' =
+			VAR checkRank =
+			    CALCULATE (
+			        [Check Rank],
+			        REMOVEFILTERS ( Rule ),
+			        Rule[Is Load Check] = TRUE (),
+			        Rule[Unit] = "rows",
+			        REMOVEFILTERS ( 'Date' ),
+			        TREATAS ( VALUES ( Night[Night] ), 'Date'[Date] )
 			    )
 			RETURN
-			    IF (
-			        ISEMPTY ( short ),
-			        "Every data area matches its source, in rows and in value.",
-			        CONCATENATEX (
-			            short,
-			            Feed[Data Area] & ": " & IF ( [@Rows] > 0, FORMAT ( [@Rows], "#,0" ) & " rows" ) & IF ( [@Rows] > 0 && [@Value] > 0, " and " )
-			                & IF ( [@Value] > 0, "£" & FORMAT ( [@Value], "#,0" ) ) & " short",
-			            ". ",
-			            [@Value], DESC
-			        ) & "."
-			    )
-		displayFolder: Report text
-
-	/// Title of the rows-matched trend: the lowest night in the window.
-	measure 'Title Match Trend' =
-			VAR lastLoad = MAX ( 'Date'[Date] )
-			VAR nights =
-			    ADDCOLUMNS (
-			        CALCULATETABLE ( VALUES ( 'Date'[Date] ), 'Date'[Date] > lastLoad - 30 && 'Date'[Date] <= lastLoad ),
-			        "@Matched", [Rows Matched %]
-			    )
-			VAR lowest = TOPN ( 1, nights, [@Matched], ASC, 'Date'[Date], DESC )
-			RETURN
-			    "Rows matched, last 30 nights: lowest " & FORMAT ( MAXX ( lowest, [@Matched] ), "0.00%" ) & " on " & FORMAT ( MAXX ( lowest, 'Date'[Date] ), "d mmmm" )
-		displayFolder: Report text
-
-	/// Title of the arrival chart: the latest data area, or that every load beat the deadline.
-	measure 'Title Arrival' =
-			VAR areas = ADDCOLUMNS ( VALUES ( Feed[Data Area] ), "@Minutes", [Minutes After Deadline] )
-			VAR latest = TOPN ( 1, areas, [@Minutes], DESC, Feed[Data Area], ASC )
-			VAR minutes = MAXX ( latest, [@Minutes] )
-			RETURN
-			    IF (
-			        minutes > 0,
-			        MAXX ( latest, Feed[Data Area] ) & " landed " & minutes & " minutes after the 05:00 deadline",
-			        "Every data area landed before the 05:00 deadline"
-			    )
-		displayFolder: Report text
-
-	/// Red when rows or value are missing.
-	measure 'Colour Difference' = IF ( [Rows Missing] > 0 || [Value Missing] > 0, "#B23A2E", "#1D2A36" )
+			    SWITCH ( checkRank, 2, "#D65F5F", 1, "#D9A03F", "#58B7D4" )
 		displayFolder: Colours
 
-	/// Arrival bars: red when a file is missing or the load is over an hour late, amber when late, otherwise the data colour.
+	measure 'Colour Rows Missing' =
+			SWITCH ( CALCULATE ( [Check Rank], REMOVEFILTERS ( Rule ), Rule[Is Load Check] = TRUE (), Rule[Unit] = "rows" ), 2, "#EE8A84", 1, "#E8BA62", "#E6EBF2" )
+		displayFolder: Colours
+
+	measure 'Colour Value Missing' =
+			SWITCH ( CALCULATE ( [Check Rank], REMOVEFILTERS ( Rule ), Rule[Is Load Check] = TRUE (), Rule[Unit] = "pounds" ), 2, "#EE8A84", 1, "#E8BA62", "#E6EBF2" )
+		displayFolder: Colours
+
+	measure 'Colour Arrival' =
+			SWITCH ( CALCULATE ( [Check Rank], REMOVEFILTERS ( Rule ), Rule[Unit] = "files" ), 2, "#EE8A84", 1, "#E8BA62", "#E6EBF2" )
+		displayFolder: Colours
+
 	measure 'Colour Arrival Bar' =
+			SWITCH ( CALCULATE ( [Check Rank], REMOVEFILTERS ( Rule ), Rule[Unit] = "files" ), 2, "#D65F5F", 1, "#D9A03F", "#58B7D4" )
+		displayFolder: Colours
+
+	measure 'Colour Last File' =
 			VAR minutes = [Minutes After Deadline]
 			RETURN
-			    SWITCH ( TRUE (), [Files Missing] > 0 || minutes > 60, "#B23A2E", minutes > 0, "#D39B2A", "#1B8DB0" )
+			    SWITCH ( TRUE (), minutes > 60, "#EE8A84", minutes > 0, "#E8BA62", "#E6EBF2" )
 		displayFolder: Colours
+
+	measure 'Arrival Times Reformatted' = CALCULATE ( COUNTROWS ( 'Feed Run' ), 'Feed Run'[Arrival Reformatted] = TRUE (), REMOVEFILTERS ( 'Date' ) ) + 0
+		formatString: #,0
+		isHidden
+		displayFolder: Data notes
+
+	measure 'Nights With No Load' =
+			CALCULATE (
+			    COUNTROWS ( CROSSJOIN ( VALUES ( 'Date'[Date] ), VALUES ( Feed[Feed Code] ) ) ) - COUNTROWS ( 'Feed Run' ),
+			    REMOVEFILTERS ( 'Date' )
+			)
+		formatString: #,0
+		isHidden
+		displayFolder: Data notes
+
+	measure 'Loads With No Value' = CALCULATE ( COUNTROWS ( FILTER ( 'Feed Run', ISBLANK ( 'Feed Run'[Source Value] ) ) ), REMOVEFILTERS ( 'Date' ) ) + 0
+		formatString: #,0
+		isHidden
+		displayFolder: Data notes
 
 	column Date
 		dataType: dateTime
@@ -199,46 +215,45 @@ table 'Feed Run'
 		dataType: int64
 		isHidden
 		formatString: #,0
-		summarizeBy: none
+		summarizeBy: sum
 		sourceColumn: Source Rows
 
 	column 'Warehouse Rows'
 		dataType: int64
 		isHidden
 		formatString: #,0
-		summarizeBy: none
+		summarizeBy: sum
 		sourceColumn: Warehouse Rows
 
-	/// Blank, not zero, for data areas with no money.
 	column 'Source Value'
-		dataType: int64
+		dataType: decimal
 		isHidden
-		formatString: #,0
-		summarizeBy: none
+		formatString: £#,0
+		summarizeBy: sum
 		sourceColumn: Source Value
 
 	column 'Warehouse Value'
-		dataType: int64
+		dataType: decimal
 		isHidden
-		formatString: #,0
-		summarizeBy: none
+		formatString: £#,0
+		summarizeBy: sum
 		sourceColumn: Warehouse Value
 
 	column 'Files Expected'
 		dataType: int64
 		isHidden
 		formatString: 0
-		summarizeBy: none
+		summarizeBy: sum
 		sourceColumn: Files Expected
 
 	column 'Files Received'
 		dataType: int64
 		isHidden
 		formatString: 0
-		summarizeBy: none
+		summarizeBy: sum
 		sourceColumn: Files Received
 
-	/// When the last file arrived, cleaned to hours and minutes.
+	/// Arrival of the last file, to the minute.
 	column 'Arrival Time'
 		dataType: dateTime
 		isHidden
@@ -248,15 +263,21 @@ table 'Feed Run'
 
 		annotation UnderlyingDateTimeDataType = Time
 
+	/// True when the source wrote the arrival time in another format.
+	column 'Arrival Reformatted'
+		dataType: boolean
+		isHidden
+		formatString: """TRUE"";""TRUE"";""FALSE"""
+		summarizeBy: none
+		sourceColumn: Arrival Reformatted
+
 	partition 'Feed Run' = m
 		mode: import
 		source =
 				let
-				    Source = Csv.Document(File.Contents(#"Data Folder" & "\feed_run.csv"), [Delimiter = ",", Columns = 9, Encoding = 65001, QuoteStyle = QuoteStyle.Csv]),
-				    #"Promoted Headers" = Table.PromoteHeaders(Source, [PromoteAllScalars = true]),
-				    #"Arrival Time to HH:MM" = Table.TransformColumns(#"Promoted Headers", {{"arrival_time", each Text.PadStart(Text.Start(_, Text.PositionOf(_, ":") + 3), 5, "0"), type text}}),
-				    #"Renamed Columns" = Table.RenameColumns(#"Arrival Time to HH:MM", {{"date", "Date"}, {"feed_code", "Feed Code"}, {"source_rows", "Source Rows"}, {"warehouse_rows", "Warehouse Rows"}, {"source_value", "Source Value"}, {"warehouse_value", "Warehouse Value"}, {"files_expected", "Files Expected"}, {"files_received", "Files Received"}, {"arrival_time", "Arrival Time"}}),
-				    #"Changed Types" = Table.TransformColumnTypes(#"Renamed Columns", {{"Date", type date}, {"Feed Code", type text}, {"Source Rows", Int64.Type}, {"Warehouse Rows", Int64.Type}, {"Source Value", Int64.Type}, {"Warehouse Value", Int64.Type}, {"Files Expected", Int64.Type}, {"Files Received", Int64.Type}, {"Arrival Time", type time}})
+				    Source = Sql.Database(Server, Database),
+				    FeedRun = Source{[Schema = "rpt", Item = "FeedRun"]}[Data]
 				in
-				    #"Changed Types"
+				    FeedRun
 
+	annotation PBI_ResultType = Table

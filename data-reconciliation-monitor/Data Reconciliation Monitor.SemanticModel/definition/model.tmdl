@@ -9,12 +9,13 @@ model Model
 
 annotation __PBI_TimeIntelligenceEnabled = 0
 
-annotation PBI_QueryOrder = ["Data Folder","Date","Night","Feed","Rule","Feed Run","Check Result","Issue"]
+annotation PBI_QueryOrder = ["Server","Database","Issue Log Folder","Feed","Rule","Date","Night","Feed Run","Check Result","Issue"]
 
-ref table Date
-ref table Night
-ref table Feed
-ref table Rule
 ref table 'Feed Run'
 ref table 'Check Result'
 ref table Issue
+ref table Feed
+ref table Rule
+ref table Date
+ref table Night
+ref table 'Data Note'
